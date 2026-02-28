@@ -1,7 +1,7 @@
 import random
 from aiogram import Router, F, types
 from aiogram.filters import Command
-from database.queries.capybaras import try_feed_capybara
+#from database.queries.capybaras import try_feed_capybara
 from utils.helpers import format_time
 from datetime import datetime, timedelta
 
