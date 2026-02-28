@@ -7,7 +7,7 @@ from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import BASE_HIT_CHANCE, BASE_BLOCK_CHANCE, STAT_WEIGHTS
-from handlers.adventure.battle_logic import run_battle_logic
+from core.combat.battles import run_battle_logic
 from utils.helpers import check_daily_limit
 
 router = Router()
