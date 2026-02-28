@@ -32,6 +32,7 @@ def get_profile_text(data):
 
 
 @router.message(or_f(F.text.contains("🐾 Капібара"), Command("profile")))
+@router.callback_query(F.data == "open_profile_main")
 async def show_profile(message: types.Message, db_pool):
     uid = message.from_user.id
     
