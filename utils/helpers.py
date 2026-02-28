@@ -11,15 +11,15 @@ def calculate_lvl_data(current_exp, added_exp):
 def calculate_winrate(wins, total_fights):
     return round(wins/total_fights, 1) * 100
 
-def format_time(td):
-    hours, remainder = divmod(td.total_seconds(), 3600)
-    minutes = remainder // 60
-    res = []
-    if hours > 0:
-        res.append(f"{int(hours)} год")
-    if minutes > 0 or not res:
-        res.append(f"{int(minutes)} хв")
-    return " ".join(res)
+def format_time(seconds):
+    if isinstance(seconds, (int, float)):
+        total_sec = seconds
+    else:
+        total_sec = seconds.total_seconds()
+        
+    hours, remainder = divmod(total_sec, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{int(hours):02} год {int(minutes):02} хв"
 
 def check_daily_limit(meta, action_key):
     today = datetime.now().strftime("%Y-%m-%d")

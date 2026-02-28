@@ -10,7 +10,11 @@ def get_fight_stats_text(data):
     total = data['total_fights'] or 0
     win_rate = (data['wins'] / total * 100) if total > 0 else 0
     
-    equip = data['equipment'] or {}
+    equip = data['equipment']
+    if isinstance(equip, str):
+        equip = json.loads(equip)
+    elif equip is None:
+        equip = {}
     weapon = equip.get('weapon', {"name": "Лапки"})
     armor = equip.get('armor', {"name": "Хутро"})
     
