@@ -42,7 +42,7 @@ def get_random_mushroom():
     weights = [m['chance'] for m in MUSHROOMS_LOOT]
     return random.choices(MUSHROOMS_LOOT, weights=weights, k=1)[0]
 
-def get_biome_name(py, map_height):
+def get_biome_name(py, map_height = MAP_HEIGHT):
     progress = py / map_height
     if progress < 0.35: return "❄️ Зорефьорди Ехвазу"
     elif 0.35 <= progress < 0.65: return "🌊 Уроборострім"
