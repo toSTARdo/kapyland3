@@ -42,10 +42,10 @@ async def show_profile(message: types.Message, db_pool):
         return await message.answer("❌ Капібару не знайдено. Почни з /start")
 
     state = data['state']
-    if isinstance(state_raw, str):
-        state = json.loads(state_raw)
+    if isinstance(state, str):
+        state = json.loads(state)
     else:
-        state = state_raw or {}
+        state = state or {}
 
     is_sleeping = state.get("status") == "sleep"
     
