@@ -15,6 +15,8 @@ from .adventures.fishing import router as fishing_router
 from .adventures.quests.quests import router as quests_router
 from .harbor.tavern.view import router as tavern_router
 from .harbor.village.view import router as village_router
+from .harbor.ship.view import router as ship_router
+from .harbor.settings.setting import router as settings_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -34,4 +36,6 @@ def get_handlers_router() -> Router:
     router.include_router(quests_router)
     router.include_router(tavern_router)
     router.include_router(village_router)
+    router.include_router(ship_router)
+    router.include_router(settings_router)
     return router
