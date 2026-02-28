@@ -1,7 +1,7 @@
 import json
 from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.queries.capybaras import get_full_profile
+from database.crud_capybaras import get_full_profile
 from config import STAT_WEIGHTS, BASE_HIT_CHANCE, BASE_BLOCK_CHANCE
 
 router = Router()
