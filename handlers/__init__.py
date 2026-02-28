@@ -13,6 +13,8 @@ from .hold.inventory.navigator import router as inventory_router
 from .adventures.map.map import router as map_router
 from .adventures.fishing import router as fishing_router
 from .adventures.quests.quests import router as quests_router
+from .harbor.tavern.view import router as tavern_router
+from .harbor.village.view import router as village_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -30,4 +32,6 @@ def get_handlers_router() -> Router:
     router.include_router(map_router)
     router.include_router(fishing_router)
     router.include_router(quests_router)
+    router.include_router(tavern_router)
+    router.include_router(village_router)
     return router
