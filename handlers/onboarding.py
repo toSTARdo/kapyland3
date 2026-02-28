@@ -3,7 +3,7 @@ import logging
 from aiogram import Router, F, types, html
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import CommandStart
-from handlers.main_buttons import get_main_kb
+from handlers.user_kb import get_main_kb
 
 router = Router()
 
