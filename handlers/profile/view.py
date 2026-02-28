@@ -1,7 +1,7 @@
 import json
 import random
 from aiogram import Router, types, F
-from aiogram.filters import Command, or_
+from aiogram.filters import Command, or_f
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from database.crud_capybaras import get_full_profile 
@@ -31,7 +31,7 @@ def get_profile_text(data):
     )
 
 
-@router.message(or_(F.text.contains("🐾 Профіль"), Command("profile")))
+@router.message(or_f(F.text.contains("🐾 Профіль"), Command("profile")))
 async def show_profile(message: types.Message, db_pool):
     uid = message.from_user.id
     
