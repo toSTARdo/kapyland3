@@ -21,15 +21,28 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             return await callback.answer("❌ Капібару не знайдено.")
 
         stamina = row['stamina']
-        inventory = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
-        fishing_stats = row['fishing_stats'] if isinstance(row['fishing_stats'], dict) else json.loads(row['fishing_stats'])
         
-        equipped = inventory.get("equipment", {})
-        rod_item = equipped.get("weapon")
+        def to_dict(data):
+            if isinstance(data, dict): return data
+            if isinstance(data, str): return json.loads(data)
+            return {}
+
+        inventory = to_dict(row['inventory'])
+        fishing_stats = to_dict(row['fishing_stats'])
+
+        equipment_list = inventory.get("equipment", [])
         
-        if not rod_item or "вудочка" not in rod_item.get("name", "").lower():
+        if not isinstance(equipment_list, list):
+            equipment_list = []
+
+        rod_item = next(
+            (item for item in equipment_list if "вудочка" in item.get("name", "").lower()), 
+            None
+        )
+
+        if not rod_item:
             return await callback.answer("❌ Спочатку екіпіруй вудочку! 🎣", show_alert=True)
-        
+            
         rod_lvl = rod_item.get("lvl", 0)
 
         if stamina < 10:
