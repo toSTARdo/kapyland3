@@ -1,6 +1,6 @@
 from aiogram import Router
 from .onboarding import router as onboarding_router
-from .handlers.profile.view import router as profile_router
+from .profile.view import router as profile_router
 
 def get_handlers_router() -> Router:
     router = Router()
