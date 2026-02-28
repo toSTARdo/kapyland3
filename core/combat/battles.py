@@ -4,7 +4,7 @@ import random
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from handlers.settings.emotes import send_victory_celebration
+from handlers.harbor.settings.emotes import send_victory_celebration
 from core.combat.combat_system import Fighter, CombatEngine
 from utils.helpers import grant_exp_and_lvl
 from config import BASE_HITPOINTS, WEAPON, ARMOR

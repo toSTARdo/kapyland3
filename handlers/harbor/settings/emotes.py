@@ -35,7 +35,6 @@ async def start_gif_setting(callback: types.CallbackQuery, state: FSMContext):
 async def process_victory_media_bulk(message: types.Message, state: FSMContext):
     uid = message.from_user.id
     
-    # Визначаємо тип та ID медіа
     if message.animation:
         new_item = {"id": message.animation.file_id, "type": "gif"}
     elif message.photo:
@@ -49,14 +48,12 @@ async def process_victory_media_bulk(message: types.Message, state: FSMContext):
     try:
         row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", uid)
         
-        # Парсимо мета-дані
         meta = row['meta'] if row and row['meta'] else {}
         if isinstance(meta, str):
             meta = json.loads(meta)
         
         victory_media = meta.get("victory_media", [])
         
-        # Перевірка ліміту
         if len(victory_media) >= 5:
             return await message.answer(
                 "⚠️ <b>Ліміт (5/5) досягнуто!</b>\n"
