@@ -40,7 +40,7 @@ async def cmd_feed(message: types.Message, db_pool):
             next_feed = last_feed + timedelta(hours=8)
             remaining = next_feed - datetime.now(last_feed.tzinfo)
             time_str = format_time(remaining.total_seconds())
-            return await message.answer(f"⏳ Капібара ще сита! Приходь через: <b>{time_str}</b>", parse_mode="HTML")
+            return await message.answer(f"⏳ Капібара ще сита! Приходь через: {time_str}", parse_mode="HTML")
         
         return await message.answer("❌ Капібару не знайдено. Натисни /start")
 
