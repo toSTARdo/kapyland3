@@ -75,7 +75,7 @@ def render_world_viewer(view_x, view_y, discovered_list):
         for x in range(start_x, start_x + win_w):
             c_str = f"{x},{y}"
             if x == view_x and y == view_y:
-                line.append("𖠌") # Viewer cursor
+                line.append("𖠌")
             elif c_str in discovered_set:
                 line.append(FULL_MAP[y][x])
             else:

@@ -17,10 +17,7 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool = False):
         types.InlineKeyboardButton(text="➡️", callback_data=f"mv:right:{px}:{py}:{mode}")
     )
     
-    builder.row(
-        types.InlineKeyboardButton(text="🔭 Огляд", callback_data=f"view:{px}:{py}"),
-        types.InlineKeyboardButton(text="🎒 Інвентар", callback_data="open_inventory")
-    )
+    builder.row(types.InlineKeyboardButton(text="🔭 Огляд", callback_data=f"view:{px}:{py}"))
     builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="open_adventure_main"))
     
     return builder.as_markup()

@@ -4,7 +4,7 @@ import random
 from aiogram import types, F, Router
 from .map_assets import *
 from .map_renderer import render_pov, get_stamina_icons
-from .map_keyboard import get_map_keyboard
+from .map_keyboard import get_map_keyboard, get_viewer_keyboard
 from handlers.adventures.quests.quests import start_branching_quest
 
 router = Router()
@@ -121,5 +121,29 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         await callback.message.edit_text(
             text, 
             reply_markup=get_map_keyboard(nx, ny, new_mode, coord_key in nav.get("trees", {})),
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data.startswith("view:"))
+async def handle_world_viewer(callback: types.CallbackQuery, db_pool):
+    _, vx, vy = callback.data.split(":")
+    vx, vy = int(vx), int(vy)
+    uid = callback.from_user.id
+    
+    vx = max(0, min(MAP_WIDTH - 1, vx))
+    vy = max(0, min(MAP_HEIGHT - 1, vy))
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT navigation FROM capybaras WHERE owner_id = $1", uid)
+        if not row: return
+        
+        nav = row['navigation'] if isinstance(row['navigation'], dict) else json.loads(row['navigation'])
+        discovered = nav.get("discovered", [])
+        
+        display = render_world_viewer(vx, vy, discovered)
+                
+        await callback.message.edit_text(
+            text=f"{display}\n<i>💡 Переміщення в огляді не витрачає енергію. Ви бачите лише розвідані ділянки.</i>",
+            reply_markup=get_viewer_keyboard(vx, vy),
             parse_mode="HTML"
         )
