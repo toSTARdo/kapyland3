@@ -6,6 +6,7 @@ from .harbor.view import router as harbor_router
 from .adventures.view import router as adventures_router
 from .profile.feed import router as feed_router
 from .profile.wash import router as wash_router
+from .profile.fight_stats import router as fight_stats_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -16,4 +17,5 @@ def get_handlers_router() -> Router:
     router.include_router(adventures_router)
     router.include_router(feed_router)
     router.include_router(wash_router)
+    router.include_router(fight_stats_router)
     return router
