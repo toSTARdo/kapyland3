@@ -15,11 +15,14 @@ router = Router()
 def is_eligible_for_lega(last_lega_str: str) -> bool:
     if not last_lega_str:
         return True
-    try:
-        last_lega_date = datetime.datetime.fromisoformat(last_lega_str)
-        return datetime.datetime.now() >= last_lega_date + datetime.timedelta(days=7)
-    except:
-        return True
+        
+    if isinstance(last_lega_val, str):
+        try:
+            last_lega_val = datetime.datetime.fromisoformat(last_lega_val)
+        except:
+            return True
+            
+    return datetime.datetime.now() >= last_lega_val + datetime.timedelta(days=7)
 
 @router.message(F.text.startswith("🎟️"))
 @router.callback_query(F.data.startswith("lottery_menu"))
