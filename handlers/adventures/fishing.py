@@ -13,15 +13,16 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT name, stamina, inventory, weight 
+            SELECT stamina, inventory, fishing_stats 
             FROM capybaras WHERE owner_id = $1
         """, uid)
         
         if not row:
-            return await callback.answer("❌ Профіль не знайдено.")
+            return await callback.answer("❌ Капібару не знайдено.")
 
         stamina = row['stamina']
-        inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        inventory = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
+        fishing_stats = row['fishing_stats'] if isinstance(row['fishing_stats'], dict) else json.loads(row['fishing_stats'])
         
         equipped = inventory.get("equipment", {})
         rod_item = equipped.get("weapon")
@@ -72,12 +73,10 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
 
         inventory_note = ""
         stamina -= 10
-        
-        f_stats = inventory.setdefault("fishing_stats", {"max_weight": 0.0, "total_weight": 0.0})
-        
+                
         if item['type'] != "trash":
-            f_stats["total_weight"] = round(f_stats["total_weight"] + fish_weight, 2)
-            f_stats["max_weight"] = max(f_stats["max_weight"], fish_weight)
+            fishing_stats["total_weight"] = round(fishing_stats.get("total_weight", 0) + fish_weight, 2)
+            fishing_stats["max_weight"] = max(fishing_stats.get("max_weight", 0), fish_weight)
 
             if item['type'] == "treasure_map":
                 loot_dir = inventory.setdefault("loot", {})
@@ -110,9 +109,11 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
 
         await conn.execute("""
             UPDATE capybaras 
-            SET stamina = $1, inventory = $2 
-            WHERE owner_id = $3
-        """, stamina, json.dumps(inventory, ensure_ascii=False), uid)
+            SET stamina = $1, 
+                inventory = $2, 
+                fishing_stats = $3 
+            WHERE owner_id = $4
+        """, stamina, json.dumps(inventory, ensure_ascii=False), json.dumps(fishing_stats), uid)
 
     stars = "⭐" * rod_lvl
     builder = InlineKeyboardBuilder()
