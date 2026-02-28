@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 router = Router()
 
-with open("data/quests1_narrative_tree.json", "r", encoding="utf-8") as f:
+with open("data/quest1_narrative_tree.json", "r", encoding="utf-8") as f:
     DATA = json.load(f)
     QUEST_PLOTS = DATA["QUEST_PLOTS"]
     RUMOR_COMPONENTS = DATA["RUMOR_COMPONENTS"]
