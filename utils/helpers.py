@@ -67,3 +67,64 @@ async def consume_stamina(conn, uid: int, activity: str) -> bool:
     
     result = await conn.fetchval(sql, uid, final_amount)
     return result is not None
+
+async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, bot=None):
+    conn = await get_db_connection()
+    try:
+        row = await conn.fetchrow(
+            "SELECT exp, lvl, zen, meta FROM capybaras WHERE owner_id = $1", 
+            tg_id
+        )
+        if not row: return None
+
+        old_lvl = row['lvl'] or 1
+        current_exp = row['exp'] or 0
+        current_zen = row['zen'] or 0
+        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
+
+        new_total_exp, new_lvl = calculate_lvl_data(current_exp, exp_gain)
+        
+        lvl_diff = new_lvl - old_lvl
+        new_zen = current_zen + max(0, lvl_diff)
+
+        if weight_gain != 0:
+            current_weight = meta.get("weight", 20.0)
+            meta["weight"] = round(max(1.0, current_weight + weight_gain), 1)
+
+        if lvl_diff > 0:
+            meta["stamina"] = 100
+            
+            inventory = meta.setdefault("inventory", {})
+            loot = inventory.setdefault("loot", {})
+            loot["lottery_ticket"] = loot.get("lottery_ticket", 0) + lvl_diff
+
+        await conn.execute('''
+            UPDATE capybaras 
+            SET exp = $1, lvl = $2, zen = $3, meta = $4
+            WHERE owner_id = $5
+        ''', new_total_exp, new_lvl, new_zen, json.dumps(meta, ensure_ascii=False), tg_id)
+
+        if lvl_diff > 0 and bot:
+            try:
+                await bot.send_message(
+                    tg_id, 
+                    f"🎊 <b>LEVEL UP!</b>\n"
+                    f"________________________________\n\n"
+                    f"Твоя капібара досягла <b>{new_lvl} рівня</b>!\n\n"
+                    f"🎁 <b>Нагороди:</b>\n"
+                    f"❇️ Капі-дзен: <b>+{lvl_diff}</b>\n"
+                    f"🎟 Квитки: <b>+{lvl_diff} шт.</b>\n"
+                    f"⚡ Енергія відновлена до <b>100%</b>\n\n",
+                    parse_mode="HTML"
+                )
+            except: pass
+
+        return {
+            "new_lvl": new_lvl,
+            "lvl_up": lvl_diff > 0,
+            "added_zen": lvl_diff,
+            "total_zen": new_zen,
+            "new_weight": meta.get("weight")
+        }
+    finally:
+        await conn.close()
