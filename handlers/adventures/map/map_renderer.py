@@ -2,7 +2,6 @@ from .map_assets import MAP_WIDTH, MAP_HEIGHT, FOREST_TILES, FOG_ICON, get_biome
 from config import FULL_MAP, PLAYER_ICON, SHIP_ICON
 
 def get_stamina_icons(stamina):
-    """Visual indicator for the header."""
     if stamina > 66: return "⚡⚡⚡"
     if stamina > 33: return "⚡⚡"
     if stamina > 0: return "⚡"
