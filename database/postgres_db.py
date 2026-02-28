@@ -85,7 +85,8 @@ async def init_pg(pool):
                 state JSONB DEFAULT '{"status": "active", "mode": "capy", "mood": "Normal"}'::jsonb,
                 cooldowns JSONB DEFAULT '{}'::jsonb,
                 last_feed TIMESTAMP,
-                last_wash TIMESTAMP
+                last_wash TIMESTAMP,
+                last_weekly_lega TIMESTAMP
             )
         ''')
 
