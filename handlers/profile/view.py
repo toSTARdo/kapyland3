@@ -31,7 +31,7 @@ def get_profile_text(data):
     )
 
 
-@router.message(or_f(F.text.contains("🐾 Профіль"), Command("profile")))
+@router.message(or_f(F.text.contains("🐾 Капібара"), Command("profile")))
 async def show_profile(message: types.Message, db_pool):
     uid = message.from_user.id
     
