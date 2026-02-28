@@ -1,3 +1,5 @@
+import random
+from config import FULL_MAP
 
 PLANTS_LOOT = {
     "herbs": [
