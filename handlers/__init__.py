@@ -10,6 +10,8 @@ from .profile.fight_stats import router as fight_stats_router
 from .profile.meditation import router as meditation_router
 from .hold.lottery import router as lottery_router
 from .hold.inventory.navigator import router as inventory_router
+from .adventures.map.map import router as map_router
+from .adventures.fishing import router as fishing_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -24,4 +26,6 @@ def get_handlers_router() -> Router:
     router.include_router(meditation_router)
     router.include_router(lottery_router)
     router.include_router(inventory_router)
+    router.include_router(map_router)
+    router.include_router(fishing_router)
     return router
