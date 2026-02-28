@@ -3,7 +3,6 @@ import logging
 from aiogram import Router, F, types, html
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import CommandStart
-from database.postgres_db import get_db_connection
 from handlers.main_buttons import get_main_kb
 
 router = Router()
