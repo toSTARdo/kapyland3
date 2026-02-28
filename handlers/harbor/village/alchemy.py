@@ -4,15 +4,12 @@ from aiogram import types, F, Router
 from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import load_game_data, DISPLAY_NAMES, IMAGES_URLS
-from database.postgres_db import get_db_connection
 
 router = Router()
 
-# Завантаження рецептів
-RECIPES = load_game_data("data/craft.json")
+RECIPES = load_game_data("data/potion_craft.json")
 
 def find_item_in_inventory(inv, item_key):
-    """Шукає предмет у всіх можливих категоріях інвентарю."""
     for category in ["food", "materials", "plants", "loot"]:
         cat_dict = inv.get(category, {})
         if item_key in cat_dict:
@@ -20,20 +17,17 @@ def find_item_in_inventory(inv, item_key):
     return None, 0
 
 @router.callback_query(F.data == "open_alchemy")
-async def process_open_alchemy(callback: types.CallbackQuery):
+async def process_open_alchemy(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
-    conn = await get_db_connection()
-    try:
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", user_id)
-        if not row: return await callback.answer("Капібару не знайдено!")
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
+        if not row: return
         
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-        inv = meta.get('inventory', {})
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
 
         builder = InlineKeyboardBuilder()
         for r_id, r_data in RECIPES.items():
             can_brew = True
-            # Перевірка наявності інгредієнтів
             for ing, req_count in r_data.get('ingredients', {}).items():
                 _, owned = find_item_in_inventory(inv, ing)
                 if owned < req_count:
@@ -52,43 +46,35 @@ async def process_open_alchemy(callback: types.CallbackQuery):
 
         text = (
             "🧪 <b>Лавка Лінивця Омо</b>\n\n"
-            "🦥 <i>«П-р-и-в-і-т... Щ-о...\nс-ь-о-г-о-д-н-і в-а-р-и-т-і-м-е-м-о?»</i>"
+            "🦥 <i>«П-р-и-в-і-т... Щ-о...\nс-ь-о-г-о-д-н-і в-а-р-и-т-и-м-е-м-о?»</i>"
         )
         
         await callback.message.edit_media(
             media=InputMediaPhoto(media=IMAGES_URLS["alchemy"], caption=text, parse_mode="HTML"),
             reply_markup=builder.as_markup()
         )
-    finally:
-        await conn.close()
 
 @router.callback_query(F.data.startswith("brew:"))
-async def preview_recipe(callback: types.CallbackQuery):
+async def preview_recipe(callback: types.CallbackQuery, db_pool):
     recipe_id = callback.data.split(":")[1]
     recipe = RECIPES.get(recipe_id)
-    if not recipe: return await callback.answer("Рецепт зник!")
-    
     user_id = callback.from_user.id
-    conn = await get_db_connection()
-    row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", user_id)
-    meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-    inv = meta.get('inventory', {})
-    await conn.close()
+
+    async with db_pool.acquire() as conn:
+        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
+        inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
 
     ing_text = ""
     can_brew = True
-    
     for ing, req_count in recipe['ingredients'].items():
         _, owned = find_item_in_inventory(inv, ing)
-        display_name = DISPLAY_NAMES.get(ing, ing)
         status = "✅" if owned >= req_count else "❌"
-        ing_text += f"\n{status} {display_name}: <b>{owned}/{req_count}</b>"
+        ing_text += f"\n{status} {DISPLAY_NAMES.get(ing, ing)}: <b>{owned}/{req_count}</b>"
         if owned < req_count: can_brew = False
 
-    # Формування опису ефекту
     effect_desc = "???"
     if "plus_stamina" in recipe: effect_desc = f"⚡ +{recipe['plus_stamina']} Енергії"
-    elif "plus_max_hp" in recipe: effect_desc = f"❤️ +{recipe['plus_max_hp']} Макс. HP (Назавжди)"
+    elif "plus_max_hp" in recipe: effect_desc = f"❤️ +{recipe['plus_max_hp']} Макс. HP"
     elif recipe.get("effect") == "stats_reset": effect_desc = "🌀 Скидання характеристик"
 
     text = (
@@ -108,99 +94,81 @@ async def preview_recipe(callback: types.CallbackQuery):
     await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("confirm_brew:"))
-async def process_confirm_brew(callback: types.CallbackQuery):
+async def process_confirm_brew(callback: types.CallbackQuery, db_pool):
     recipe_id = callback.data.split(":")[1]
     user_id = callback.from_user.id
     recipe = RECIPES.get(recipe_id)
 
-    conn = await get_db_connection()
-    try:
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", user_id)
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-        inv = meta.setdefault("inventory", {})
+    async with db_pool.acquire() as conn:
+        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
+        inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
 
-        # Фінальна перевірка інгредієнтів
         for ing, count in recipe['ingredients'].items():
             cat, owned = find_item_in_inventory(inv, ing)
             if not cat or owned < count:
-                return await callback.answer("❌ Інгредієнти втекли з казана!", show_alert=True)
+                return await callback.answer("❌ Недостатньо інгредієнтів!", show_alert=True)
             inv[cat][ing] -= count
 
-        # Додавання зілля
         potions = inv.setdefault("potions", {})
         potions[recipe_id] = potions.get(recipe_id, 0) + 1
 
-        await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", 
-                           json.dumps(meta, ensure_ascii=False), user_id)
+        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
+                           json.dumps(inv, ensure_ascii=False), user_id)
 
-        await callback.answer(f"✨ {recipe.get('name')} готове!")
-        await process_open_alchemy(callback)
-        
-    finally:
-        await conn.close()
+    await callback.answer(f"✨ {recipe.get('name')} готове!")
+    await process_open_alchemy(callback, db_pool)
 
 @router.callback_query(F.data.startswith("use_potion:"))
-async def process_drink_potion(callback: types.CallbackQuery):
+async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     potion_id = callback.data.split(":")[1]
     user_id = callback.from_user.id
     recipe = RECIPES.get(potion_id)
     
-    if not recipe: return await callback.answer("❌ Невідоме зілля")
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT inventory, stamina, max_stamina, stats, points FROM capybaras WHERE owner_id = $1", user_id)
+        if not row: return
 
-    conn = await get_db_connection()
-    try:
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", user_id)
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
+        stamina, max_stamina, points = row['stamina'], row['max_stamina'], row['points']
         
-        inv = meta.get("inventory", {})
         potions = inv.get("potions", {})
-        
         if potions.get(potion_id, 0) <= 0:
             return await callback.answer("❌ Пляшка порожня!", show_alert=True)
         
-        alert_text = "Гм... Смак дивний."
-        
-        # --- ЕФЕКТИ ---
+        alert_text = "Смак дивний."
+        update_fields = {}
+
         if "plus_stamina" in recipe:
-            meta["stamina"] = min(meta.get("stamina", 0) + recipe["plus_stamina"], meta.get("max_stamina", 100))
-            alert_text = f"Ви випили {recipe['name']}! +{recipe['plus_stamina']}⚡"
+            stamina = min(stamina + recipe["plus_stamina"], max_stamina)
+            update_fields["stamina"] = stamina
+            alert_text = f"⚡ Енергію відновлено на +{recipe['plus_stamina']}!"
 
         elif "plus_max_hp" in recipe:
-            stats = meta.setdefault("stats", {})
-            stats["max_hp"] = int(stats.get("max_hp", 10)) + recipe["plus_max_hp"]
-            alert_text = f"🧬 Максимальне HP зросло на +{recipe['plus_max_hp']}!"
+            stats["max_hp"] = stats.get("max_hp", 10) + recipe["plus_max_hp"]
+            update_fields["stats"] = json.dumps(stats, ensure_ascii=False)
+            alert_text = f"🧬 Макс. HP зросло на +{recipe['plus_max_hp']}!"
 
         elif recipe.get("effect") == "stats_reset":
-            stats = meta.get("stats", {})
-            # Повертаємо очки за атаку, деф, агілу та лак
-            total_points = sum([
-                max(0, stats.get("attack", 1) - 1),
-                max(0, stats.get("defense", 1) - 1),
-                max(0, stats.get("agility", 1) - 1),
-                max(0, stats.get("luck", 1) - 1)
-            ])
-            meta["stats"] = {
-                "max_hp": stats.get("max_hp", 10), # HP не скидаємо
-                "attack": 1, "defense": 1, "agility": 1, "luck": 1
-            }
-            meta["points"] = meta.get("points", 0) + total_points
-            alert_text = "🌀 Характеристики скинуто! Очки повернуто."
+            recovered = sum([max(0, stats.get(s, 1) - 1) for s in ["attack", "defense", "agility", "luck"]])
+            stats = {"max_hp": stats.get("max_hp", 10), "attack": 1, "defense": 1, "agility": 1, "luck": 1}
+            update_fields["stats"] = json.dumps(stats, ensure_ascii=False)
+            update_fields["points"] = points + recovered
+            alert_text = "🌀 Характеристики скинуто!"
 
-        # Видалення зілля після використання
         potions[potion_id] -= 1
         if potions[potion_id] <= 0: del potions[potion_id]
+        update_fields["inventory"] = json.dumps(inv, ensure_ascii=False)
 
-        await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2",
-                           json.dumps(meta, ensure_ascii=False), user_id)
+        keys = list(update_fields.keys())
+        values = list(update_fields.values())
+        set_clause = ", ".join([f"{key} = ${i+1}" for i, key in enumerate(keys)])
+        query = f"UPDATE capybaras SET {set_clause} WHERE owner_id = ${len(keys)+1}"
+        await conn.execute(query, *values, user_id)
 
-        await callback.answer(alert_text, show_alert=True)
-
-        # Оновлення сторінки інвентарю
-        try:
-            from handlers.inventory import render_inventory_page 
-            await render_inventory_page(callback.message, user_id, page="potions", is_callback=True)
-        except ImportError:
-            await callback.message.delete()
-
-    finally:
-        await conn.close()
+    await callback.answer(alert_text, show_alert=True)
+    try:
+        from handlers.inventory.navigator import render_inventory_page 
+        await render_inventory_page(callback.message, user_id, page="potions", is_callback=True)
+    except:
+        await callback.message.delete()
