@@ -17,6 +17,8 @@ from .harbor.tavern.view import router as tavern_router
 from .harbor.village.view import router as village_router
 from .harbor.ship.view import router as ship_router
 from .harbor.settings.setting import router as settings_router
+from .harbor.ship.callbacks import router as ship_callbacks_router
+from .harbor.tavern.callbacks import router as tavern_callbacks_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -38,4 +40,6 @@ def get_handlers_router() -> Router:
     router.include_router(village_router)
     router.include_router(ship_router)
     router.include_router(settings_router)
+    router.include_router(ship_callbacks_router)
+    router.include_router(tavern_callbacks_router)
     return router
