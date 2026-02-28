@@ -8,6 +8,8 @@ from .profile.feed import router as feed_router
 from .profile.wash import router as wash_router
 from .profile.fight_stats import router as fight_stats_router
 from .profile.meditation import router as meditation_router
+from .hold.lottery import router as lottery_router
+from .hold.inventory.navigator import router as inventory_router
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -20,4 +22,6 @@ def get_handlers_router() -> Router:
     router.include_router(wash_router)
     router.include_router(fight_stats_router)
     router.include_router(meditation_router)
+    router.include_router(lottery_router)
+    router.include_router(inventory_router)
     return router
