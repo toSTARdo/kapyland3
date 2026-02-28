@@ -4,7 +4,7 @@ import random
 from aiogram import types, F, Router
 from .map_assets import *
 from .map_renderer import render_pov, get_stamina_icons
-from .map_keyboards import get_map_keyboard
+from .map_keyboard import get_map_keyboard
 from handlers.quests import start_branching_quest
 
 router = Router()
