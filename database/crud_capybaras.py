@@ -7,6 +7,7 @@ SELECT
     u.tg_id, u.username, u.reincarnation_multiplier,
     c.name, c.lvl, c.exp, c.hp, c.atk, c.def, c.agi, c.luck, 
     c.stamina, c.hunger, c.weight, c.cleanness, c.state, c.equipment,
+    c.wins, c.losses, c.total_fights,
     s.name as ship_name, s.lvl as ship_lvl, s.gold
 FROM users u
 JOIN capybaras c ON u.tg_id = c.owner_id

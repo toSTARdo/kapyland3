@@ -22,7 +22,7 @@ async def try_wash_capybara(db_pool, user_id: int):
         return await conn.fetchrow(UPDATE_WASH_SQL, user_id)
 
 @router.message(Command("wash"))
-@router.message(F.text.contains("🧼 Мити"))
+@router.callback_query(F.data == "wash_capy")
 async def cmd_wash(message: types.Message, db_pool):
     uid = message.from_user.id
     

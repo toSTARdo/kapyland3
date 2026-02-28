@@ -24,7 +24,7 @@ async def try_feed_capybara(db_pool, user_id: int, weight_gain: float):
         return await conn.fetchrow(UPDATE_FEED_SQL, user_id, weight_gain)
 
 @router.message(Command("feed"))
-@router.message(F.text.contains("🍎 Годувати"))
+@router.callback_query(F.data == "feed_capy")
 async def cmd_feed(message: types.Message, db_pool):
     uid = message.from_user.id
     
