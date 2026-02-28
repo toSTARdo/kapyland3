@@ -236,3 +236,9 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
         if winner_id and not is_parrot_fight:
             await send_victory_celebration(msg1, winner_id)
+
+@router.callback_query(F.data == "fight_bot")
+async def handle_fight_bot(callback: types.CallbackQuery):
+    await callback.message.answer("🤖 Папуга Павло гострить дзьоб...")
+    asyncio.create_task(run_battle_logic(callback, bot_type="parrotbot"))
+    await callback.answer()

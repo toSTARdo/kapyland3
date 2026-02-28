@@ -54,3 +54,55 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
         await event.answer()
     else:
         await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("user_menu:"))
+async def user_menu_handler(callback: types.CallbackQuery):
+    target_id = int(callback.data.split(":")[1])
+    uid = callback.from_user.id
+    
+    conn = await get_db_connection()
+    try:
+        players = await conn.fetch("""
+            SELECT u.tg_id, u.username, c.lvl 
+            FROM users u
+            JOIN capybaras c ON u.tg_id = c.owner_id
+            WHERE u.tg_id != $1 
+            ORDER BY c.lvl DESC LIMIT 8
+        """, uid)
+    finally:
+        await conn.close()
+
+    builder = InlineKeyboardBuilder()
+
+    for p in players:
+        builder.button(
+            text=f"🐾 {p['username']} (Lvl {p['lvl']})", 
+            callback_data=f"user_menu:{p['tg_id']}"
+        )
+        
+        if p['tg_id'] == target_id:
+            builder.button(text="⚔️", callback_data=f"challenge_{target_id}")
+            builder.button(text="💞", callback_data=f"date_request:{target_id}")
+            builder.button(text="🎁", callback_data=f"gift_to:{target_id}")
+            builder.button(text="🧤", callback_data=f"steal_from:{target_id}")
+            builder.button(text="🪵", callback_data=f"ram:{target_id}")
+            builder.button(text="🔍", callback_data=f"inspect:{target_id}")
+
+    builder.button(text="🤖 Побитися з ботом", callback_data="fight_bot")
+    builder.button(text="🏆 Таблиця лідерів", callback_data="leaderboard")
+
+    layout = []
+    for p in players:
+        layout.append(1)
+        if p['tg_id'] == target_id:
+            layout.append(6)
+    layout.append(1)
+    layout.append(1)
+    
+    builder.adjust(*layout)
+
+    await callback.message.edit_caption(
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+    await callback.answer()
