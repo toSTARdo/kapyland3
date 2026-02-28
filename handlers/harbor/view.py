@@ -1,6 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command, or_f
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import IMAGES_URLS
 
 router = Router()
 
