@@ -45,9 +45,9 @@ async def cmd_feed(message: types.Message, db_pool):
         return await message.answer("❌ Капібару не знайдено. Натисни /start")
 
     await message.answer(
-        f"🍎 <b>Смакота!</b>\n"
-        f"Набрала: <b>+{gain} кг</b> (✨ +{gain} EXP)\n"
-        f"Вага: <b>{result['weight']} кг</b>\n"
+        f"🍎 Смакота!\n"
+        f"Набрала: +{gain} кг (✨ +{gain} EXP)\n"
+        f"Вага: {result['weight']} кг\n"
         f"🍏 Ситість: 3/3",
         parse_mode="HTML"
     )

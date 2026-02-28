@@ -18,6 +18,9 @@ def get_fight_stats_text(data):
     weapon = equip.get('weapon', {"name": "Лапки"})
     armor = equip.get('armor', {"name": "Хутро"})
     
+    blessings = data.get('blessings', [])
+    curses = data.get('curses', [])
+
     blessing_text = " ✨ " + ", ".join(blessings) if blessings else "<i>(відсутні)</i>"
     curse_text = " 💀 " + ", ".join(curses) if curses else "<i>(відсутні)</i>"
 

@@ -74,6 +74,7 @@ async def init_pg(pool):
                 wins INTEGER DEFAULT 0,
                 losses INTEGER DEFAULT 0,
                 total_fights INTEGER DEFAULT 0,
+                zen INTEGER DEFAULT 0,
                 navigation JSONB DEFAULT '{"x": 2, "y": 1, "discovered": [], "trees": {}, "flowers": {}}'::jsonb,
                 inventory JSONB DEFAULT '{"food": {}, "materials": {}, "loot": {}, "potions": {}, "maps": {}}'::jsonb,
                 equipment JSONB DEFAULT '{"weapon": {"name": "Лапки", "lvl": 0}, "armor": "Хутро", "artifact": null}'::jsonb,
