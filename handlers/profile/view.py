@@ -42,6 +42,11 @@ async def show_profile(message: types.Message, db_pool):
         return await message.answer("❌ Капібару не знайдено. Почни з /start")
 
     state = data['state']
+    if isinstance(state_raw, str):
+        state = json.loads(state_raw)
+    else:
+        state = state_raw or {}
+
     is_sleeping = state.get("status") == "sleep"
     
     builder = InlineKeyboardBuilder()
