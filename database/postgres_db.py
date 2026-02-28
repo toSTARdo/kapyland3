@@ -1,12 +1,12 @@
 import asyncpg
 import logging
-from config import DB_URL
+from config import POSTGRE_URL
 logger = logging.getLogger(__name__)
 
 async def create_pool():
     try:
         pool = await asyncpg.create_pool(
-            dsn=DB_URL,
+            dsn=POSTGRE_URL,
             min_size=5,
             max_size=20,
             command_timeout=60
