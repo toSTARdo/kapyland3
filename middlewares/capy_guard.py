@@ -2,7 +2,6 @@ import json
 import datetime
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware, types
-from database.postgres_db import get_db_connection
 from config import ACHIEVEMENTS
 
 class CapyGuardMiddleware(BaseMiddleware):
@@ -47,13 +46,48 @@ class CapyGuardMiddleware(BaseMiddleware):
         if not is_game_command:
             return await handler(event, data)
 
-        conn = await get_db_connection()
-        try:
-            row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", user_id)
+        db_pool = data.get("db_pool")
+        if not db_pool:
+            return await handler(event, data)
+
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT state, stats_track, inventory, stamina, achievements, unlocked_titles,
+                       wins, total_fights, lvl, weight, atk, def as def_, agi, luck, zen, hunger
+                FROM capybaras WHERE owner_id = $1
+            """, user_id)
+            
             if not row:
                 return await handler(event, data)
 
-            meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
+            state = json.loads(row['state']) if isinstance(row['state'], str) else (row['state'] or {})
+            stats_track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else (row['stats_track'] or {})
+            inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
+
+            meta = {
+                "stamina": row["stamina"],
+                "last_regen": state.get("last_regen"),
+                "status": state.get("status", "active"),
+                "wake_up": state.get("wake_up"),
+                "stats_track": stats_track,
+                "achievements": row["achievements"] if row["achievements"] is not None else [],
+                "unlocked_titles": row["unlocked_titles"] if row["unlocked_titles"] is not None else ["Новачок"],
+                "inventory": inventory,
+                "wins": row["wins"],
+                "total_fights": row["total_fights"],
+                "level": row["lvl"],
+                "weight": row["weight"],
+                "atk": row["atk"],
+                "def": row["def"],
+                "agi": row["agi"],
+                "luck": row["luck"],
+                "zen": row["zen"],
+                "hunger": row["hunger"],
+                "last_clean_check_date": state.get("last_clean_check_date"),
+                "clean_days": state.get("clean_days", 0),
+                "is_muted": state.get("is_muted", False)
+            }
+
             now = datetime.datetime.now(datetime.timezone.utc)
             stamina = meta.get("stamina", 100)
             MAX_STAMINA = 100
@@ -92,35 +126,49 @@ class CapyGuardMiddleware(BaseMiddleware):
             
             if ach_changed:
                 needs_update = True
-            
-            if needs_update:
-                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(meta), user_id)
+                
+            needs_update = True 
 
-            if meta.get("status") != "sleep":
+            if needs_update:
+                state["last_regen"] = meta["last_regen"]
+                state["status"] = meta["status"]
+                state["last_clean_check_date"] = meta["last_clean_check_date"]
+                state["clean_days"] = meta["clean_days"]
+                
+                await conn.execute("""
+                    UPDATE capybaras 
+                    SET state = $1, stats_track = $2, inventory = $3, 
+                        stamina = $4, achievements = $5, unlocked_titles = $6, 
+                        wins = $7, total_fights = $8
+                    WHERE owner_id = $9
+                """, 
+                json.dumps(state), json.dumps(meta["stats_track"]), json.dumps(meta["inventory"]),
+                meta["stamina"], meta["achievements"], meta["unlocked_titles"],
+                meta["wins"], meta["total_fights"], user_id)
+
+        # Йдемо далі обробляти хендлер, вже ПІСЛЯ того як відпустили з'єднання назад у пул
+        if meta.get("status") != "sleep":
+            return await handler(event, data)
+
+        if event.message and event.message.text:
+            safe_commands = ["/start", "🐾 Профіль", "⚙️ Налаштування", "🎒 Інвентар", "🎟️ Лотерея"]
+            if event.message.text in safe_commands:
                 return await handler(event, data)
 
-            if event.message and event.message.text:
-                safe_commands = ["/start", "🐾 Профіль", "⚙️ Налаштування", "🎒 Інвентар", "🎟️ Лотерея"]
-                if event.message.text in safe_commands:
-                    return await handler(event, data)
+        if event.callback_query:
+            call_data = event.callback_query.data
+            safe_callbacks = [
+                "profile", "inv_page", "profile_back", "settings",
+                "change_name_start", "toggle_layout", "stats_page", "gacha_spin", 
+                "gacha_guaranteed_10", "equip:", "sell_item:", "inv_pagination:", "inv_page:", "wakeup_now"
+            ]
+            if any(call_data.startswith(cb) for cb in safe_callbacks):
+                return await handler(event, data)
 
-            if event.callback_query:
-                call_data = event.callback_query.data
-                safe_callbacks = [
-                    "profile", "inv_page", "profile_back", "settings",
-                    "change_name_start", "toggle_layout", "stats_page", "gacha_spin", 
-                    "gacha_guaranteed_10", "equip:", "sell_item:", "inv_pagination:", "inv_page:", "wakeup_now"
-                ]
-                if any(call_data.startswith(cb) for cb in safe_callbacks):
-                    return await handler(event, data)
-
-            warning = "💤 Твоя капібара бачить десятий сон... Не турбуй її."
-            if event.callback_query:
-                return await event.callback_query.answer(warning, show_alert=True)
-            return await event.message.answer(warning)
-
-        finally:
-            await conn.close()
+        warning = "💤 Твоя капібара бачить десятий сон... Не турбуй її."
+        if event.callback_query:
+            return await event.callback_query.answer(warning, show_alert=True)
+        return await event.message.answer(warning)
 
     def update_stats_track(self, meta: dict, event: types.Update):
         stats = meta.setdefault("stats_track", {})
@@ -180,37 +228,37 @@ class CapyGuardMiddleware(BaseMiddleware):
         meta.setdefault("stamina_regen", 0)
     
     async def check_achievements(self, meta: dict, user_id: int, payload: types.Update):
-            acquired = meta.setdefault("achievements", [])
-            unlocked_titles = meta.setdefault("unlocked_titles", ["Новачок"])
-            needs_save = False
-    
-            for ach_id, config in ACHIEVEMENTS.items():
-                if ach_id not in acquired:
-                    if config["condition"](meta):
-                        acquired.append(ach_id)
-                        needs_save = True
-    
-                        chest_count = config.get("reward_chest", 0)
-                        if chest_count > 0:
-                            inv = meta.setdefault("inventory", {})
-                            loot = inv.setdefault("loot", {})
-                            loot["chest"] = loot.get("chest", 0) + chest_count
-    
-                        title = config.get("reward_title")
-                        if title and title not in unlocked_titles:
-                            unlocked_titles.append(title)
-    
-                        try:
-                            alert = (
-                                f"🏆 <b>НОВЕ ДОСЯГНЕННЯ!</b>\n"
-                                f"━━━━━━━━━━━━━━━\n"
-                                f"🌟 <b>{config['name']}</b>\n"
-                                f"📜 <i>{config['desc']}</i>\n\n"
-                                f"🎁 Нагорода: <b>{chest_count} 🗃</b> та титул «<b>{title}</b>»"
-                            )
-                            bot = payload.message.bot if payload.message else payload.callback_query.message.bot
-                            await bot.send_message(user_id, alert, parse_mode="HTML")
-                        except Exception:
-                            pass
-            
-            return needs_save
+        acquired = meta.setdefault("achievements", [])
+        unlocked_titles = meta.setdefault("unlocked_titles", ["Новачок"])
+        needs_save = False
+
+        for ach_id, config in ACHIEVEMENTS.items():
+            if ach_id not in acquired:
+                if config["condition"](meta):
+                    acquired.append(ach_id)
+                    needs_save = True
+
+                    chest_count = config.get("reward_chest", 0)
+                    if chest_count > 0:
+                        inv = meta.setdefault("inventory", {})
+                        loot = inv.setdefault("loot", {})
+                        loot["chest"] = loot.get("chest", 0) + chest_count
+
+                    title = config.get("reward_title")
+                    if title and title not in unlocked_titles:
+                        unlocked_titles.append(title)
+
+                    try:
+                        alert = (
+                            f"🏆 <b>НОВЕ ДОСЯГНЕННЯ!</b>\n"
+                            f"━━━━━━━━━━━━━━━\n"
+                            f"🌟 <b>{config['name']}</b>\n"
+                            f"📜 <i>{config['desc']}</i>\n\n"
+                            f"🎁 Нагорода: <b>{chest_count} 🗃</b> та титул «<b>{title}</b>»"
+                        )
+                        bot = payload.message.bot if payload.message else payload.callback_query.message.bot
+                        await bot.send_message(user_id, alert, parse_mode="HTML")
+                    except Exception:
+                        pass
+        
+        return needs_save

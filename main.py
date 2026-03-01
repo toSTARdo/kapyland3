@@ -5,11 +5,13 @@ from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import Bot, Dispatcher
 
+
 import config
 from database.postgres_db import create_pool, init_pg
 from handlers import get_handlers_router
 from jobs.send_goodnight import send_goodnight
 from jobs.give_everyday_gift import give_everyday_gift
+from middleware.capy_guard import CapyGuardMiddleware
 
 app = FastAPI()
 
@@ -25,7 +27,8 @@ async def main():
     
     bot = Bot(token=config.TOKEN)
     dp = Dispatcher()
-    
+    dp.update.middleware(CapyGuardMiddleware())
+
     dp["db_pool"] = db_pool
 
     scheduler = AsyncIOScheduler(timezone="Europe/Kyiv")
