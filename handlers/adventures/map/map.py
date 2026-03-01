@@ -34,7 +34,8 @@ async def render_map(callback: types.CallbackQuery, db_pool):
             px, py, discovered, mode, 
             treasure_maps=inv.get("maps", []), 
             flowers=nav.get("flowers", {}), 
-            trees=nav.get("trees", {})
+            trees=nav.get("trees", {}),
+            totems=nav.get("totems", [])
         )
         
         biome = get_biome_name(py)
@@ -50,80 +51,90 @@ async def render_map(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data.startswith("mv:"))
 async def handle_move(callback: types.CallbackQuery, db_pool):
     _, direction, x, y, mode = callback.data.split(":")
-    x, y, uid = int(x), int(y), callback.from_user.id
+    nx, ny, uid = int(x), int(y), callback.from_user.id
     
-    nx, ny = x, y
     if direction == "up": ny -= 1
     elif direction == "down": ny += 1
     elif direction == "left": nx -= 1
     elif direction == "right": nx += 1
 
     if not (0 <= ny < MAP_HEIGHT and 0 <= nx < MAP_WIDTH):
-        return await callback.answer("Край світу! ⛔", show_alert=True)
+        return await callback.answer("Там лише безодня... ⛔", show_alert=True)
 
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT stamina, zen, navigation, inventory, state 
-            FROM capybaras WHERE owner_id = $1
-        """, uid)
+        row = await conn.fetchrow("SELECT stamina, zen, navigation, inventory, state FROM capybaras WHERE owner_id = $1", uid)
         
         stamina = row['stamina']
-        zen = row['zen']
+        if stamina < 1: return await callback.answer("Ти занадто втомився... ⚡", show_alert=True)
+
         nav = json.loads(row['navigation'])
         inv = json.loads(row['inventory'])
         state = json.loads(row['state'])
+        zen = row['zen']
 
-        if stamina < 1:
-            return await callback.answer("Енергія на нулі! ⚡", show_alert=True)
+        coord_key = f"{nx},{ny}"
+        loot_msg = ""
+        
+        flowers = nav.get("flowers", {})
+        if coord_key in flowers:
+            icon = flowers[coord_key]
+            if icon == "✽":
+                item = get_random_plant()
+                inv.setdefault("materials", {})[item['id']] = inv["materials"].get(item['id'], 0) + 1
+                loot_msg = f"Знайдено: {item['name']} 🌿"
+            elif icon == "𓋼":
+                item = get_random_mushroom()
+                inv.setdefault("food", {})[item['id']] = inv["food"].get(item['id'], 0) + 1
+                loot_msg = f"Знайдено: {item['name']} 🍄"
+            
+            del flowers[coord_key]
+            nav["flowers"] = flowers
 
         target_tile = FULL_MAP[ny][nx]
         new_mode = mode
         if mode == "ship" and target_tile not in WATER_TILES:
             new_mode = "capy"
-            await callback.answer("Висадка на берег! 🐾")
+            loot_msg = "🐾 Висадка на берег"
         elif mode == "capy" and target_tile in WATER_TILES:
             new_mode = "ship"
-            await callback.answer("На борт! ⚓")
+            loot_msg = "⚓ Сходження на борт"
 
         disc_set = set(nav.get("discovered", []))
-        new_count = 0
+        old_size = len(disc_set)
         for dy in range(-1, 2):
             for dx in range(-2, 3):
-                sc = f"{nx+dx},{ny+dy}"
-                if sc not in disc_set:
-                    disc_set.add(sc)
-                    new_count += 1
+                disc_set.add(f"{nx+dx},{ny+dy}")
         
-        if (len(disc_set) // 500) > (len(nav.get("discovered", [])) // 500):
-            zen += 1
+        if len(disc_set) > old_size + 50: zen += 1
 
-        coord_key = f"{nx},{ny}"
         if coord_key in COORD_QUESTS:
             nav.update({"x": nx, "y": ny, "discovered": list(disc_set)})
             state["mode"] = new_mode
-            await conn.execute("""
-                UPDATE capybaras SET stamina = stamina - 1, navigation = $1, state = $2 WHERE owner_id = $3
-            """, json.dumps(nav), json.dumps(state), uid)
+            await conn.execute("UPDATE capybaras SET stamina=stamina-1, navigation=$1, state=$2 WHERE owner_id=$3", 
+                               json.dumps(nav), json.dumps(state), uid)
             return await start_branching_quest(callback, COORD_QUESTS[coord_key], db_pool)
 
         nav.update({"x": nx, "y": ny, "discovered": list(disc_set)})
         state["mode"] = new_mode
-        
         await conn.execute("""
-            UPDATE capybaras 
-            SET stamina = stamina - 1, zen = $1, navigation = $2, state = $3 
-            WHERE owner_id = $4
-        """, zen, json.dumps(nav), json.dumps(state), uid)
+            UPDATE capybaras SET stamina=$1, zen=$2, navigation=$3, inventory=$4, state=$5 WHERE owner_id=$6
+        """, stamina-1, zen, json.dumps(nav), json.dumps(inv), json.dumps(state), uid)
 
-        map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("maps"), nav.get("flowers"), nav.get("trees"))
-        text = (f"📍 <b>Карта ({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
-                f"🧭 Біом: {get_biome_name(ny)} | ✨ Дзен: {zen}\n\n{map_display}")
+        is_at_tree = coord_key in nav.get("trees", {})
+        map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("maps"), nav.get("flowers"), nav.get("trees"), nav.get("totems", []))
+        
+        text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
+                f"🧭 Біом: {get_biome_name(ny)} | ✨ Дзен: {zen}\n\n"
+                f"{map_display}")
+        
+        if loot_msg: text += f"\n\n✨ <i>{loot_msg}</i>"
 
         await callback.message.edit_text(
             text, 
-            reply_markup=get_map_keyboard(nx, ny, new_mode, coord_key in nav.get("trees", {}), inv, nav),
+            reply_markup=get_map_keyboard(nx, ny, new_mode, is_at_tree, inv, nav),
             parse_mode="HTML"
         )
+        await callback.answer(loot_msg if loot_msg else None)
 
 @router.callback_query(F.data.startswith("view:"))
 async def handle_world_viewer(callback: types.CallbackQuery, db_pool):
@@ -175,7 +186,7 @@ async def handle_teleport(callback: types.CallbackQuery, db_pool):
             UPDATE capybaras SET navigation = $1, stamina = stamina - 15 WHERE owner_id = $2
         """, json.dumps(nav), uid)
         
-        map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("maps", []))
+        map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("maps", []), nav.get("flowers", {}), nav.get("trees", {}), totems)
         text = (f"🌀 <b>Телепортація успішна!</b>\n📍 Ви прибули до: {target['name']} ({nx}, {ny})\n\n{map_display}")
         
         await callback.message.edit_text(

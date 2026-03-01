@@ -7,7 +7,7 @@ def get_stamina_icons(stamina):
     if stamina > 0: return "⚡"
     return "🪫"
 
-def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers=None, trees=None):
+def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers=None, trees=None, totems=None):
     win_w, win_h = 15, 8
     icon = SHIP_ICON if mode == "ship" else PLAYER_ICON
     
@@ -15,6 +15,8 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
     start_y = max(0, min(MAP_HEIGHT - win_h, py - win_h // 2))
     
     discovered_set = set(discovered_list)
+    
+    totem_coords = {f"{t['x']},{t['y']}" for t in totems} if totems else set()
     
     boss_coords = {}
     treasure_coords = set()
@@ -41,6 +43,8 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
             elif c_str not in discovered_set:
                 display_row.append(FOG_ICON)
             
+            elif c_str in totem_coords:
+                display_row.append("☥")
             elif c_str in boss_coords:
                 display_row.append("𖤍")
             elif c_str in flower_coords:
