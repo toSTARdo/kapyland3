@@ -39,12 +39,14 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             equipment_list = []
 
         rod_item = next(
-            (item for item in equipment_list if "вудочка" in item.get("name", "").lower()), 
+            (item for item in equipment_list 
+            if isinstance(item, dict) and "вудочка" in item.get("name", "").lower()), 
             None
         )
 
         tackle_item = next(
-            (item for item in equipment_list if "рибальські снасті" in item.get("name", "").lower()), 
+            (item for item in equipment_list 
+            if isinstance(item, dict) and "снасті" in item.get("name", "").lower()), 
             None
         )
 
