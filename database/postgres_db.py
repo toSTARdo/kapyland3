@@ -83,7 +83,7 @@ async def init_pg(pool):
                 unlocked_titles TEXT[] DEFAULT '{ "Новачок" }',
                 stats_track JSONB DEFAULT '{}'::jsonb,
                 fishing_stats JSONB DEFAULT '{"max_weight": 0, "total_weight": 0}'::jsonb,
-                state JSONB DEFAULT '{"status": "active", "mode": "capy", "mood": "Chill", "location": "home"}'::jsonb,
+                state JSONB DEFAULT '{"status": "active", "mode": "capy", "mood": "Chill", "location": "home", "blessings": [], "curses": []}'::jsonb,
                 cooldowns JSONB DEFAULT '{}'::jsonb,
                 last_feed TIMESTAMP,
                 last_wash TIMESTAMP,

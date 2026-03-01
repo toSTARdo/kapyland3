@@ -188,16 +188,12 @@ async def handle_bulk_spin(callback: types.CallbackQuery, db_pool):
 
         loot["lottery_ticket"] -= 10
         
-        sql = "UPDATE capybaras SET inventory = $1"
-        params = [json.dumps(inventory)]
         if used_weekly_bonus:
-            sql += ", last_weekly_lega = $2"
-            params.append(now.isoformat())
-            params.append(uid)
-            sql += " WHERE owner_id = $3"
+            sql = "UPDATE capybaras SET inventory = $1, last_weekly_lega = $2 WHERE owner_id = $3"
+            params = [json.dumps(inventory), now, uid]
         else:
-            params.append(uid)
-            sql += " WHERE owner_id = $2"
+            sql = "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2"
+            params = [json.dumps(inventory), uid]
             
         await conn.execute(sql, *params)
         

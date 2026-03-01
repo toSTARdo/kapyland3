@@ -7,16 +7,32 @@ from config import STAT_WEIGHTS, BASE_HIT_CHANCE, BASE_BLOCK_CHANCE
 router = Router()
 
 def get_fight_stats_text(data):
-    total = data['total_fights'] or 0
-    win_rate = (data['wins'] / total * 100) if total > 0 else 0
+    total = data.get('total_fights') or 0
+    wins = data.get('wins') or 0
+    win_rate = (wins / total * 100) if total > 0 else 0
     
-    equip = data['equipment']
+    equip = data.get('equipment')
     if isinstance(equip, str):
-        equip = json.loads(equip)
+        try: equip = json.loads(equip)
+        except: equip = {}
     elif equip is None:
         equip = {}
-    weapon = equip.get('weapon', {"name": "Лапки"})
-    armor = equip.get('armor', {"name": "Хутро"})
+
+    weapon_data = equip.get('weapon', {"name": "Лапки"})
+    weapon_name = weapon_data.get('name', "Лапки") if isinstance(weapon_data, dict) else "Лапки"
+
+    armor_data = equip.get('armor', "Хутро")
+    if isinstance(armor_data, dict):
+        armor_name = armor_data.get('name', "Хутро")
+    else:
+        armor_name = str(armor_data)
+    
+    state = data.get('state')
+    if isinstance(state, str):
+        try: state = json.loads(state)
+        except: state = {}
+    elif state is None:
+        state = {}
     
     blessings = data.get('blessings', [])
     curses = data.get('curses', [])
