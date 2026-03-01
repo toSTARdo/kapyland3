@@ -1,14 +1,50 @@
+import asyncio
+import json
+import logging
+from config import IMAGES_URLS
+
+logger = logging.getLogger(__name__)
+
 def give_everyday_gift(bot, db_pool):
-
     async def _give_gift():
+        
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT tg_id FROM users')
-            user_ids = [row['tg_id'] for row in rows]
-
-            for tg_id in user_ids:
+            rows = await conn.fetch('SELECT owner_id, inventory FROM capybaras')
+            
+            for row in rows:
+                uid = row['owner_id']
+                inv_raw = row['inventory']
+                
                 try:
-                    await bot.send_message(tg_id, "🎁 Your daily gift is here! Enjoy your day! 🎉")
-                except Exception as e:
-                    logger.error(f"Failed to send daily gift to {tg_id}: {e}")
+                    inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
+                    
+                    if "loot" not in inv:
+                        inv["loot"] = {}
+                    
+                    inv["loot"]["lottery_ticket"] = inv["loot"].get("lottery_ticket", 0) + 1
+                    
+                    await conn.execute(
+                        "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2",
+                        json.dumps(inv, ensure_ascii=False), uid
+                    )
 
+                    caption = (
+                       "🎁 <b>Ранкова пошта Архіпелагу!</b>\n\n"
+                        "Поки ви спали, чайки-поштарі принесли вам 🎟 <b>Лотерейний квиток</b>.\n"
+                        "Він уже чекає у вашому інвентарі. Гарного дня!"
+                    )
+                    
+                    await bot.send_photo(
+                        chat_id=uid,
+                        photo=IMAGES_URLS["delivery"],
+                        caption=caption,
+                        parse_mode="HTML"
+                    )
+                    
+                    await asyncio.sleep(0.05) 
+
+                except Exception as e:
+                    logger.error(f"Не вдалося надіслати квиток користувачу {uid}: {e}")
+
+    # Запускаємо асинхронну задачу
     asyncio.create_task(_give_gift())
