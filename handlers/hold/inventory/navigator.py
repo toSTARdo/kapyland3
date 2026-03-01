@@ -76,8 +76,15 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
 
     elif page.startswith("items"):
         title = "⚔️ <b>Амуніція</b>"
+
         parts = page.split(":")
-        selected_key = parts[1] if len(parts) > 1 else None
+        
+        try:
+            current_page = int(parts[1]) if len(parts) > 1 else 0
+        except ValueError:
+            current_page = 0
+            
+        selected_key = parts[2] if len(parts) > 2 else None
         
         all_items = inv.get("equipment", [])
         
@@ -100,6 +107,8 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                     unique_list[seen[k]]["count"] += 1
             
             max_p = (len(unique_list) - 1) // ITEMS_PER_PAGE
+            current_page = max(0, min(current_page, max_p))
+            
             items_slice = unique_list[current_page * ITEMS_PER_PAGE : (current_page + 1) * ITEMS_PER_PAGE]
             SELL_PRICES = {"Common": 1, "Rare": 2, "Epic": 3, "Legendary": 5, "Mythic": 10}
             
@@ -160,7 +169,9 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 nav = []
                 if current_page > 0: 
                     nav.append(types.InlineKeyboardButton(text="⬅️", callback_data=f"inv_page:items:{current_page-1}"))
+                
                 nav.append(types.InlineKeyboardButton(text=f"{current_page+1}/{max_p+1}", callback_data="none"))
+                
                 if current_page < max_p: 
                     nav.append(types.InlineKeyboardButton(text="➡️", callback_data=f"inv_page:items:{current_page+1}"))
                 builder.row(*nav)
