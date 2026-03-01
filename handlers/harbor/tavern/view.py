@@ -60,8 +60,8 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
             except Exception:
                 await event.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
             await event.answer()
-        else:
-            await message.answer_photo(photo=tavern_image, caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    else:
+            await message.answer_photo(photo=IMAGES_URLS["tavern"], caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
             
 @router.callback_query(F.data.startswith("user_menu:"))
 async def user_menu_handler(callback: types.CallbackQuery):
