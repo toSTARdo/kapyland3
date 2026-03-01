@@ -46,10 +46,10 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
             return await callback.answer("❌ Тобі потрібен ключ або відмичка!", show_alert=True)
 
         if method == "lockpicker":
-            loot["lockpicker"] -= 1
             dice = random.random()
             
             if dice > 0.8:
+                loot["lockpicker"] -= 1
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv), uid)
                 builder = InlineKeyboardBuilder()
                 if chests > 0 and (keys > 0 or loot["lockpicker"] > 0):
