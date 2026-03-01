@@ -21,15 +21,17 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory:
         )
 
     is_near_totem = any(
-        math.sqrt((px - t['x'])**2 + (py - t['y'])**2) <= 5 
-        for t in placed_totems
+    math.sqrt((px - t['x'])**2 + (py - t['y'])**2) <= 5 
+    for t in placed_totems
     )
-    
+
     if is_near_totem and len(placed_totems) > 1:
-        builder.row(types.InlineKeyboardButton(
-            text="🌀 Телепортуватися", 
-            callback_data="open_tp_menu")
-        )
+        for t in placed_totems:
+            if not (t['x'] == px and t['y'] == py):
+                builder.row(types.InlineKeyboardButton(
+                    text=f"🌀 До {t['id']} ({t['x']}, {t['y']})", 
+                    callback_data=f"tp_to:{t['id']}")
+                )
 
     builder.row(types.InlineKeyboardButton(text="⬆️", callback_data=f"mv:up:{px}:{py}:{mode}"))
     builder.row(

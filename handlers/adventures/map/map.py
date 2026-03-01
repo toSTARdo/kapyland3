@@ -261,3 +261,56 @@ async def handle_place_totem(callback: types.CallbackQuery, db_pool):
         """, json.dumps(inv), json.dumps(nav), uid)
         
         await callback.answer(f"✅ Тотем встановлено на ({nav['x']}, {nav['y']})", show_alert=True)
+
+@router.callback_query(F.data.startswith("chop:"))
+async def handle_chop_tree(callback: types.CallbackQuery, db_pool):
+    _, x, y = callback.data.split(":")
+    px, py = int(x), int(y)
+    uid = callback.from_user.id
+    coord_key = f"{px},{py}"
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT stamina, navigation, inventory, state 
+            FROM capybaras WHERE owner_id = $1
+        """, uid)
+        
+        if not row: return
+        
+        stamina = row['stamina']
+        nav = json.loads(row['navigation'])
+        inv = json.loads(row['inventory'])
+        state = json.loads(row['state'])
+
+        if stamina < 5:
+            return await callback.answer("⚡ Недостатньо енергії (треба 5)!", show_alert=True)
+        
+        if coord_key not in nav.get("trees", {}):
+            return await callback.answer("🌲 Тут немає дерева, яке можна зрубати!", show_alert=True)
+
+        del nav["trees"][coord_key]
+        
+        inv.setdefault("materials", {})
+        inv["materials"]["wood"] = inv["materials"].get("wood", 0) + 1
+        
+        await conn.execute("""
+            UPDATE capybaras 
+            SET stamina = stamina - 5, navigation = $1, inventory = $2 
+            WHERE owner_id = $3
+        """, json.dumps(nav), json.dumps(inv), uid)
+
+        map_display = render_pov(
+            px, py, nav.get("discovered", []), 
+            state.get("mode", "capy"), 
+            inv.get("maps"), nav.get("flowers"), nav.get("trees"), nav.get("totems", [])
+        )
+        
+        text = (f"📍 <b>({px}, {py})</b> | {get_stamina_icons(stamina-5)}\n"
+                f"🪓 Ви зрубали дерево! +1 🪵\n\n{map_display}")
+
+        await callback.message.edit_text(
+            text, 
+            reply_markup=get_map_keyboard(px, py, state.get("mode", "capy"), False, inv, nav),
+            parse_mode="HTML"
+        )
+        await callback.answer("Ви отримали трохи деревини! 🪵")
