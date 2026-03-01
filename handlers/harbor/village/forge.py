@@ -159,7 +159,7 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
 async def common_craft_list(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     for r_id, r_data in FORGE_RECIPES.get("common_craft", {}).items():
-        builder.button(text=f"📦 {r_data.get('name')}", callback_data=f"common_info:{r_id}")
+        builder.button(text=f"{r_data.get('emoji', '📦')} {r_data.get('name')}", callback_data=f"common_info:{r_id}")
     builder.button(text="⬅️ Назад", callback_data="open_forge")
     builder.adjust(1)
     await callback.message.edit_caption(caption="📦 <b>Майстерня:</b>\nТут можна створити корисні дрібниці.", reply_markup=builder.as_markup(), parse_mode="HTML")
