@@ -32,54 +32,6 @@ def get_item_name(item_key):
             if item["name"] == item_key: return item["name"]
     return item_key
 
-async def get_weekly_bazaar_stock(db_pool):
-    async with db_pool.acquire() as conn:
-        now = datetime.now(timezone.utc)
-        row = await conn.fetchrow("SELECT value FROM world_state WHERE key = 'bazaar_weekly'")
-        state = json.loads(row['value']) if row and row['value'] else {}
-        
-        if not state.get("next_update") or now > datetime.fromisoformat(state["next_update"]):
-            new_stock = {}
-            all_gacha = [i["name"] for r in ARTIFACTS.values() for i in r]
-            gacha_key = random.choice(all_gacha)
-            gacha_currency = random.choice(list(CURRENCY_VALUE.keys()))
-            
-            new_stock[gacha_key] = {
-                "cost": random.randint(250, 600) // CURRENCY_VALUE[gacha_currency],
-                "currency": gacha_currency,
-                "cat": "loot",
-                "left": 1
-            }
-            
-            for res in random.sample(RESOURCES_POOL, 5):
-                cat = "plants" if res in ["mint", "thyme", "rosemary", "chamomile", "lavender", "tulip", "lotus"] else "materials"
-                res_currency = random.choice(list(CURRENCY_VALUE.keys()))
-                base_val = random.randint(30, 120)
-                new_stock[res] = {
-                    "cost": max(1, base_val // CURRENCY_VALUE[res_currency]),
-                    "currency": res_currency,
-                    "cat": cat,
-                    "left": random.randint(5, 15)
-                }
-            
-            weekly_sell = {}
-            for res_key, melon_price in SELL_PRICES.items():
-                curr = random.choice(list(CURRENCY_VALUE.keys()))
-                final_val = max(1, melon_price // CURRENCY_VALUE[curr])
-                weekly_sell[res_key] = {"curr": curr, "val": final_val}
-
-            new_state = {
-                "items": new_stock, 
-                "sell_prices": weekly_sell,
-                "next_update": next_monday.isoformat()
-            }
-            next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
-            new_state = {"items": new_stock, "next_update": next_monday.isoformat()}
-            await conn.execute("INSERT INTO world_state (key, value) VALUES ('bazaar_weekly', $1) ON CONFLICT (key) DO UPDATE SET value = $1", json.dumps(new_state))
-            return new_stock, next_monday
-            
-        return state["items"], datetime.fromisoformat(state["next_update"])
-
 @router.callback_query(F.data == "open_bazaar")
 async def open_bazaar(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
@@ -96,9 +48,12 @@ async def open_bazaar(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == "bazaar_shop")
 async def bazaar_shop(callback: types.CallbackQuery, db_pool):
-    stock, next_up = await get_weekly_bazaar_stock(db_pool)
+    state = await get_weekly_bazaar_stock(db_pool)
+    stock = state["items"]
+    next_up = datetime.fromisoformat(state["next_update"])
+    
     builder = InlineKeyboardBuilder()
-    text = f"🍱 <b>Асортимент</b> (до {next_up.strftime('%d.%m')})\n━━━━━━━━━━━━━━━━━━━━\n\n"
+    text = f"🍱 <b>Асортимент</b> (до {next_up.strftime('%d.%m %H:%M')})\n━━━━━━━━━━━━━━━━━━━━\n\n"
     
     for k, v in stock.items():
         name = get_item_name(k)
@@ -112,49 +67,74 @@ async def bazaar_shop(callback: types.CallbackQuery, db_pool):
     builder.button(text="⬅️ Назад", callback_data="open_bazaar")
     builder.adjust(1)
     await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    
+@router.callback_query(F.data == "bazaar_sell_list")
+async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
+    state = await get_weekly_bazaar_stock(db_pool)
+    sell_prices = state.get("sell_prices", {})
+    
+    async with db_pool.acquire() as conn:
+        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", callback.from_user.id)
+        inv = inv_raw if isinstance(inv_raw, dict) else json.loads(inv_raw)
+
+    builder = InlineKeyboardBuilder()
+    text = "💰 <b>Скупка ресурсів</b>\n<i>Базар сьогодні купує:</i>\n\n"
+    
+    found_any = False
+    for cat in ["materials", "food"]:
+        for item, count in inv.get(cat, {}).items():
+            if item in sell_prices and count > 0:
+                offer = sell_prices[item]
+                price_text = f"{offer['val']} {FOOD_ICONS[offer['curr']]}"
+                text += f"📦 {get_item_name(item)}: {count} шт. → <b>{price_text}</b>\n"
+                builder.button(text=f"Здати {get_item_name(item)}", callback_data=f"b_sell:{item}")
+                found_any = True
+
+    if not found_any:
+        text += "<i>У тебе немає нічого, що зацікавило б торгівців...</i>"
+    
+    builder.button(text="⬅️ Назад", callback_data="open_bazaar")
+    builder.adjust(1)
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 async def get_weekly_bazaar_stock(db_pool):
     async with db_pool.acquire() as conn:
         now = datetime.now(timezone.utc)
         row = await conn.fetchrow("SELECT value FROM world_state WHERE key = 'bazaar_weekly'")
-        state = json.loads(row['value']) if row and row['value'] else {}
+        
+        state = row['value'] if row and row['value'] else {}
+        if isinstance(state, str): state = json.loads(state)
         
         if not state.get("next_update") or now > datetime.fromisoformat(state["next_update"]):
             new_stock = {}
-            
             all_gacha = [i["name"] for r in ARTIFACTS.values() for i in r]
-            gacha_key = random.choice(all_gacha)
-            gacha_currency = random.choice(list(CURRENCY_VALUE.keys()))
-            
-            new_stock[gacha_key] = {
-                "cost": random.randint(150, 300) // CURRENCY_VALUE[gacha_currency],
-                "currency": gacha_currency,
-                "cat": "loot",
-                "left": 1
+            g_key = random.choice(all_gacha)
+            g_curr = random.choice(list(CURRENCY_VALUE.keys()))
+            new_stock[g_key] = {
+                "cost": max(1, random.randint(150, 300) // CURRENCY_VALUE[g_curr]),
+                "currency": g_curr, "cat": "loot", "left": 1
             }
             
+            # 2. Ресурси
             for res in random.sample(RESOURCES_POOL, 5):
                 cat = "plants" if res in ["mint", "thyme", "rosemary", "chamomile", "lavender", "tulip", "lotus"] else "materials"
-                res_currency = random.choice(list(CURRENCY_VALUE.keys()))
-                base_val = int(SELL_PRICES.get(res, 10) * random.uniform(1.3, 1.5))
+                
+                r_curr = random.choice(list(CURRENCY_VALUE.keys()))
+                base_price = SELL_PRICES.get(res, 10)
                 new_stock[res] = {
-                    "cost": max(1, base_val // CURRENCY_VALUE[res_currency]),
-                    "currency": res_currency,
-                    "cat": cat,
-                    "left": random.randint(5, 15)
+                    "cost": max(1, int(base_price * random.uniform(1.3, 1.8)) // CURRENCY_VALUE[r_curr]),
+                    "currency": r_curr, "cat": cat, "left": random.randint(5, 15)
                 }
 
             weekly_sell = {}
-            for res_key, melon_price in SELL_PRICES.items():
+            for res_key, base_price in SELL_PRICES.items():
                 curr = random.choice(list(CURRENCY_VALUE.keys()))
-                final_val = max(1, melon_price // CURRENCY_VALUE[curr])
-                weekly_sell[res_key] = {"curr": curr, "val": final_val}
+                val = max(1, base_price // CURRENCY_VALUE[curr])
+                weekly_sell[res_key] = {"curr": curr, "val": val}
 
-            next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
             
-            new_state = {
+            state = {
                 "items": new_stock, 
                 "sell_prices": weekly_sell, 
                 "next_update": next_monday.isoformat()
@@ -162,12 +142,9 @@ async def get_weekly_bazaar_stock(db_pool):
             
             await conn.execute(
                 "INSERT INTO world_state (key, value) VALUES ('bazaar_weekly', $1) "
-                "ON CONFLICT (key) DO UPDATE SET value = $1", 
-                json.dumps(new_state)
+                "ON CONFLICT (key) DO UPDATE SET value = $1", json.dumps(state)
             )
-            return new_state, next_monday
-            
-        return state, datetime.fromisoformat(state["next_update"])
+        return state
 
 @router.callback_query(F.data.startswith("b_sell:"))
 async def bazaar_process_sell(callback: types.CallbackQuery, db_pool):
