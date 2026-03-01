@@ -6,6 +6,7 @@ from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InputMediaPhoto
 from config import BOSSES_COORDS, IMAGES_URLS
+from core.combat.battles import run_battle_logic
 
 router = Router()
 
@@ -42,13 +43,31 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             None
         )
 
-        if not rod_item:
-            return await callback.answer("❌ Спочатку екіпіруй вудочку! 🎣", show_alert=True)
+        tackle_item = next(
+            (item for item in equipment_list if "рибальські снасті" in item.get("name", "").lower()), 
+            None
+        )
+
+        if not rod_item or not tackle_item:
+            return await callback.answer("❌ Спочатку екіпіруй вудочку або снасті! 🎣", show_alert=True)
             
         rod_lvl = rod_item.get("lvl", 0)
 
         if stamina < 10:
             return await callback.answer("🪫 Тобі треба відпочити! (Мінімум 10⚡)", show_alert=True)
+
+        if rod_lvl >= 3 and random.random() < 0.02:
+            async with db_pool.acquire() as conn:
+                await conn.execute("UPDATE capybaras SET stamina = stamina - 5 WHERE owner_id = $1", uid)
+            
+            await callback.message.answer(
+                "🌊 <b>ВОДА ПОЧЕРВОНІЛА...</b>\n"
+                "Щось величезне вхопило твою наживку і тягне тебе на дно! "
+                "Це легендарна Акула Селахія🦈! Страх смерті страхом смерті, але вона красуня...",
+                parse_mode="HTML"
+            )
+            
+            return asyncio.create_task(run_battle_logic(callback, db_pool, bot_type="secret_shark"))
 
         loot_pool = [
             {"name": "🦴 Стара кістка", "min_w": 0.1, "max_w": 0.4, "chance": 12, "type": "trash"},
