@@ -96,7 +96,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
                 loot_dir = inventory.setdefault("loot", {})
                 maps_list = loot_dir.setdefault("treasure_maps", [])
 
-                    if random.random() < 0.1:
+                if random.random() < 0.1:
                         stats_track = inventory.get("stats_track", {})
                         defeated = stats_track.get("bosses_defeated", 0)
                         next_boss = defeated + 1
