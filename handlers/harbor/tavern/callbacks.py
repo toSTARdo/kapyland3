@@ -329,7 +329,6 @@ async def execute_gift_transfer(callback: types.CallbackQuery, db_pool):
         await callback.bot.send_message(target_id, f"🎁 Гей! Тобі прийшов подарунок: {ITEM_DISPLAY_NAMES.get(item_name, item_name)}!")
     except: pass
 
-
 @router.callback_query(F.data.startswith("leaderboard"))
 async def show_leaderboard(callback: types.CallbackQuery, db_pool):
     parts = callback.data.split(":")
@@ -338,18 +337,26 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
     offset = page * 5
 
     configs = {
-        "mass": ("⚖️ Топ Найважчих", "кг", "SELECT u.username, (c.meta->>'weight')::float as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id ORDER BY val DESC LIMIT 5 OFFSET $1"),
-        "lvl": ("🎖 Топ Наймудріших", " Lvl", "SELECT u.username, c.lvl as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id ORDER BY val DESC LIMIT 5 OFFSET $1"),
-        "winrate": ("⚔️ Топ Найсильніших", "%", "SELECT u.username, ROUND((c.wins::float / GREATEST(c.total_fights, 1)) * 100) as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id WHERE c.total_fights > 0 ORDER BY val DESC, c.wins DESC LIMIT 5 OFFSET $1"),
-        
-        "fishing": ("🎣 Майстри Риболовлі", "кг", """
-            SELECT u.username, 
-            (c.meta->'fishing_stats'->>'total_weight')::float as val,
-            (c.meta->'fishing_stats'->>'max_weight')::float as secondary_val
-            FROM users u JOIN capybaras c ON u.tg_id = c.owner_id 
-            WHERE c.meta->'fishing_stats' IS NOT NULL
-            ORDER BY val DESC LIMIT 5 OFFSET $1
-        """)
+        "mass": (
+            "⚖️ Топ Найважчих", " кг", 
+            "SELECT u.username, c.weight as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id ORDER BY c.weight DESC LIMIT 5 OFFSET $1"
+        ),
+        "lvl": (
+            "🎖 Топ Наймудріших", " Lvl", 
+            "SELECT u.username, c.lvl as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id ORDER BY c.lvl DESC LIMIT 5 OFFSET $1"
+        ),
+        "winrate": (
+            "⚔️ Топ Найсильніших", "%", 
+            "SELECT u.username, ROUND((c.wins::float / GREATEST(c.total_fights, 1)) * 100) as val FROM users u JOIN capybaras c ON u.tg_id = c.owner_id WHERE c.total_fights > 0 ORDER BY val DESC, c.wins DESC LIMIT 5 OFFSET $1"
+        ),
+        "fishing": (
+            "🎣 Майстри Риболовлі", " кг", 
+            """SELECT u.username, 
+               (c.fishing_stats->>'total_weight')::float as val,
+               (c.fishing_stats->>'max_weight')::float as secondary_val
+               FROM users u JOIN capybaras c ON u.tg_id = c.owner_id 
+               ORDER BY val DESC LIMIT 5 OFFSET $1"""
+        )
     }
 
     title, label, query = configs.get(criteria, configs["mass"])
@@ -362,11 +369,14 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
         pos = i + offset + 1
         medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(pos, "🐾")
         
+        val = row['val'] if row['val'] is not None else 0
+        
         if criteria == "fishing":
+            s_val = row['secondary_val'] if row['secondary_val'] is not None else 0
             text += (f"{medal} {pos}. <b>{row['username']}</b>\n"
-                     f"   └ Улов: <code>{row['val']:.2f}</code> кг | Рекорд: <code>{row['secondary_val']:.2f}</code> {label}\n")
+                     f"   └ Улов: <code>{val:.2f}</code> кг | Рекорд: <code>{s_val:.2f}</code> {label}\n")
         else:
-            text += f"{medal} {pos}. <b>{row['username']}</b> — {row['val']}{label}\n"
+            text += f"{medal} {pos}. <b>{row['username']}</b> — {val}{label}\n"
 
     if not rows: text += "<i>На цій сторінці порожньо...</i>"
 
@@ -381,15 +391,23 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
     nav_btns = []
     if page > 0:
         nav_btns.append(types.InlineKeyboardButton(text="⬅️", callback_data=f"leaderboard:{criteria}:{page-1}"))
-    nav_btns.append(types.InlineKeyboardButton(text="➡️", callback_data=f"leaderboard:{criteria}:{page+1}"))
-    builder.row(*nav_btns)
+    
+    if len(rows) == 5:
+        nav_btns.append(types.InlineKeyboardButton(text="➡️", callback_data=f"leaderboard:{criteria}:{page+1}"))
+    
+    if nav_btns:
+        builder.row(*nav_btns)
     
     builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="social"))
-    builder.adjust(4, len(nav_btns), 1)
+    builder.adjust(4, len(nav_btns) if nav_btns else 1, 1)
 
-    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except:
+        await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    
+    await callback.answer()
 
-        
 @router.callback_query(F.data.startswith("date_request:"))
 async def send_date_request(callback: types.CallbackQuery):
     target_id = int(callback.data.split(":")[1])
