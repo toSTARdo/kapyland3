@@ -69,9 +69,9 @@ async def process_open_forge(callback: types.CallbackQuery, db_pool):
 async def upgrade_list(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
-    lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
-    if lvl < 15:
-        return await callback.answer("❌ Ще не доріс! Повертайся на 15 рівні.", show_alert=True)
+        lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
+        if lvl < 15:
+            return await callback.answer("❌ Ще не доріс! Повертайся на 15 рівні.", show_alert=True)
 
     async with db_pool.acquire() as conn:
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)

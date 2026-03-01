@@ -6,7 +6,7 @@ from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.combat.battles import run_battle_logic
-from config import ARTIFACTS
+from config import ARTIFACTS, BOSSES_COORDS
 
 router = Router()
 
@@ -105,14 +105,18 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
         if random.random() < 0.05:
             defeated = stats.get("bosses_defeated", 0)
             next_boss = defeated + 1
+            
             if next_boss <= 20 and not any(m.get("boss_num") == next_boss for m in treasure_maps):
-                treasure_maps.append({
-                    "type": "boss_den", 
-                    "boss_num": next_boss, 
-                    "pos": f"{next_boss},{next_boss}",
-                    "discovered": datetime.datetime.now().isoformat()
-                })
-                rewards.append(f"💀 Карта лігва №{next_boss}")
+                coords = BOSSES_COORDS.get(next_boss)
+                if coords:
+                    treasure_maps.append({
+                        "type": "boss_den", 
+                        "boss_num": next_boss, 
+                        "x": coords["x"],
+                        "y": coords["y"],
+                        "discovered": datetime.datetime.now().isoformat()
+                    })
+                    rewards.append(f"💀 Карта лігва №{next_boss}")
 
         if random.random() < 0.15:
             rarity = random.choices(["Epic", "Legendary"], weights=[1, 1])[0]

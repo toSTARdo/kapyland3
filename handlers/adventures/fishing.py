@@ -4,6 +4,7 @@ import random
 import datetime
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import BOSSES_COORDS
 
 router = Router()
 
@@ -94,20 +95,33 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             if item['type'] == "treasure_map":
                 loot_dir = inventory.setdefault("loot", {})
                 maps_list = loot_dir.setdefault("treasure_maps", [])
-                
-                if random.random() < 0.1:
-                    defeated = inventory.get("stats_track", {}).get("bosses_defeated", 0)
-                    next_boss = defeated + 1
-                    if next_boss <= 20 and not any(m.get("boss_num") == next_boss for m in maps_list):
-                        maps_list.append({
-                            "type": "boss_den", "boss_num": next_boss, 
-                            "pos": f"{next_boss},{next_boss}", "discovered": str(datetime.date.today())
-                        })
-                        inventory_note = f"💀 <b>Знайдено карту лігва Боса №{next_boss}!</b>"
-                    else:
-                        m_id = random.randint(100, 999)
-                        maps_list.append({"type": "treasure", "id": m_id, "pos": f"{random.randint(0,149)},{random.randint(0,149)}"})
-                        inventory_note = f"🗺️ <b>Ви виловили карту скарбів #{m_id}!</b>"
+
+                    if random.random() < 0.1:
+                        stats_track = inventory.get("stats_track", {})
+                        defeated = stats_track.get("bosses_defeated", 0)
+                        next_boss = defeated + 1
+                        
+                        if next_boss <= 20 and not any(m.get("boss_num") == next_boss for m in maps_list):
+                            coords = BOSSES_COORDS.get(next_boss)
+                            maps_list.append({
+                                "type": "boss_den", 
+                                "boss_num": next_boss, 
+                                "x": coords["x"], 
+                                "y": coords["y"], 
+                                "discovered": str(datetime.date.today())
+                            })
+                            inventory_note = f"💀 <b>Знайдено карту лігва Боса №{next_boss}!</b>"
+                        else:
+                            m_id = random.randint(100, 999)
+                            t_x, t_y = random.randint(0, 149), random.randint(0, 149)
+                            maps_list.append({
+                                "type": "treasure", 
+                                "id": m_id, 
+                                "x": t_x, 
+                                "y": t_y,
+                                "discovered": str(datetime.date.today())
+                            })
+                            inventory_note = f"🗺️ <b>Ви знайшли карту скарбів #{m_id}!</b> ({t_x}, {t_y})"
                 else:
                     m_id = random.randint(100, 999)
                     maps_list.append({"type": "treasure", "id": m_id, "pos": f"{random.randint(0,149)},{random.randint(0,149)}"})
