@@ -248,7 +248,7 @@ async def handle_place_totem(callback: types.CallbackQuery, db_pool):
         if loot["teleport_totem"] <= 0: del loot["teleport_totem"]
         
         new_totem = {
-            "id": int(datetime.datetime.now().timestamp()),
+            "id": int(dt.datetime.now().timestamp()),
             "x": nav['x'], "y": nav['y'],
             "name": f"Тотем {len(totems) + 1}"
         }
