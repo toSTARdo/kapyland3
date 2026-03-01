@@ -38,7 +38,7 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
         types.InlineKeyboardButton(text="🤖 Бій з ботом", callback_data="fight_bot"),
         types.InlineKeyboardButton(text="🏆 Топ", callback_data="leaderboard")
     )
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
 
     text = (
         "⚔️ <b>Таверна «Гнилий Апельсин»</b>\n"
