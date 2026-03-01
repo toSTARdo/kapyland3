@@ -6,7 +6,7 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from utils.helpers import grant_exp_and_lvl
-from handlers.inventory.navigator import render_inventory_page
+from handlers.hold.inventory.navigator import render_inventory_page
 
 router = Router()
 
