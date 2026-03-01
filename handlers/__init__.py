@@ -25,6 +25,9 @@ from .harbor.village.alchemy import router as alchemy_router
 from .harbor.village.bazaar import router as bazaar_router
 from .harbor.village.forge import router as forge_router
 from core.combat.battles import router as battles_router 
+from .profile.sleep import router as sleep_router
+from .hold.inventory.loot import router as loot_router
+from .hold.inventory.food import router as food_router
 
 
 def get_handlers_router() -> Router:
@@ -55,4 +58,6 @@ def get_handlers_router() -> Router:
     router.include_router(forge_router)
     router.include_router(battles_router)
     router.include_router(sleep_router)
+    router.include_router(loot_router)
+    router.include_router(food_router)
     return router
