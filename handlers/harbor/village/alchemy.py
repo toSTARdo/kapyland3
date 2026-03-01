@@ -124,12 +124,17 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     recipe = RECIPES.get(potion_id)
     
+    if not recipe: return
+    
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, stamina, stats, points FROM capybaras WHERE owner_id = $1", user_id)
+        row = await conn.fetchrow("""
+            SELECT inventory, stamina, atk, def, agi, luck, points 
+            FROM capybaras WHERE owner_id = $1
+        """, user_id)
+        
         if not row: return
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
         stamina, max_stamina, points = row['stamina'], 100, row['points']
         
         potions = inv.get("potions", {})
@@ -144,29 +149,34 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
             update_fields["stamina"] = stamina
             alert_text = f"⚡ Енергію відновлено на +{recipe['plus_stamina']}!"
 
-        elif "plus_max_hp" in recipe:
-            stats["max_hp"] = stats.get("max_hp", 10) + recipe["plus_max_hp"]
-            update_fields["stats"] = json.dumps(stats, ensure_ascii=False)
-            alert_text = f"🧬 Макс. HP зросло на +{recipe['plus_max_hp']}!"
-
         elif recipe.get("effect") == "stats_reset":
-            recovered = sum([max(0, stats.get(s, 1) - 1) for s in ["attack", "defense", "agility", "luck"]])
-            stats = {"max_hp": stats.get("max_hp", 10), "attack": 1, "defense": 1, "agility": 1, "luck": 1}
-            update_fields["stats"] = json.dumps(stats, ensure_ascii=False)
+            recovered = (
+                max(0, row['atk'] - 1) + 
+                max(0, row['def'] - 0) + 
+                max(0, row['agi'] - 1) + 
+                max(0, row['luck'] - 0)
+            )
+            update_fields["atk"] = 1
+            update_fields["def"] = 0
+            update_fields["agi"] = 1
+            update_fields["luck"] = 0
             update_fields["points"] = points + recovered
-            alert_text = "🌀 Характеристики скинуто!"
+            alert_text = f"🌀 Характеристики скинуто! Повернуто {recovered} очок."
 
         potions[potion_id] -= 1
         if potions[potion_id] <= 0: del potions[potion_id]
+        inv["potions"] = potions
         update_fields["inventory"] = json.dumps(inv, ensure_ascii=False)
 
-        keys = list(update_fields.keys())
-        values = list(update_fields.values())
-        set_clause = ", ".join([f"{key} = ${i+1}" for i, key in enumerate(keys)])
-        query = f"UPDATE capybaras SET {set_clause} WHERE owner_id = ${len(keys)+1}"
-        await conn.execute(query, *values, user_id)
+        if update_fields:
+            keys = list(update_fields.keys())
+            values = list(update_fields.values())
+            set_clause = ", ".join([f"{key} = ${i+1}" for i, key in enumerate(keys)])
+            query = f"UPDATE capybaras SET {set_clause} WHERE owner_id = ${len(keys)+1}"
+            await conn.execute(query, *values, user_id)
 
     await callback.answer(alert_text, show_alert=True)
+    
     try:
         from handlers.inventory.navigator import render_inventory_page 
         await render_inventory_page(callback.message, user_id, page="potions", is_callback=True)
