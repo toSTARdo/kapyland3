@@ -119,7 +119,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 loot_msg = f"Знайдено: {item['name']} 🌿"
             elif icon == "𓋼":
                 item = get_random_mushroom()
-                inv.setdefault("food", {})[item['id']] = inv["food"].get(item['id'], 0) + 1
+                inv.setdefault("food", {})[item['id']] = inv["materials"].get(item['id'], 0) + 1
                 loot_msg = f"Знайдено: {item['name']} 🍄"
             
             del flowers[coord_key]
@@ -129,10 +129,8 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         new_mode = mode
         if mode == "ship" and target_tile not in WATER_TILES:
             new_mode = "capy"
-            loot_msg = "🐾 Висадка на берег"
         elif mode == "capy" and target_tile in WATER_TILES:
             new_mode = "ship"
-            loot_msg = "⚓ Сходження на борт"
 
         disc_set = set(nav.get("discovered", []))
         old_size = len(disc_set)

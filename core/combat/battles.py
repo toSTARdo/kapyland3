@@ -79,7 +79,17 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
         "boss_pelican": {
             "kapy_name": "Пелікан Петро", "color": "🦢",
             "stats": {"attack": 15, "defense": 8, "agility": 5, "luck": 5},
-            "equipped_weapon": "Дзьоб", "hp_bonus": 7, "is_boss": True
+            "equipped_weapon": "Весло", "hp_bonus": 7, "is_boss": True
+        },
+        "boss_lynx": {
+            "kapy_name": "Рись Рагнар", "color": "🐆",
+            "stats": {"attack": 22, "defense": 6, "agility": 18, "luck": 7},
+            "equipped_weapon": "Совині кігті", "hp_bonus": 15, "is_boss": True
+        },
+        "secret_shark": {
+            "kapy_name": "Акула Селахія", "color": "🦈",
+            "stats": {"attack": 35, "defense": 12, "agility": 12, "luck": 15},
+            "equipped_weapon": "Зуби акули", "hp_bonus": 50, "is_boss": True, "is_secret": True
         }
     }
 
