@@ -2,6 +2,7 @@ import json
 from aiogram import Router, types, F
 from aiogram.filters import Command, or_f
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from utils.helpers import format_weight
 
 from config import IMAGES_URLS
 
@@ -22,7 +23,7 @@ def get_profile_text(data):
         f"<b>ദ്ദി₍ᐢ•(ܫ)•ᐢ₎ {data['name']}</b>\n"
         f"________________________________\n\n"
         f"🌟 Рівень: <b>{data['lvl']}</b> ({data['exp']} XP)\n"
-        f"⚖️ Вага: <b>{data['weight']:.2f} кг</b>\n\n"
+        f"⚖️ Вага: <b>{format_weight(data['weight']):.2f} кг</b>\n\n"
         f"ХП: {create_scale(data['hp'], 3, '♥️', '🖤')}\n"
         f"Ситість: {create_scale(data['hunger'], 3, '🍏', '●')}\n"
         f"Гігієна: {create_scale(data['cleanness'], 3, '🧼', '🦠')}\n"

@@ -11,6 +11,9 @@ def calculate_lvl_data(current_exp, added_exp):
 def calculate_winrate(wins, total_fights):
     return round(wins/total_fights, 1) * 100
 
+def format_weight(weight: float) -> float:
+    return round(weight * 2) / 2
+
 def format_time(seconds):
     if isinstance(seconds, (int, float)):
         total_sec = seconds
