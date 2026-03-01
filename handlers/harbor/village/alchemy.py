@@ -128,14 +128,14 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT inventory, stamina, atk, def, agi, luck, points 
+            SELECT inventory, stamina, atk, def, agi, luck, zen
             FROM capybaras WHERE owner_id = $1
         """, user_id)
         
         if not row: return
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        stamina, max_stamina, points = row['stamina'], 100, row['points']
+        stamina, max_stamina, zen = row['stamina'], 100, row['zen']
         
         potions = inv.get("potions", {})
         if potions.get(potion_id, 0) <= 0:
@@ -160,7 +160,7 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
             update_fields["def"] = 0
             update_fields["agi"] = 1
             update_fields["luck"] = 0
-            update_fields["points"] = points + recovered
+            update_fields["zen"] = zen + recovered
             alert_text = f"🌀 Характеристики скинуто! Повернуто {recovered} очок."
 
         potions[potion_id] -= 1
