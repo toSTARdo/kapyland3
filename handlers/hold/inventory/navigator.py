@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES
+from handlers.harbor.village.forge import UPGRADE_CONFIG
 from config import load_game_data
 from utils.helpers import calculate_lvl_data, ensure_dict
 
@@ -109,17 +110,26 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 count = info["count"]
                 k = info["key"]
                 
-                name = item['name']
+                raw_name = item.get('name', '???')
+                clean_name = raw_name
+                
+                for prefix in UPGRADE_CONFIG["prefixes"].values():
+                    if raw_name.startswith(prefix):
+                        clean_name = raw_name.replace(prefix, "").strip()
+                        break
+
                 rarity = item.get('rarity', 'Common')
                 lvl = item.get('lvl', 0)
+                stars = "⭐" * lvl if lvl > 0 else "" 
                 i_type = item.get('type', 'artifact')
                 
                 t_icon = TYPE_ICONS.get(i_type, "🧿")
                 r_icon = RARITY_META.get(rarity, {}).get('emoji', '⚪')
-                stars = "⭐" * lvl if lvl > 0 else ""
+                
+                stars = f" +{lvl}" if lvl > 0 else ""
                 
                 is_eq = any(
-                    isinstance(v, dict) and v.get("name") == name and v.get("lvl") == lvl 
+                    isinstance(v, dict) and v.get("name") == raw_name and v.get("lvl") == lvl 
                     for v in curr_equip.values()
                 )
                 
@@ -127,7 +137,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 
                 builder.row(
                     types.InlineKeyboardButton(
-                        text=f"{r_icon}{t_icon} {name} {stars} x{count}{status}", 
+                        text=f"{r_icon}{t_icon} {clean_name}{stars} x{count}{status}", 
                         callback_data=f"inv_page:items:{current_page}:{k}"
                     )
                 )
@@ -136,15 +146,15 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                     price = SELL_PRICES.get(rarity, 1) + lvl
                     item_desc = item.get("desc", "Опис відсутній.")
                     content = (
-                        f"{r_icon} <b>{name} {stars}</b>\n"
+                        f"{r_icon} <b>{raw_name} {stars}</b>\n"
                         f"━━━━━━━━━━━━━━━\n"
                         f"<i>{item_desc}</i>\n\n"
                         f"💰 Ціна: <b>{price} 🍉</b>"
                     )
                     
                     builder.row(
-                        types.InlineKeyboardButton(text="⚔️ Одягнути", callback_data=f"equip:{i_type}:{name}:{lvl}"),
-                        types.InlineKeyboardButton(text=f"🔥 Продати за {price} 🍉", callback_data=f"sell_item:{rarity}:{name}:{lvl}"),
+                        types.InlineKeyboardButton(text="⚔️ Одягнути", callback_data=f"equip:{i_type}:{raw_name}:{lvl}"),
+                        types.InlineKeyboardButton(text=f"🔥 Продати за {price} 🍉", callback_data=f"sell_item:{rarity}:{raw_name}:{lvl}"),
                         types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{current_page}")
                     )
 
