@@ -125,9 +125,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 
                 t_icon = TYPE_ICONS.get(i_type, "🧿")
                 r_icon = RARITY_META.get(rarity, {}).get('emoji', '⚪')
-                
-                stars = f" +{lvl}" if lvl > 0 else ""
-                
+                                
                 is_eq = any(
                     isinstance(v, dict) and v.get("name") == raw_name and v.get("lvl") == lvl 
                     for v in curr_equip.values()
@@ -137,7 +135,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 
                 builder.row(
                     types.InlineKeyboardButton(
-                        text=f"{r_icon}{t_icon} {clean_name}{stars} x{count}{status}", 
+                        text=f"{r_icon}{t_icon} {clean_name} x{count}{status}", 
                         callback_data=f"inv_page:items:{current_page}:{k}"
                     )
                 )
