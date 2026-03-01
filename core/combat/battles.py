@@ -92,7 +92,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             "boss_pelican": {
                 "kapy_name": "Пелікан Петро", "color": "🦢",
                 "stats": {"attack": 15, "defense": 8, "agility": 5, "luck": 5},
-                "equipped_weapon": "", "hp_bonus": 7, "is_boss": True
+                "equipped_weapon": "Дзьоб", "hp_bonus": 7, "is_boss": True
             }
         }
 
@@ -100,22 +100,41 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             return NPC_REGISTRY[b_type]
 
         async with db_pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT name, weight, inventory FROM capybaras WHERE owner_id = $1", target_id)
+            row = await conn.fetchrow("""
+                SELECT name, weight, inventory, atk, def, agi, luck 
+                FROM capybaras 
+                WHERE owner_id = $1
+            """, target_id)
+            
             if not row: return None
             
             inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
-            equip = inv.get("equipment", {})
-            stats = inv.get("stats", {"attack": 0, "defense": 0, "agility": 0, "luck": 0})
+            raw_equip = inv.get("equipment", [])
             
-            eq_weapon = equip.get("weapon", "Лапки")
-            if isinstance(eq_weapon, dict): eq_weapon = eq_weapon.get("name", "Лапки")
+            eq_weapon_name = "Лапки"
+            eq_armor_name = "Хутро"
+
+            if isinstance(raw_equip, list):
+                for item in raw_equip:
+                    if not isinstance(item, dict): continue
+                    if item.get("type") == "weapon" and eq_weapon_name == "Лапки":
+                        eq_weapon_name = item.get("name", "Лапки")
+                    elif item.get("type") == "armor" and eq_armor_name == "Хутро":
+                        eq_armor_name = item.get("name", "Хутро")
+            
+            stats = {
+                "attack": row['atk'] if row['atk'] is not None else 1,
+                "defense": row['def'] if row['def'] is not None else 0,
+                "agility": row['agi'] if row['agi'] is not None else 1,
+                "luck": row['luck'] if row['luck'] is not None else 0
+            }
             
             return {
                 "kapy_name": row['name'],
                 "weight": row['weight'],
                 "stats": stats,
-                "equipped_weapon": eq_weapon,
-                "equipped_armor": equip.get("armor", ""),
+                "equipped_weapon": eq_weapon_name,
+                "equipped_armor": eq_armor_name,
                 "inventory": inv,
                 "color": "🔴"
             }
