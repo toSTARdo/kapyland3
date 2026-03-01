@@ -64,12 +64,11 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
             await message.answer_photo(photo=IMAGES_URLS["tavern"], caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
             
 @router.callback_query(F.data.startswith("user_menu:"))
-async def user_menu_handler(callback: types.CallbackQuery):
+async def user_menu_handler(callback: types.CallbackQuery, db_pool):
     target_id = int(callback.data.split(":")[1])
     uid = callback.from_user.id
     
-    conn = await get_db_connection()
-    try:
+    async with db_pool.acquire() as conn:
         players = await conn.fetch("""
             SELECT u.tg_id, u.username, c.lvl 
             FROM users u
@@ -77,41 +76,44 @@ async def user_menu_handler(callback: types.CallbackQuery):
             WHERE u.tg_id != $1 
             ORDER BY c.lvl DESC LIMIT 8
         """, uid)
-    finally:
-        await conn.close()
 
     builder = InlineKeyboardBuilder()
+    layout = []
+
+    if not players:
+        return await callback.answer("Гравців не знайдено 🕸", show_alert=True)
 
     for p in players:
-        builder.button(
-            text=f"🐾 {p['username']} (Lvl {p['lvl']})", 
-            callback_data=f"user_menu:{p['tg_id']}"
+        display_name = p['username'] or f"id:{p['tg_id']}"
+        name = display_name[:12] + "..." if len(display_name) > 15 else display_name
+        
+        builder.row(types.InlineKeyboardButton(
+            text=f"🐾 {name} (Lvl {p['lvl']})", 
+            callback_data=f"user_menu:{p['tg_id']}")
         )
+        layout.append(1)
         
         if p['tg_id'] == target_id:
-            builder.button(text="⚔️", callback_data=f"challenge_{target_id}")
-            builder.button(text="💞", callback_data=f"date_request:{target_id}")
-            builder.button(text="🎁", callback_data=f"gift_to:{target_id}")
-            builder.button(text="🧤", callback_data=f"steal_from:{target_id}")
-            builder.button(text="🪵", callback_data=f"ram:{target_id}")
-            builder.button(text="🔍", callback_data=f"inspect:{target_id}")
-
-    builder.button(text="🤖 Побитися з ботом", callback_data="fight_bot")
-    builder.button(text="🏆 Таблиця лідерів", callback_data="leaderboard")
-    builder.button(text="⬅️ Назад до Порту", callback_data="open_port_main")
-
-    layout = []
-    for p in players:
-        layout.append(1)
-        if p['tg_id'] == target_id:
+            builder.row(
+                types.InlineKeyboardButton(text="⚔️", callback_data=f"challenge:{target_id}"),
+                types.InlineKeyboardButton(text="💞", callback_data=f"date_request:{target_id}"),
+                types.InlineKeyboardButton(text="🎁", callback_data=f"gift_to:{target_id}"),
+                types.InlineKeyboardButton(text="🧤", callback_data=f"steal_from:{target_id}"),
+                types.InlineKeyboardButton(text="🪵", callback_data=f"ram:{target_id}"),
+                types.InlineKeyboardButton(text="🔍", callback_data=f"inspect:{target_id}")
+            )
             layout.append(6)
-    layout.append(1)
-    layout.append(1)
-    
+
+    builder.row(types.InlineKeyboardButton(text="🤖 Бій з ботом", callback_data="fight_bot"))
+    builder.row(types.InlineKeyboardButton(text="🏆 Топ", callback_data="leaderboard"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
+    layout.extend([1, 1, 1])
+
     builder.adjust(*layout)
 
-    await callback.message.edit_caption(
-                reply_markup=builder.as_markup(),
-                parse_mode="HTML"
-            )
+    try:
+        await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+    except Exception as e:
+        logger.error(f"Error updating user menu: {e}")
+        
     await callback.answer()

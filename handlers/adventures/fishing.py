@@ -48,7 +48,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             None
         )
 
-        if rod_item or tackle_item:
+        if not rod_item:
             return await callback.answer("❌ Спочатку екіпіруй вудочку або снасті! 🎣", show_alert=True)
             
         rod_lvl = rod_item.get("lvl", 0)
