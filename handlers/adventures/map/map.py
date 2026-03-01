@@ -1,7 +1,7 @@
 import json
 import asyncio
 import random
-import datetime
+import datetime, timedelta
 from aiogram import types, F, Router
 from .map_assets import *
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
@@ -15,7 +15,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT stamina, navigation, state, inventory 
+            SELECT stamina, navigation, state, inventory, cooldowns 
             FROM capybaras WHERE owner_id = $1
         """, uid)
         
@@ -24,8 +24,41 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         nav = json.loads(row['navigation'])
         state = json.loads(row['state'])
         inv = json.loads(row['inventory'])
+        cooldowns = json.loads(row['cooldowns']) if row['cooldowns'] else {}
         stamina = row['stamina']
-        
+
+        last_refresh = cooldowns.get("flowers_refresh")
+        can_refresh = not last_refresh or datetime.fromisoformat(last_refresh) < datetime.now() - timedelta(days=1)
+
+        if can_refresh:
+            new_flowers = {}
+            for _ in range(120):
+                if len(new_flowers) >= 100: break
+                rx, ry = random.randint(0, MAP_WIDTH-1), random.randint(0, MAP_HEIGHT-1)
+                tile = FULL_MAP[ry][rx]
+                
+                if tile not in WATER_TILES:
+                    is_forest = tile in FOREST_TILES
+                    choices = ["✽", "𓋼"]
+                    weights = [20, 80] if is_forest else [80, 20]
+                    new_flowers[f"{rx},{ry}"] = random.choices(choices, weights=weights, k=1)[0]
+            
+            new_trees = {}
+            for ry in range(MAP_HEIGHT):
+                for rx in range(MAP_WIDTH):
+                    if FULL_MAP[ry][rx] in FOREST_TILES:
+                        new_trees[f"{rx},{ry}"] = FULL_MAP[ry][rx]
+            
+            nav["flowers"] = new_flowers
+            nav["trees"] = new_trees
+            cooldowns["flowers_refresh"] = datetime.now().isoformat()
+
+            await conn.execute("""
+                UPDATE capybaras 
+                SET navigation = $1, cooldowns = $2 
+                WHERE owner_id = $3
+            """, json.dumps(nav, ensure_ascii=False), json.dumps(cooldowns), uid)
+
         px, py = nav.get("x", 75), nav.get("y", 75)
         mode = state.get("mode", "capy")
         discovered = nav.get("discovered", [f"{px},{py}"])
@@ -38,13 +71,15 @@ async def render_map(callback: types.CallbackQuery, db_pool):
             totems=nav.get("totems", [])
         )
         
-        biome = get_biome_name(py)
+        biome = get_biome_name(py, MAP_HEIGHT)
         text = (f"📍 <b>Карта ({px}, {py})</b> | {get_stamina_icons(stamina)}\n"
                 f"🧭 Біом: {biome}\n🔋 Енергія: {stamina}/100\n\n{map_display}")
         
+        is_on_tree = f"{px},{py}" in nav.get("trees", {})
+        
         await callback.message.edit_text(
             text, 
-            reply_markup=get_map_keyboard(px, py, mode, f"{px},{py}" in nav.get("trees", {}), inv, nav),
+            reply_markup=get_map_keyboard(px, py, mode, is_on_tree, inv, nav),
             parse_mode="HTML"
         )
 
