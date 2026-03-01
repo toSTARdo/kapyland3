@@ -243,7 +243,8 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, hp, atk, def, state, stats_track, lvl FROM capybaras WHERE owner_id = $1", user_id)        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        row = await conn.fetchrow("SELECT inventory, hp, atk, def, state, stats_track, lvl FROM capybaras WHERE owner_id = $1", user_id) 
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
         track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else row['stats_track']
         
