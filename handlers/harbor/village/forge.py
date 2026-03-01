@@ -153,7 +153,7 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
         rarity = item_data.get("rarity", "common")
         
         if current_lvl >= 5:
-            return await callback.answer("✨ Предмет досяг піку могутності!", show_alert=True)
+            return await callback.answer("✨ Предмет досяг ліміту могутності!", show_alert=True)
 
         needed_kiwi = get_upgrade_cost(rarity, current_lvl)
         
@@ -167,7 +167,7 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
         
         item_data.update({
             "lvl": new_lvl,
-            "name": f"{prefix} {base_name}",
+            "name": f"{base_name}",
             "base_name": base_name
         })
         
