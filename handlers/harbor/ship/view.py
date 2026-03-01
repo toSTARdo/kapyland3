@@ -36,7 +36,6 @@ async def cmd_ship_menu(callback: types.CallbackQuery, state: FSMContext, db_poo
         builder.row(types.InlineKeyboardButton(text="🔍 Пошук команди", callback_data="leaderboard:mass:0"))
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад в порт", callback_data="open_port"))
     else:
-        # Безпечний парсинг JSON
         def parse_json(data):
             if not data: return {}
             if isinstance(data, dict): return data
@@ -80,20 +79,16 @@ async def cmd_ship_menu(callback: types.CallbackQuery, state: FSMContext, db_poo
             
         builder.row(types.InlineKeyboardButton(text="⬅️ Назад в порт", callback_data="open_port"))
 
+    photo = IMAGES_URLS["harbor"]
+
     try:
         await message.edit_media(
-            media=InputMediaPhoto(
-                media=IMAGES_URLS.get("village", "https://example.com/default.jpg"), 
-                caption=text,
-                parse_mode="HTML"
-            ),
+            media=InputMediaPhoto(media=photo, caption=text, parse_mode="HTML"),
             reply_markup=builder.as_markup()
         )
     except Exception:
-        await message.answer_photo(
-            photo=IMAGES_URLS.get("village", "https://example.com/default.jpg"),
-            caption=text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML"
-        )
+        try: await message.delete()
+        except: pass
+        await message.answer_photo(photo=photo, caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    
     await callback.answer()
