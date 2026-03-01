@@ -1,6 +1,8 @@
 import logging
 from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InputMediaPhoto
+from config import IMAGE_URLS
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
             
             builder.row(types.InlineKeyboardButton(
                 text=f"🐾 {name} (Lvl {p['lvl']})", 
-                callback_data=f"inspect_user:{p['tg_id']}")
+                callback_data=f"user_menu:{p['tg_id']}")
             )
     
     builder.row(
@@ -47,14 +49,20 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
     )
 
     if is_callback:
-        if event.message.caption:
-            await event.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            new_media = InputMediaPhoto(
+                media=IMAGE_URLS["tavern"],
+                caption=text,
+                parse_mode="HTML"
+            )
+            
+            try:
+                await event.message.edit_media(media=new_media, reply_markup=builder.as_markup())
+            except Exception:
+                await event.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            await event.answer()
         else:
-            await event.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
-        await event.answer()
-    else:
-        await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
-
+            await message.answer_photo(photo=tavern_image, caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            
 @router.callback_query(F.data.startswith("user_menu:"))
 async def user_menu_handler(callback: types.CallbackQuery):
     target_id = int(callback.data.split(":")[1])

@@ -146,7 +146,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         types.InlineKeyboardButton(text="⚔️ Одягнути", callback_data=f"equip:{i_type}:{name}:{lvl}"),
                         types.InlineKeyboardButton(text=f"🔥 Продати за {price} 🍉", callback_data=f"sell_item:{rarity}:{name}:{lvl}")
                         types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{current_page}")
-                    ))
+                    )
 
             if len(unique_list) > ITEMS_PER_PAGE:
                 nav = []

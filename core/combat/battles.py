@@ -152,12 +152,8 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
         p2.max_hp += p2_data["hp_bonus"]
         p2.hp = p2.max_hp
 
-    start_info = f"🏟 <b>БІЙ: {p1.name} VS {p2.name}</b>"
-    msg1 = await callback.message.answer(start_info, parse_mode="HTML")
-    msg2 = None
-    if opponent_id and not bot_type:
-        try: msg2 = await bot.send_message(opponent_id, start_info, parse_mode="HTML")
-        except: pass
+    main_text = f"🏟 <b>ПІДГОТОВКА ДО БОЮ...</b>\n\n{p1.name} VS {p2.name}"
+    main_msg = await callback.message.answer(main_text, parse_mode="HTML")
 
     await asyncio.sleep(1.5)
 
@@ -171,10 +167,8 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
         attacker, defender = random.sample([p1, p2], 2)
         init_msg = f"⚡ Спритність рівна! Але першим вдається ударити {html.bold(attacker.name)}."
 
-    await msg1.answer(init_msg, parse_mode="HTML")
-    if msg2:
-        try: await msg2.answer(init_msg, parse_mode="HTML")
-        except: pass
+    await main_msg.edit_text(f"🏟 <b>БІЙ: {p1.name} VS {p2.name}</b>\n\n{init_msg}", parse_mode="HTML")
+    await asyncio.sleep(1.5)
 
     round_num = 1
     while p1.hp > 0 and p2.hp > 0 and round_num <= 30:
@@ -208,10 +202,21 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
     else: 
         res = "🤝 <b>НІЧИЯ! Капі обезсилені впали на травичку...</b>"
 
-    await msg1.answer(res, parse_mode="HTML")
-    if msg2:
-        try: await msg2.answer(res, parse_mode="HTML")
-        except: pass
+    is_parrot = (bot_type == "parrotbot")
+    reward_info = ""
+    if winner:
+        if is_parrot:
+            reward_info = "\n\n<i>Це був тренувальний бій. Досвід не нараховано.</i>"
+        else:
+            reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 {winner.name}: +3 кг, +3 EXP\n🥈 {loser.name}: -3 кг"
+
+    final_screen = (
+        f"🏁 <b>БІЙ ЗАВЕРШЕНО</b>\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"{res}{reward_info}"
+    )
+    
+    await main_msg.edit_text(final_screen, parse_mode="HTML")
 
     if winner and loser:
         is_parrot_fight = (bot_type == "parrotbot")

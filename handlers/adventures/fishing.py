@@ -4,7 +4,7 @@ import random
 import datetime
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import BOSSES_COORDS
+from config import BOSSES_COORDS, IMAGE_URLS
 
 router = Router()
 
@@ -148,12 +148,15 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
     builder.button(text="🔙 Назад", callback_data="open_adventure_main")
     builder.adjust(1)
 
-    await callback.message.edit_text(
-        f"🎣 <b>Риболовля {stars}</b>\n━━━━━━━━━━━━━━━\n"
-        f"Чілимо... Раптом поплавок смикнувся!\n"
-        f"Твій улов: <b>{item['name']}</b> ({fish_weight} кг)\n\n"
-        f"{inventory_note}\n"
-        f"🔋 Енергія: {stamina}/100",
-        reply_markup=builder.as_markup(),
+    new_media = InputMediaPhoto(
+        media=IMAGE_URLS["fishing"],
+        caption=(
+            f"🎣 <b>Риболовля {stars}</b>\n━━━━━━━━━━━━━━━\n"
+            f"Твій улов: <b>{item['name']}</b> ({fish_weight} кг)\n\n"
+            f"{inventory_note}\n"
+            f"🔋 Енергія: {stamina}/100"
+        ),
         parse_mode="HTML"
     )
+
+    await callback.message.edit_media(media=new_media, reply_markup=builder.as_markup())
