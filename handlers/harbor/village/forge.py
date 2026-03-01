@@ -48,7 +48,7 @@ async def process_open_forge(callback: types.CallbackQuery, db_pool):
         builder.button(text="🔨 Покращити спорядження (5 🥝)", callback_data="upgrade_menu")
         builder.button(text="📦 Звичайний крафт", callback_data="common_craft_list")
         builder.button(text="⚒️ Крафт нових речей (Lvl 30)", callback_data="forge_craft_list")
-        builder.button(text="⬅️ Назад", callback_data="open_port")
+        builder.button(text="⬅️ Назад", callback_data="open_village")
         builder.adjust(1)
 
         text = (

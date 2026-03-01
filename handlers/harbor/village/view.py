@@ -24,7 +24,7 @@ async def open_village(event: types.Message | types.CallbackQuery):
     builder.row(types.InlineKeyboardButton(text="⚗️ Лавка Омо", callback_data="open_alchemy"))
     builder.row(types.InlineKeyboardButton(text="🔨 Кузня Ківі", callback_data="open_forge"))
     builder.row(types.InlineKeyboardButton(text="🎪 Базар", callback_data="open_bazaar"))
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
 
     if is_callback:
         try:

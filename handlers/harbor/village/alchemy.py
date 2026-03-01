@@ -41,7 +41,7 @@ async def process_open_alchemy(callback: types.CallbackQuery, db_pool):
             )
 
         builder.row(types.InlineKeyboardButton(text="📜 Всі рецепти", callback_data="all_recipes"))
-        builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_port"))
+        builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_village"))
         builder.adjust(1)
 
         text = (

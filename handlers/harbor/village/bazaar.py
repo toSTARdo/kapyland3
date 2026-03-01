@@ -73,7 +73,7 @@ async def open_bazaar(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="🍱 Купити", callback_data="bazaar_shop"),
                 types.InlineKeyboardButton(text="💰 Продати", callback_data="bazaar_sell_list"))
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_port"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_village"))
     
     await callback.message.edit_media(
         media=InputMediaPhoto(media=IMAGES_URLS["bazaar"], 

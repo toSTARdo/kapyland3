@@ -70,7 +70,7 @@ async def cmd_ship_menu(event: types.Message | types.CallbackQuery, state: FSMCo
         else:
             builder.row(types.InlineKeyboardButton(text="🏃 Покинути борт", callback_data="ship_leave_confirm"))
             
-        builder.row(types.InlineKeyboardButton(text="⬅️ Назад в порт", callback_data="open_port"))
+        builder.row(types.InlineKeyboardButton(text="⬅️ Назад в порт", callback_data="open_port_main"))
 
     if is_callback:
         try:

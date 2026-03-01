@@ -90,6 +90,7 @@ async def user_menu_handler(callback: types.CallbackQuery):
 
     builder.button(text="🤖 Побитися з ботом", callback_data="fight_bot")
     builder.button(text="🏆 Таблиця лідерів", callback_data="leaderboard")
+    builder.button(text="⬅️ Назад до Порту", callback_data="open_port_main")
 
     layout = []
     for p in players:
