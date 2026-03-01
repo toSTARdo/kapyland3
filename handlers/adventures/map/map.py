@@ -28,7 +28,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         stamina = row['stamina']
 
         last_refresh = cooldowns.get("flowers_refresh")
-        can_refresh = not last_refresh or dt.fromisoformat(last_refresh) < dt.datetime.now() - dt.timedelta(days=1)
+        can_refresh = not last_refresh or dt.datetime.fromisoformat(last_refresh) < dt.datetime.now() - dt.timedelta(days=1)
 
         if can_refresh:
             new_flowers = {}
