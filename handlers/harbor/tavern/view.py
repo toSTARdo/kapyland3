@@ -95,7 +95,7 @@ async def user_menu_handler(callback: types.CallbackQuery, db_pool):
         
         if p['tg_id'] == target_id:
             builder.row(
-                types.InlineKeyboardButton(text="⚔️", callback_data=f"challenge:{target_id}"),
+                types.InlineKeyboardButton(text="⚔️", callback_data=f"challenge_{target_id}"),
                 types.InlineKeyboardButton(text="💞", callback_data=f"date_request:{target_id}"),
                 types.InlineKeyboardButton(text="🎁", callback_data=f"gift_to:{target_id}"),
                 types.InlineKeyboardButton(text="🧤", callback_data=f"steal_from:{target_id}"),
