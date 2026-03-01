@@ -54,7 +54,7 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
                 builder = InlineKeyboardBuilder()
                 if chests > 0 and (keys > 0 or loot["lockpicker"] > 0):
                     builder.button(text="🔄 Спробувати ще раз", callback_data="open_chest")
-                builder.button(text="🔙 Назад", callback_data="open_adventure")
+                builder.button(text="🔙 Назад", callback_data="open_adventure_main")
                 builder.adjust(1)
                 return await callback.message.edit_text(
                     "🔧 <b>ХРУСЬ!</b>\n━━━━━━━━━━━━━━━\nВідмичка зламалася. Замок виявився міцнішим.",

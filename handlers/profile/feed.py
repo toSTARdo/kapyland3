@@ -4,6 +4,7 @@ from aiogram.filters import Command
 #from database.queries.capybaras import try_feed_capybara
 from utils.helpers import format_time
 from datetime import datetime, timedelta
+from utils.helpers import grant_exp_and_lvl
 
 router = Router()
 
@@ -32,6 +33,8 @@ async def cmd_feed(message: types.Message, db_pool):
     
     result = await try_feed_capybara(db_pool, uid, gain)
     
+    grant_exp_and_lvl(uid, exp_gain=int(gain), weight_gain=gain, db_pool=db_pool)
+
     if not result:
         async with db_pool.acquire() as conn:
             last_feed = await conn.fetchval("SELECT last_feed FROM capybaras WHERE owner_id = $1", uid)

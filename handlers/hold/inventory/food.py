@@ -84,7 +84,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
             json.dumps(inv, ensure_ascii=False), user_id
         )
 
-    res = await grant_exp_and_lvl(user_id, exp_gain=exp_gain, weight_gain=total_bonus, bot=callback.bot)
+    res = await grant_exp_and_lvl(user_id, exp_gain=exp_gain, weight_gain=total_bonus, bot=callback.bot, db_pool=db_pool)
 
     if not res:
         return await callback.answer("🤔 Щось пішло не так з травленням...")

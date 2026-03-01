@@ -17,7 +17,7 @@ def get_settings_kb() -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text="📝 Змінити ім'я", callback_data="change_name_start"))
     builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
     
-    builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
     
     return builder.as_markup()
 

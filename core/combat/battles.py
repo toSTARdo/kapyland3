@@ -218,7 +218,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
         
         async with db_pool.acquire() as conn:
             if isinstance(winner_id, int) and not is_parrot_fight: 
-                await grant_exp_and_lvl(winner_id, exp_gain=3, weight_gain=3.0, bot=bot)
+                await grant_exp_and_lvl(winner_id, exp_gain=3, weight_gain=3.0, bot=bot, db_pool=db_pool)
                 
                 await conn.execute("""
                     UPDATE capybaras 
@@ -230,7 +230,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
             if isinstance(loser_id, int):
                 weight_loss = -3.0 if not is_parrot_fight else 0.0
-                await grant_exp_and_lvl(loser_id, exp_gain=0, weight_gain=weight_loss, bot=bot)
+                await grant_exp_and_lvl(loser_id, exp_gain=0, weight_gain=weight_loss, bot=bot, db_pool=db_pool)
                 
                 await conn.execute("""
                     UPDATE capybaras 
