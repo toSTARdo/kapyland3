@@ -53,16 +53,16 @@ class CapyGuardMiddleware(BaseMiddleware):
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT state, stats_track, inventory, stamina, achievements, unlocked_titles,
-                       wins, total_fights, lvl, weight, atk, def as def_, agi, luck, zen, hunger
+                       wins, total_fights, lvl, weight, atk, def, agi, luck, zen, hunger
                 FROM capybaras WHERE owner_id = $1
             """, user_id)
             
             if not row:
                 return await handler(event, data)
 
-            state = json.loads(row['state']) if isinstance(row['state'], str) else (row['state'] or {})
-            stats_track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else (row['stats_track'] or {})
-            inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
+            state = row['state'] if isinstance(row['state'], dict) else (json.loads(row['state']) if row['state'] else {})
+            stats_track = row['stats_track'] if isinstance(row['stats_track'], dict) else (json.loads(row['stats_track']) if row['stats_track'] else {})
+            inventory = row['inventory'] if isinstance(row['inventory'], dict) else (json.loads(row['inventory']) if row['inventory'] else {})
 
             meta = {
                 "stamina": row["stamina"],
@@ -70,8 +70,8 @@ class CapyGuardMiddleware(BaseMiddleware):
                 "status": state.get("status", "active"),
                 "wake_up": state.get("wake_up"),
                 "stats_track": stats_track,
-                "achievements": row["achievements"] if row["achievements"] is not None else [],
-                "unlocked_titles": row["unlocked_titles"] if row["unlocked_titles"] is not None else ["Новачок"],
+                "achievements": row["achievements"] or [],
+                "unlocked_titles": row["unlocked_titles"] or ["Новачок"],
                 "inventory": inventory,
                 "wins": row["wins"],
                 "total_fights": row["total_fights"],
@@ -102,7 +102,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                 if last_regen.tzinfo is None:
                     last_regen = last_regen.replace(tzinfo=datetime.timezone.utc)
                 
-                regen_points = int((now - last_regen).total_seconds() // 60) // 14
+                regen_points = (int((now - last_regen).total_seconds() // 60) // 14)
                 if regen_points > 0:
                     meta["stamina"] = min(MAX_STAMINA, stamina + regen_points)
                     meta["last_regen"] = (last_regen + datetime.timedelta(minutes=regen_points * 14)).isoformat()
@@ -132,8 +132,8 @@ class CapyGuardMiddleware(BaseMiddleware):
             if needs_update:
                 state["last_regen"] = meta["last_regen"]
                 state["status"] = meta["status"]
-                state["last_clean_check_date"] = meta["last_clean_check_date"]
-                state["clean_days"] = meta["clean_days"]
+                state["last_clean_check_date"] = meta.get("last_clean_check_date")
+                state["clean_days"] = meta.get("clean_days")
                 
                 await conn.execute("""
                     UPDATE capybaras 
@@ -146,7 +146,6 @@ class CapyGuardMiddleware(BaseMiddleware):
                 meta["stamina"], meta["achievements"], meta["unlocked_titles"],
                 meta["wins"], meta["total_fights"], user_id)
 
-        # Йдемо далі обробляти хендлер, вже ПІСЛЯ того як відпустили з'єднання назад у пул
         if meta.get("status") != "sleep":
             return await handler(event, data)
 
@@ -173,7 +172,6 @@ class CapyGuardMiddleware(BaseMiddleware):
     def update_stats_track(self, meta: dict, event: types.Update):
         stats = meta.setdefault("stats_track", {})
         now = datetime.datetime.now(datetime.timezone.utc)
-        
         stats["total_clicks"] = stats.get("total_clicks", 0) + 1
 
         today_date = now.date().isoformat()
@@ -183,21 +181,15 @@ class CapyGuardMiddleware(BaseMiddleware):
             if not meta.get("is_muted", False):
                 meta["clean_days"] = meta.get("clean_days", 0) + 1
                 meta["last_clean_check_date"] = today_date
-            else:
-                pass
 
         if event.callback_query:
             call_data = event.callback_query.data
-            
             if call_data.startswith("brew:") or call_data.startswith("confirm_brew:"):
                 stats["potions_brewed"] = stats.get("potions_brewed", 0) + 1
-            
             if "fish" in call_data:
                 stats["fish_caught"] = stats.get("fish_caught", 0) + 1
-                
             if call_data.startswith("use_potion:"):
                 stats["potions_used"] = stats.get("potions_used", 0) + 1
-
             if "win" in call_data:
                 meta["wins"] = meta.get("wins", 0) + 1
                 meta["total_fights"] = meta.get("total_fights", 0) + 1
@@ -211,22 +203,13 @@ class CapyGuardMiddleware(BaseMiddleware):
             if "🍎" in text or "🍉" in text:
                 stats["fed_total"] = stats.get("fed_total", 0) + 1
 
-        meta["stamina"] = meta.get("stamina", 100)
-        meta["level"] = meta.get("level", 1)
         meta["speed"] = meta.get("agi", 0)
-        meta["zen"] = meta.get("zen", 0)
-        meta["hunger"] = meta.get("hunger", 100)
-
         s_atk = meta.get("atk", 0)
-        s_def = meta.get("def_", 0)
+        s_def = meta.get("def", 0)
         s_agi = meta.get("agi", 0)
         s_luk = meta.get("luck", 0)
-        
         meta["avg_stats"] = round((s_atk + s_def + s_agi + s_luk) / 4, 2)
 
-        meta.setdefault("lifesteal_done", 0)
-        meta.setdefault("stamina_regen", 0)
-    
     async def check_achievements(self, meta: dict, user_id: int, payload: types.Update):
         acquired = meta.setdefault("achievements", [])
         unlocked_titles = meta.setdefault("unlocked_titles", ["Новачок"])
@@ -260,5 +243,4 @@ class CapyGuardMiddleware(BaseMiddleware):
                         await bot.send_message(user_id, alert, parse_mode="HTML")
                     except Exception:
                         pass
-        
         return needs_save
