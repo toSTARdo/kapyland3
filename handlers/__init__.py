@@ -23,6 +23,7 @@ from .harbor.settings.emotes import router as emotes_router
 from .harbor.village.alchemy import router as alchemy_router
 from .harbor.village.bazaar import router as bazaar_router
 from .harbor.village.forge import router as forge_router
+from core.combat.battles import router as battles_router 
 
 def get_handlers_router() -> Router:
     router = Router()
@@ -50,4 +51,5 @@ def get_handlers_router() -> Router:
     router.include_router(alchemy_router)
     router.include_router(bazaar_router)
     router.include_router(forge_router)
+    router.include_router(battles_router)
     return router

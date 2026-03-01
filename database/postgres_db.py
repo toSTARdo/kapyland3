@@ -42,7 +42,6 @@ async def init_pg(pool):
             CREATE TABLE IF NOT EXISTS ships (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
-                captain_id BIGINT REFERENCES users(tg_id),
                 lvl INTEGER DEFAULT 1,
                 exp INTEGER DEFAULT 0,
                 gold BIGINT DEFAULT 0,
@@ -59,6 +58,7 @@ async def init_pg(pool):
             CREATE TABLE IF NOT EXISTS capybaras (
                 id SERIAL PRIMARY KEY,
                 owner_id BIGINT UNIQUE REFERENCES users(tg_id) ON DELETE CASCADE,
+                ship_id INTEGER REFERENCES ships(id) ON DELETE SET NULL,
                 name TEXT NOT NULL DEFAULT 'Безіменна булочка',
                 lvl INTEGER DEFAULT 1,
                 exp INTEGER DEFAULT 0,
@@ -79,6 +79,7 @@ async def init_pg(pool):
                 inventory JSONB DEFAULT '{"food": {}, "materials": {}, "loot": {}, "potions": {}, "maps": {}}'::jsonb,
                 equipment JSONB DEFAULT '{"weapon": {"name": "Лапки", "lvl": 0}, "armor": "Хутро", "artifact": null}'::jsonb,
                 achievements TEXT[] DEFAULT '{}',
+                victory_media JSONB DEFAULT '[]'::jsonb,
                 unlocked_titles TEXT[] DEFAULT '{ "Новачок" }',
                 stats_track JSONB DEFAULT '{}'::jsonb,
                 fishing_stats JSONB DEFAULT '{"max_weight": 0, "total_weight": 0}'::jsonb,
