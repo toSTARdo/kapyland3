@@ -161,7 +161,8 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
         await upgrade_list(callback, db_pool)
 
 @router.callback_query(F.data == "common_craft_list")
-async def common_craft_list(callback: types.CallbackQuery):
+async def common_craft_list(callback: types.CallbackQuery, db_pool):
+    user_id = callback.from_user.id
     builder = InlineKeyboardBuilder()
     async with db_pool.acquire() as conn:
         lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
