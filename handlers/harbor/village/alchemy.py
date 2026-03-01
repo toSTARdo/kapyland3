@@ -125,12 +125,12 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     recipe = RECIPES.get(potion_id)
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, stamina, max_stamina, stats, points FROM capybaras WHERE owner_id = $1", user_id)
+        row = await conn.fetchrow("SELECT inventory, stamina, stats, points FROM capybaras WHERE owner_id = $1", user_id)
         if not row: return
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
-        stamina, max_stamina, points = row['stamina'], row['max_stamina'], row['points']
+        stamina, max_stamina, points = row['stamina'], 100, row['points']
         
         potions = inv.get("potions", {})
         if potions.get(potion_id, 0) <= 0:
