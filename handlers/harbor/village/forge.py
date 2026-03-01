@@ -170,18 +170,22 @@ async def show_common_recipe(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
-        inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
+        inv = ensure_dict(inv_raw)
         recipe = FORGE_RECIPES.get("common_craft", {}).get(recipe_id)
         
         if not recipe: return await callback.answer("❌ Рецепт не знайдено")
 
-        text = f"📦 <b>{recipe['name']}</b>\n{recipe['desc']}\n━━━━━━━━━━━━━━━\n\n<b>Необхідно:</b>\n"
+        text = f" {recipe.get('emoji', '📦')} <b>{recipe['name']}</b>\n{recipe['desc']}\n━━━━━━━━━━━━━━━\n\n<b>Необхідно:</b>\n"
         can_craft = True
-        equip = inv.get("equipment", [])
-        has_hook = any("Гак" in (i.get("name", "") if isinstance(i, dict) else str(i)) for i in equip)
         
-        text += f"{'✅' if has_hook else '❌'} Гак (в руках)\n"
-        if not has_hook: can_craft = False
+        user_equip_list = inv.get("equipment", [])
+        req_equip = recipe.get("ingredients", {}).get("equipment", [])
+        
+        for item_name in req_equip:
+            found = any(item_name in (i.get("name", "") if isinstance(i, dict) else str(i)) for i in user_equip_list)
+            status = "✅" if found else "❌"
+            text += f"{status} {item_name}\n"
+            if not found: can_craft = False
 
         for mat, count in recipe.get("ingredients", {}).get("materials", {}).items():
             current = inv.get("materials", {}).get(mat, 0)
@@ -200,24 +204,29 @@ async def show_common_recipe(callback: types.CallbackQuery, db_pool):
 async def process_common_craft(callback: types.CallbackQuery, db_pool):
     recipe_id = callback.data.split(":")[1]
     user_id = callback.from_user.id
+    
     async with db_pool.acquire() as conn:
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
-        inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
+        inv = ensure_dict(inv_raw)
         recipe = FORGE_RECIPES.get("common_craft", {}).get(recipe_id)
 
-        equip = inv.get("equipment", [])
-        for i, item in enumerate(equip):
-            if "Гак" in (item.get("name", "") if isinstance(item, dict) else str(item)):
-                equip.pop(i)
-                break
+        user_equip = inv.get("equipment", [])
+        for req_item_name in recipe["ingredients"].get("equipment", []):
+            for i, item in enumerate(user_equip):
+                name_in_inv = item.get("name", "") if isinstance(item, dict) else str(item)
+                if req_item_name in name_in_inv:
+                    user_equip.pop(i)
+                    break
         
-        for mat, count in recipe["ingredients"]["materials"].items():
+        for mat, count in recipe["ingredients"].get("materials", {}).items():
             inv["materials"][mat] -= count
 
-        inv.setdefault("loot", {})["lockpicker"] = inv.get("loot", {}).get("lockpicker", 0) + 1
+        loot = inv.setdefault("loot", {})
+        loot[recipe_id] = loot.get(recipe_id, 0) + 1
 
         await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), user_id)
-        await callback.answer("✅ Відмичка готова!", show_alert=True)
+        
+        await callback.answer(f"✅ {recipe['name']} готово!", show_alert=True)
         await common_craft_list(callback)
 
 @router.callback_query(F.data == "forge_craft_list")

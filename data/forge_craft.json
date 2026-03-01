@@ -2,6 +2,7 @@
   "common_craft": {
     "lockpicker": {
       "name": "Відмичка",
+      "emoji": "🪛",
       "ingredients": {
         "equipment": ["Гак"],
         "materials": {
@@ -13,6 +14,7 @@
     },
     "teleport_totem": {
       "name": "Тотем Телепортації",
+      "emoji": "🗿",
       "ingredients": {
         "equipment": ["Антикомпас"],
         "materials": {

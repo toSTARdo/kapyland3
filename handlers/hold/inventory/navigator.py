@@ -166,7 +166,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         loot_lines = [
             f"🎟️ Квитки: <b>{loot.get('lottery_ticket', 0)}</b>", 
             f"🗝️ Ключі: <b>{loot.get('key', 0)}</b>", 
-            f"🔧 Відмички: <b>{loot.get('lockpicker', 0)}</b>",
+            f"🪛 Відмички: <b>{loot.get('lockpicker', 0)}</b>",
             f"🗃 Скрині: <b>{loot.get('chest', 0)}</b>"
         ]
         valid_lines = [l for l in loot_lines if "<b>0</b>" not in l]
