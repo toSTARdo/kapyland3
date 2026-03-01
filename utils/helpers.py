@@ -147,3 +147,13 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
             "total_zen": new_zen,
             "new_weight": new_weight
         }
+
+def ensure_dict(data):
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, str):
+        try:
+            return json.loads(data)
+        except:
+            return {}
+    return {}

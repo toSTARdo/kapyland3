@@ -8,6 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES
 from config import load_game_data
+from utils.helpers import calculate_lvl_data, ensure_dict
 
 GACHA_ITEMS = ARTIFACTS
 RECIPES = load_game_data("data/potion_craft.json")
@@ -24,9 +25,8 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
     if not row:
         return await message.answer("❌ Профіль не знайдено.")
 
-    # Parsing JSONB columns
-    inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-    curr_equip = json.loads(row['equipment']) if isinstance(row['equipment'], str) else row['equipment']
+    inv = ensure_dict(row['inventory'])
+    curr_equip = ensure_dict(row['equipment'])
     
     inv = inv or {}
     curr_equip = curr_equip or {}
