@@ -10,6 +10,23 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool = False):
             callback_data=f"chop:{px}:{py}")
         )
 
+    if totems_in_loot > 0 and len(placed_totems) < 3:
+        builder.row(types.InlineKeyboardButton(
+            text="🗿 Поставити тотем", 
+            callback_data="map_place_totem")
+        )
+
+    is_near_totem = any(
+        math.sqrt((px - t['x'])**2 + (py - t['y'])**2) <= 5 
+        for t in placed_totems
+    )
+    
+    if is_near_totem and len(placed_totems) > 1:
+        builder.row(types.InlineKeyboardButton(
+            text="🌀 Телепортуватися", 
+            callback_data="open_tp_menu")
+        )
+
     builder.row(types.InlineKeyboardButton(text="⬆️", callback_data=f"mv:up:{px}:{py}:{mode}"))
     builder.row(
         types.InlineKeyboardButton(text="⬅️", callback_data=f"mv:left:{px}:{py}:{mode}"),

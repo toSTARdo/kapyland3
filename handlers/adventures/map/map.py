@@ -147,3 +147,70 @@ async def handle_world_viewer(callback: types.CallbackQuery, db_pool):
             reply_markup=get_viewer_keyboard(vx, vy),
             parse_mode="HTML"
         )
+
+@router.callback_query(F.data.startswith("tp_to:"))
+async def handle_teleport(callback: types.CallbackQuery, db_pool):
+    target_id = int(callback.data.split(":")[1])
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT navigation, stamina, inventory FROM capybaras WHERE owner_id = $1", uid)
+        nav = json.loads(row['navigation']) if isinstance(row['navigation'], str) else row['navigation']
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        
+        if row['stamina'] < 15:
+            return await callback.answer("⚡ Недостатньо енергії для стрибка (треба 15)!", show_alert=True)
+
+        totems = nav.get("totems", [])
+        target = next((t for t in totems if t['id'] == target_id), None)
+        
+        if not target:
+            return await callback.answer("❌ Тотем не знайдено!", show_alert=True)
+
+        nx, ny = target['x'], target['y']
+        nav['x'], nav['y'] = nx, ny
+        
+        await conn.execute("""
+            UPDATE capybaras SET navigation = $1, stamina = stamina - 15 WHERE owner_id = $2
+        """, json.dumps(nav), uid)
+        
+        map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("maps", []))
+        text = (f"🌀 <b>Телепортація успішна!</b>\n📍 Ви прибули до: {target['name']} ({nx}, {ny})\n\n{map_display}")
+        
+        await callback.message.edit_text(
+            text, 
+            reply_markup=get_map_keyboard(nx, ny, "capy", f"{nx},{ny}" in nav.get("trees", {})), 
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data == "map_place_totem")
+async def handle_place_totem(callback: types.CallbackQuery, db_pool):
+    uid = callback.from_user.id
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT inventory, navigation FROM capybaras WHERE owner_id = $1", uid)
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        nav = json.loads(row['navigation']) if isinstance(row['navigation'], str) else row['navigation']
+        
+        loot = inv.get("loot", {})
+        if loot.get("totem", 0) <= 0:
+            return await callback.answer("❌ У вас немає тотема в інвентарі!", show_alert=True)
+            
+        totems = nav.setdefault("totems", [])
+        if len(totems) >= 3:
+            return await callback.answer("🗿 На мапі вже встановлено максимум тотемів (3)!", show_alert=True)
+
+        loot["totem"] -= 1
+        if loot["totem"] <= 0: del loot["totem"]
+        
+        new_totem = {
+            "id": int(datetime.datetime.now().timestamp()),
+            "x": nav['x'], "y": nav['y'],
+            "name": f"Тотем {len(totems) + 1}"
+        }
+        totems.append(new_totem)
+        
+        await conn.execute("""
+            UPDATE capybaras SET inventory = $1, navigation = $2 WHERE owner_id = $3
+        """, json.dumps(inv), json.dumps(nav), uid)
+        
+        await callback.answer(f"✅ Тотем встановлено на ({nav['x']}, {nav['y']})", show_alert=True)

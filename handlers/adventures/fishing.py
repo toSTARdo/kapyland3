@@ -4,6 +4,7 @@ import random
 import datetime
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InputMediaPhoto
 from config import BOSSES_COORDS, IMAGES_URLS
 
 router = Router()
