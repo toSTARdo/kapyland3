@@ -1,8 +1,12 @@
+import math
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool = False):
+def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory: dict, navigation: dict):
     builder = InlineKeyboardBuilder()
+    
+    totems_in_loot = inventory.get("loot", {}).get("totem", 0)
+    placed_totems = navigation.get("totems", [])
     
     if trees_at_pos:
         builder.row(types.InlineKeyboardButton(

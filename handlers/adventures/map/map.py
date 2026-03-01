@@ -42,7 +42,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         
         await callback.message.edit_text(
             text, 
-            reply_markup=get_map_keyboard(px, py, mode, f"{px},{py}" in nav.get("trees", {})), 
+            reply_markup=get_map_keyboard(px, py, mode, f"{px},{py}" in nav.get("trees", {}), inv, nav),
             parse_mode="HTML"
         )
 
@@ -120,7 +120,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         await callback.message.edit_text(
             text, 
-            reply_markup=get_map_keyboard(nx, ny, new_mode, coord_key in nav.get("trees", {})),
+            reply_markup=get_map_keyboard(nx, ny, new_mode, coord_key in nav.get("trees", {}), inv, nav),
             parse_mode="HTML"
         )
 
@@ -179,7 +179,7 @@ async def handle_teleport(callback: types.CallbackQuery, db_pool):
         
         await callback.message.edit_text(
             text, 
-            reply_markup=get_map_keyboard(nx, ny, "capy", f"{nx},{ny}" in nav.get("trees", {})), 
+            reply_markup=get_map_keyboard(nx, ny, "capy", f"{nx},{ny}" in nav.get("trees", {}), inv, nav), 
             parse_mode="HTML"
         )
 
