@@ -46,9 +46,9 @@ async def process_open_forge(callback: types.CallbackQuery, db_pool):
         _, kiwi_count = find_item_in_inventory(inv, "kiwi")
 
         builder = InlineKeyboardBuilder()
-        builder.button(text="🔨 Покращити спорядження (5 🥝)", callback_data="upgrade_menu")
-        builder.button(text="📦 Звичайний крафт", callback_data="common_craft_list")
-        builder.button(text="⚒️ Крафт нових речей (Lvl 30)", callback_data="forge_craft_list")
+        builder.button(text="⚙️ Звичайний крафт", callback_data="common_craft_list")
+        builder.button(text="🔨 Покращити спорядження", callback_data="upgrade_menu")
+        builder.button(text="⚜️ Міфічний коваль", callback_data="forge_craft_list")
         builder.button(text="⬅️ Назад", callback_data="open_village")
         builder.adjust(1)
 
@@ -68,6 +68,11 @@ async def process_open_forge(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data == "upgrade_menu")
 async def upgrade_list(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
+    async with db_pool.acquire() as conn:
+    lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
+    if lvl < 15:
+        return await callback.answer("❌ Ще не доріс! Повертайся на 15 рівні.", show_alert=True)
+
     async with db_pool.acquire() as conn:
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
         if not inv_raw: return
@@ -158,6 +163,10 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data == "common_craft_list")
 async def common_craft_list(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
+    async with db_pool.acquire() as conn:
+        lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
+        if lvl < 10:
+            return await callback.answer("❌ Навчися зброю тримати! Повертайся на 10 рівні.", show_alert=True)
     for r_id, r_data in FORGE_RECIPES.get("common_craft", {}).items():
         builder.button(text=f"{r_data.get('emoji', '📦')} {r_data.get('name')}", callback_data=f"common_info:{r_id}")
     builder.button(text="⬅️ Назад", callback_data="open_forge")
@@ -235,8 +244,8 @@ async def forge_craft_list(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
         lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
-        if lvl < 30:
-            return await callback.answer("❌ Складна робота! Повертайся на 30 рівні.", show_alert=True)
+        if lvl < 20:
+            return await callback.answer("❌ Складна робота! Повертайся на 20 рівні.", show_alert=True)
 
         builder = InlineKeyboardBuilder()
         for r_id, r_data in FORGE_RECIPES.get("mythic_artifacts", {}).items():
@@ -253,58 +262,73 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, hp, atk, def, state, stats_track, lvl FROM capybaras WHERE owner_id = $1", user_id) 
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
-        track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else row['stats_track']
+        row = await conn.fetchrow("""
+            SELECT inventory, equipment, state, stats_track, 
+                   lvl, atk, def, agi, luck, zen, stamina, hunger,
+                   wins, total_fights
+            FROM capybaras WHERE owner_id = $1
+        """, user_id) 
+        
+        if not row: return await callback.answer("❌ Капібару не знайдено")
+
+        inv = row['inventory'] or {}
+        equip = row['equipment'] or {}
+        state = row['state'] or {}
+        track = row['stats_track'] or {}
         
         recipe = FORGE_RECIPES.get("mythic_artifacts", {}).get(mythic_id)
         if not recipe: return await callback.answer("❌ Рецепт не знайдено")
 
         text = f"✨ <b>{recipe['name']}</b>\n<i>{recipe['desc']}</i>\n━━━━━━━━━━━━━━━\n\n<b>Необхідні артефакти:</b>\n"
-        can_craft, equip = True, inv.get("equipment", {})
+        can_craft = True
         
         for ing_name in recipe["ingredients"]:
-            in_loot = inv.get("loot", {}).get(ing_name, 0) > 0
-            in_equip = False
-            items = equip.values() if isinstance(equip, dict) else equip
-            for item in items:
-                if ing_name in (item if isinstance(item, str) else item.get("name", "")):
-                    in_equip = True
-                    break
+            in_loot = inv.get("materials", {}).get(ing_name, 0) > 0 or inv.get("loot", {}).get(ing_name, 0) > 0
+            in_equip = any(ing_name in str(v) for v in equip.values() if v)
             
             text += f"{'✅' if in_loot or in_equip else '❌'} {ing_name}\n"
             if not (in_loot or in_equip): can_craft = False
 
         if "requirements" in recipe:
             text += "\n<b>📜 Особливі умови:</b>\n"
+            
+            avg_stats = round((row['atk'] + row['def'] + row['agi'] + row['luck']) / 4, 2)
+            
             checks = {
-                "wins": ("Перемоги", "wins", "⚔️"), "total_fights": ("Всього боїв", "total_fights", "👊"),
-                "stamina_regen_total": ("Реген стаміни", "stamina_regen", "🔋"), "clean_chat_days": ("Дні без муту", "clean_days", "😇"),
-                "lifesteal_total": ("Всього вампіризму", "lifesteal_done", "🩸"), "speed_stat": ("Швидкість", "speed", "👟"),
-                "zen": ("Дзен", "zen", "❇️"), "stamina": ("Поточна стаміна", "stamina", "⚡️"),
-                "hunger": ("Голод (макс)", "hunger", "🍏"), "level": ("Рівень", "level", "🆙"), "all_stats_average": ("Сер. стат", "avg_stats", "📊")
+                "wins": ("Перемоги", row['wins'], "⚔️"),
+                "total_fights": ("Всього боїв", row['total_fights'], "👊"),
+                "clean_chat_days": ("Дні без муту", state.get("clean_days", 0), "😇"),
+                "speed_stat": ("Швидкість", row['agi'], "👟"),
+                "zen": ("Дзен", row['zen'], "❇️"),
+                "stamina": ("Поточна стаміна", row['stamina'], "⚡️"),
+                "hunger": ("Голод (макс)", row['hunger'], "🍏"),
+                "level": ("Рівень", row['lvl'], "🆙"),
+                "all_stats_average": ("Сер. стат", avg_stats, "📊"),
+                "karma": ("Карма", track.get("karma", 0), "⚖️")
             }
-            for key, val in recipe["requirements"].items():
+
+            for key, req_val in recipe["requirements"].items():
                 if key == "location":
-                    text += f"{'✅' if row['state'].get('location') == val else '⏳'} Локація: {row['state'].get('location')}/{val}\n"
-                    if row['state'].get('location') != val: can_craft = False
-                elif key == "karma":
-                    curr = track.get("karma", 0)
-                    text += f"{'✅' if curr <= val else '⏳'} Карма: {curr}/{val}\n"
-                    if curr > val: can_craft = False
+                    curr_loc = state.get("location", "home")
+                    text += f"{'✅' if curr_loc == req_val else '⏳'} Локація: {curr_loc}/{req_val}\n"
+                    if curr_loc != req_val: can_craft = False
                 elif key in checks:
-                    label, m_key, icon = checks[key]
-                    curr = track.get(m_key, stats.get(m_key, row.get(m_key, 0)))
-                    pass_chk = curr <= val if key == "hunger" else curr >= val
-                    text += f"{'✅' if pass_chk else '⏳'} {icon} {label}: {curr}/{val}\n"
+                    label, curr_val, icon = checks[key]
+                    pass_chk = curr_val <= req_val if key == "hunger" else curr_val >= req_val
+                    text += f"{'✅' if pass_chk else '⏳'} {icon} {label}: {curr_val}/{req_val}\n"
                     if not pass_chk: can_craft = False
 
         builder = InlineKeyboardBuilder()
-        if can_craft: builder.button(text="🔥 КУВАТИ АРТЕФАКТ", callback_data=f"craft_mythic:{mythic_id}")
+        if can_craft: 
+            builder.button(text="🔥 КУВАТИ АРТЕФАКТ", callback_data=f"craft_mythic:{mythic_id}")
         builder.button(text="⬅️ Назад", callback_data="forge_craft_list")
         builder.adjust(1)
-        await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        
+        await callback.message.edit_caption(
+            caption=text, 
+            reply_markup=builder.as_markup(), 
+            parse_mode="HTML"
+        )
 
 @router.callback_query(F.data.startswith("craft_mythic:"))
 async def process_mythic_craft(callback: types.CallbackQuery, db_pool):
