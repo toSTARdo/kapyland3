@@ -14,6 +14,14 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory:
             callback_data=f"chop:{px}:{py}")
         )
 
+    standing_on_totem = next((t for t in placed_totems if t['x'] == px and t['y'] == py), None)
+    
+    if standing_on_totem:
+        builder.row(types.InlineKeyboardButton(
+            text="🎒 Забрати тотем", 
+            callback_data=f"map_pickup_totem:{standing_on_totem['id']}")
+        )
+
     if totems_in_loot > 0 and len(placed_totems) < 3:
         builder.row(types.InlineKeyboardButton(
             text="🗿 Поставити тотем", 

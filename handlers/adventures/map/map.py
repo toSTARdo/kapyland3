@@ -312,3 +312,41 @@ async def handle_chop_tree(callback: types.CallbackQuery, db_pool):
             parse_mode="HTML"
         )
         await callback.answer("Ви отримали трохи деревини! 🪵")
+
+@router.callback_query(F.data.startswith("map_pickup_totem:"))
+async def handle_pickup_totem(callback: types.CallbackQuery, db_pool):
+    totem_id = callback.data.split(":")[1]
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT navigation, inventory FROM capybaras WHERE owner_id = $1
+        """, uid)
+        
+        if not row: return
+        
+        nav = json.loads(row['navigation'])
+        inv = json.loads(row['inventory'])
+        
+        placed_totems = nav.get("totems", [])
+        
+        totem_to_remove = next((t for t in placed_totems if str(t['id']) == totem_id), None)
+        
+        if not totem_to_remove:
+            return await callback.answer("Тотем не знайдено! 🤔", show_alert=True)
+            
+        nav["totems"] = [t for t in placed_totems if str(t['id']) != totem_id]
+        
+        if "loot" not in inv: inv["loot"] = {}
+        inv["loot"]["teleport_totem"] = inv["loot"].get("teleport_totem", 0) + 1
+        
+        await conn.execute("""
+            UPDATE capybaras SET navigation = $1, inventory = $2 WHERE owner_id = $3
+        """, json.dumps(nav), json.dumps(inv), uid)
+        
+        await callback.answer("🗿 Тотем успішно повернуто в сумку!")
+        
+        px, py = nav.get("x"), nav.get("y")
+        mode = "ship" if row.get("state") and json.loads(row["state"]).get("mode") == "ship" else "capy"
+        
+        await render_map(callback, db_pool)
