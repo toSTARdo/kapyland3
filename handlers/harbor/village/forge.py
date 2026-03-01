@@ -65,46 +65,62 @@ async def process_open_forge(callback: types.CallbackQuery, db_pool):
             reply_markup=builder.as_markup()
         )
 
+def get_upgrade_cost(rarity: str, current_lvl: int) -> int:
+    base_costs = {
+        "common": 1,
+        "rare": 2,
+        "epic": 3,
+        "legendary": 4,
+        "mythic": 5
+    }
+    base = base_costs.get(rarity.lower(), 1)
+    return base + current_lvl
+
 @router.callback_query(F.data == "upgrade_menu")
 async def upgrade_list(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
-        lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
-        if lvl < 15:
+        row = await conn.fetchrow("SELECT lvl, inventory FROM capybaras WHERE owner_id = $1", user_id)
+        if not row: return
+        
+        if row['lvl'] < 15:
             return await callback.answer("❌ Ще не доріс! Повертайся на 15 рівні.", show_alert=True)
 
-    async with db_pool.acquire() as conn:
-        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
-        if not inv_raw: return
-        inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         equip = inv.get("equipment", {})
         
         builder = InlineKeyboardBuilder()
 
-        def get_btn_text(data):
-            name = data if isinstance(data, str) else data.get("name")
-            lvl = 0 if isinstance(data, str) else data.get("lvl", 0)
-            i_type = data.get("type", "") if isinstance(data, dict) else ""
-            icon = TYPE_ICONS.get(i_type, "💎")
+        def get_btn_text(item_data):
+            if isinstance(item_data, str): 
+                return f"💎 {item_data}"
+            
+            name = item_data.get("name", "Предмет")
+            lvl = item_data.get("lvl", 0)
+            rarity = item_data.get("rarity", "common")
+            cost = get_upgrade_cost(rarity, lvl)
+            
+            icon = TYPE_ICONS.get(item_data.get("type"), "💎")
             stars = "⭐" * lvl if lvl > 0 else ""
-            return f"{icon} {name} {stars}"
+            
+            return f"{icon} {name} {stars} (💰 {cost}🥝)"
 
         if isinstance(equip, dict):
-            for slot, item_data in equip.items():
-                name = item_data if isinstance(item_data, str) else item_data.get("name")
-                if name and name not in ["Лапки", "Хутро", "Нічого"]:
-                    builder.button(text=get_btn_text(item_data), callback_data=f"up_item:{slot}")
+            for slot, item in equip.items():
+                if item and item not in ["Лапки", "Хутро", "Нічого"]:
+                    builder.button(text=get_btn_text(item), callback_data=f"up_item:{slot}")
         elif isinstance(equip, list):
-            for index, item_data in enumerate(equip):
-                name = item_data if isinstance(item_data, str) else item_data.get("name")
-                if name and name not in ["Лапки", "Хутро", "Нічого"]:
-                    builder.button(text=get_btn_text(item_data), callback_data=f"up_item:{index}")
+            for idx, item in enumerate(equip):
+                if item and item not in ["Лапки", "Хутро", "Нічого"]:
+                    builder.button(text=get_btn_text(item), callback_data=f"up_item:{idx}")
 
         builder.button(text="⬅️ Назад", callback_data="open_forge")
         builder.adjust(1)
 
         await callback.message.edit_caption(
-            caption="🛠️ <b>Загартування спорядження</b>\n\nМаксимальний рівень: <b>5</b>\nВартість: <b>5 🥝</b>",
+            caption="🛠️ <b>Загартування спорядження</b>\n\n"
+                    "Вартість залежить від рідкісності та поточного рівня предмета.\n"
+                    "<i>Чим потужніша річ, тим більше 🥝 вона вимагає!</i>",
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
@@ -120,44 +136,51 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
         inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
         equip = inv.get("equipment", {})
         
-        cat, kiwi_count = find_item_in_inventory(inv, "kiwi")
-        if kiwi_count < 5:
-            return await callback.answer("❌ Бракує ківі! Потрібно 5 🥝", show_alert=True)
-
         if isinstance(equip, list):
             try:
-                slot_key_idx = int(slot_key)
-                item_data = equip[slot_key_idx]
-            except (ValueError, IndexError):
-                return await callback.answer("❌ Предмет не знайдено")
+                item_data = equip[int(slot_key)]
+            except: return await callback.answer("❌ Предмет не знайдено")
         else:
             item_data = equip.get(slot_key)
 
-        if not item_data: return await callback.answer("❌ Предмет не знайдено")
+        if not item_data or item_data in ["Лапки", "Хутро"]: 
+            return await callback.answer("❌ Цей предмет неможливо загартувати")
 
         if isinstance(item_data, str):
-            item_data = {"name": item_data, "lvl": 0}
-        
+            item_data = {"name": item_data, "lvl": 0, "rarity": "common"}
+
         current_lvl = item_data.get("lvl", 0)
-        if current_lvl >= UPGRADE_CONFIG["max_lvl"]:
-            return await callback.answer("✨ Цей предмет досяг піку своєї могутності!", show_alert=True)
+        rarity = item_data.get("rarity", "common")
+        
+        if current_lvl >= 5:
+            return await callback.answer("✨ Предмет досяг піку могутності!", show_alert=True)
+
+        needed_kiwi = get_upgrade_cost(rarity, current_lvl)
+        
+        cat, kiwi_count = find_item_in_inventory(inv, "kiwi")
+        if kiwi_count < needed_kiwi:
+            return await callback.answer(f"❌ Бракує ківі! Потрібно {needed_kiwi} 🥝", show_alert=True)
 
         new_lvl = current_lvl + 1
         prefix = UPGRADE_CONFIG["prefixes"].get(new_lvl, "Покращений")
         base_name = item_data.get("base_name", item_data["name"])
         
-        item_data["lvl"] = new_lvl
-        item_data["name"] = f"{prefix} {base_name}"
-        item_data["base_name"] = base_name
+        item_data.update({
+            "lvl": new_lvl,
+            "name": f"{prefix} {base_name}",
+            "base_name": base_name
+        })
         
-        inv[cat]["kiwi"] -= 5
+        inv[cat]["kiwi"] -= needed_kiwi
         if isinstance(equip, list):
             equip[int(slot_key)] = item_data
         else:
             equip[slot_key] = item_data
 
-        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), user_id)
-        await callback.answer(f"🔥 Коваль попрацював на славу! Тепер це: {item_data['name']}")
+        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
+                           json.dumps(inv, ensure_ascii=False), user_id)
+        
+        await callback.answer(f"🔥 Успіх! {item_data['name']} загартовано до {new_lvl}⭐")
         await upgrade_list(callback, db_pool)
 
 @router.callback_query(F.data == "common_craft_list")

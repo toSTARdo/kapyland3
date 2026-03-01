@@ -83,7 +83,7 @@ async def cmd_ship_menu(callback: types.CallbackQuery, state: FSMContext, db_poo
     try:
         await message.edit_media(
             media=InputMediaPhoto(
-                media=IMAGES_URLS.get("harbor", "https://example.com/default.jpg"), 
+                media=IMAGES_URLS.get("village", "https://example.com/default.jpg"), 
                 caption=text,
                 parse_mode="HTML"
             ),
@@ -91,7 +91,7 @@ async def cmd_ship_menu(callback: types.CallbackQuery, state: FSMContext, db_poo
         )
     except Exception:
         await message.answer_photo(
-            photo=IMAGES_URLS.get("harbor", "https://example.com/default.jpg"),
+            photo=IMAGES_URLS.get("village", "https://example.com/default.jpg"),
             caption=text,
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
