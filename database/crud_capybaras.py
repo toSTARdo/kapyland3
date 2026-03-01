@@ -8,7 +8,7 @@ SELECT
     u.tg_id, u.username, u.reincarnation_multiplier,
     c.name, c.lvl, c.exp, c.hp, c.atk, c.def, c.agi, c.luck, 
     c.stamina, c.hunger, c.weight, c.cleanness, c.state, c.equipment,
-    c.inventory, c.location, c.zen,
+    c.inventory, c.zen,
     c.wins, c.losses, c.total_fights,
     s.id as ship_id, s.name as ship_name, s.lvl as ship_lvl, s.gold as ship_gold,
     s.stats as ship_stats, s.meta as ship_meta
