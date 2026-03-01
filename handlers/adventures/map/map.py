@@ -192,15 +192,15 @@ async def handle_place_totem(callback: types.CallbackQuery, db_pool):
         nav = json.loads(row['navigation']) if isinstance(row['navigation'], str) else row['navigation']
         
         loot = inv.get("loot", {})
-        if loot.get("totem", 0) <= 0:
+        if loot.get("teleport_totem", 0) <= 0:
             return await callback.answer("❌ У вас немає тотема в інвентарі!", show_alert=True)
             
         totems = nav.setdefault("totems", [])
         if len(totems) >= 3:
             return await callback.answer("🗿 На мапі вже встановлено максимум тотемів (3)!", show_alert=True)
 
-        loot["totem"] -= 1
-        if loot["totem"] <= 0: del loot["totem"]
+        loot["teleport_totem"] -= 1
+        if loot["teleport_totem"] <= 0: del loot["teleport_totem"]
         
         new_totem = {
             "id": int(datetime.datetime.now().timestamp()),
