@@ -5,8 +5,8 @@ from aiogram import Router, types, html, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from core.capybara_mechanics import grant_exp_and_lvl
-from handlers.inventory.inv_view import render_inventory_page
+from utils.helpers import grant_exp_and_lvl
+from handlers.inventory.navigator import render_inventory_page
 
 router = Router()
 
