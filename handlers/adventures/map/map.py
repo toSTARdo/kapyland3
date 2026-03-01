@@ -1,6 +1,7 @@
 import json
 import asyncio
 import random
+import datetime
 from aiogram import types, F, Router
 from .map_assets import *
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
