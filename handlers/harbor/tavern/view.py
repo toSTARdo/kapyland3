@@ -2,7 +2,7 @@ import logging
 from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InputMediaPhoto
-from config import IMAGE_URLS
+from config import IMAGES_URLS
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ async def cmd_arena_hub(event: types.Message | types.CallbackQuery, db_pool):
 
     if is_callback:
             new_media = InputMediaPhoto(
-                media=IMAGE_URLS["tavern"],
+                media=IMAGES_URLS["tavern"],
                 caption=text,
                 parse_mode="HTML"
             )

@@ -4,7 +4,7 @@ import random
 import datetime
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import BOSSES_COORDS, IMAGE_URLS
+from config import BOSSES_COORDS, IMAGES_URLS
 
 router = Router()
 
@@ -149,7 +149,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
     builder.adjust(1)
 
     new_media = InputMediaPhoto(
-        media=IMAGE_URLS["fishing"],
+        media=IMAGES_URLS["fishing"],
         caption=(
             f"🎣 <b>Риболовля {stars}</b>\n━━━━━━━━━━━━━━━\n"
             f"Твій улов: <b>{item['name']}</b> ({fish_weight} кг)\n\n"
