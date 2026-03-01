@@ -244,7 +244,7 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         inv = ensure_dict(inv_raw)
         recipe = FORGE_RECIPES.get("common_craft", {}).get(recipe_id)
 
-        user_equip = inv.get("equipment", [])
+        user_equip = inv.setdefault("equipment", [])
         for req_item_name in recipe["ingredients"].get("equipment", []):
             for i, item in enumerate(user_equip):
                 name_in_inv = item.get("name", "") if isinstance(item, dict) else str(item)
@@ -255,12 +255,26 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         for mat, count in recipe["ingredients"].get("materials", {}).items():
             inv["materials"][mat] -= count
 
-        loot = inv.setdefault("loot", {})
-        loot[recipe_id] = loot.get(recipe_id, 0) + 1
-
-        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), user_id)
+        item_type = recipe.get("type", "loot") # За замовчуванням — лут
         
-        await callback.answer(f"✅ {recipe['name']} готово!", show_alert=True)
+        if item_type in ["weapon", "armor", "artifact"]:
+            new_item = {
+                "name": recipe["name"],
+                "type": item_type,
+                "desc": recipe.get("desc", ""),
+                "rarity": recipe.get("rarity", "common")
+            }
+            inv["equipment"].append(new_item)
+        else:
+            loot = inv.setdefault("loot", {})
+            loot[recipe_id] = loot.get(recipe_id, 0) + 1
+
+        await conn.execute(
+            "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
+            json.dumps(inv, ensure_ascii=False), user_id
+        )
+        
+        await callback.answer(f"✅ {recipe['name']} виготовлено!", show_alert=True)
         await common_craft_list(callback)
 
 @router.callback_query(F.data == "forge_craft_list")
