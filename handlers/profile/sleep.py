@@ -90,9 +90,16 @@ async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
     
     msg = f"🥥 Капібарі на голову впав кокос і вона проснулася! Вона відновила {gain}⚡ стаміни."
     if status == "overslept":
-        msg = f" Капібара відіспала кінську голову! Стаміна: 100⚡."
+        msg = "😴 Капібара відіспала кінську голову! Стаміна: 100⚡."
 
-    await callback.message.edit_text(msg)
+    try:
+        if callback.message.caption or callback.message.photo:
+            await callback.message.edit_caption(caption=msg, reply_markup=None)
+        else:
+            await callback.message.edit_text(msg, reply_markup=None)
+    except Exception as e:
+        await callback.message.answer(msg)
+        
     await callback.answer()
 
 async def wakeup_db_operation(tg_id: int, db_pool):
