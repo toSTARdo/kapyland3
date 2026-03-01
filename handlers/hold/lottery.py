@@ -116,7 +116,7 @@ async def handle_gacha_spin(callback: types.CallbackQuery, db_pool):
         item = random.choice(GACHA_ITEMS[rarity_key])
         
         equipment = inventory.setdefault("equipment", [])
-        equipment.append({"name": item["name"], "type": item["type"], "rarity": rarity_key, "lvl": 0})
+        equipment.append({"name": item["name"], "type": item["type"], "rarity": rarity_key, "lvl": 0, "desc": item.get("desc", "")})
         
         await conn.execute(
             "UPDATE capybaras SET inventory = $1, weight = $2 WHERE owner_id = $3",
@@ -182,7 +182,7 @@ async def handle_bulk_spin(callback: types.CallbackQuery, db_pool):
                 watermelons_gain += gain
                 results_icons.append(f"{prefix} <s>{item['name']}</s> 🍉+{gain}")
             else:
-                equipment.append({"name": item["name"], "type": item["type"], "rarity": rarity, "lvl": 0})
+                equipment.append({"name": item["name"], "type": item["type"], "rarity": rarity, "lvl": 0, "desc": item.get("desc", "")})
                 owned_names.append(item["name"])
                 results_icons.append(f"{prefix} <b>{item['name']}</b>")
 

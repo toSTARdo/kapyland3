@@ -118,7 +118,6 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 r_icon = RARITY_META.get(rarity, {}).get('emoji', '⚪')
                 stars = "⭐" * lvl if lvl > 0 else ""
                 
-                # Check equipment status
                 is_eq = any(
                     isinstance(v, dict) and v.get("name") == name and v.get("lvl") == lvl 
                     for v in curr_equip.values()
@@ -145,11 +144,9 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                     
                     builder.row(
                         types.InlineKeyboardButton(text="⚔️ Одягнути", callback_data=f"equip:{i_type}:{name}:{lvl}"),
-                        types.InlineKeyboardButton(text="✖️ Закрити", callback_data=f"inv_page:items:{current_page}")
-                    )
-                    builder.row(
                         types.InlineKeyboardButton(text=f"🔥 Продати за {price} 🍉", callback_data=f"sell_item:{rarity}:{name}:{lvl}")
-                    )
+                        types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{current_page}")
+                    ))
 
             if len(unique_list) > ITEMS_PER_PAGE:
                 nav = []

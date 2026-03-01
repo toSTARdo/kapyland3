@@ -144,7 +144,7 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
             elif loot.get("lockpicker", 0) > 0:
                 builder.button(text=f"🪛 Відмичкою ({loot['lockpicker']})", callback_data="open_chest")
         
-        builder.button(text="🔙 Назад", callback_data="open_adventure")
+        builder.button(text="🔙 Назад", callback_data="inv_page:loot:0")
         builder.adjust(1)
 
         loot_list = "\n".join([f"• {r}" for r in rewards])
