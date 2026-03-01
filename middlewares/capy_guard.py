@@ -119,6 +119,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                     
                     if now >= wake_time:
                         meta["status"] = "active"
+                        meta["stamina"] = 100
                         needs_update = True
 
             self.update_stats_track(meta, event)
