@@ -164,7 +164,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             f"🎟️ Квитки: <b>{loot.get('lottery_ticket', 0)}</b>", 
             f"🗝️ Ключі: <b>{loot.get('key', 0)}</b>", 
             f"🪛 Відмички: <b>{loot.get('lockpicker', 0)}</b>",
-            f"🗃 Скрині: <b>{loot.get('chest', 0)}</b>"
+            f"🗃 Скрині: <b>{loot.get('chest', 0)}</b>",
             f"🗿 Тотеми: <b>{loot.get('teleport_totem', 0)}</b>"
         ]
         valid_lines = [l for l in loot_lines if "<b>0</b>" not in l]
@@ -194,11 +194,25 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         content = "Твої запаси:\n\n" + "\n".join(mat_lines) if mat_lines else "<i>Твій трюм порожній...</i>"
 
     if not page.startswith("items"):
-        pages_meta = {"food": "🍎 Їжа", "potions": "🧪 Зілля", "maps": "🗺 Карти", "loot": "🧳 Лут", "items": "⚔️ Речі", "materials": "🌱 Матеріали"}
+        pages_meta = {
+            "food": "🍎 Їжа", 
+            "potions": "🧪 Зілля", 
+            "maps": "🗺 Карти", 
+            "loot": "🧳 Лут", 
+            "items": "⚔️ Речі", 
+            "materials": "🌱 Матеріали"
+        }
+        
         nav_builder = InlineKeyboardBuilder()
+        
         for p_key, p_text in pages_meta.items():
-            if page != p_key: 
-                nav_builder.button(text=p_text, callback_data=f"inv_page:{p_key}:0")
+            display_text = f"· {p_text} ·" if page == p_key else p_text
+            
+            nav_builder.button(
+                text=display_text, 
+                callback_data=f"inv_page:{p_key}:0"
+            )
+        
         nav_builder.adjust(2)
         builder.attach(nav_builder)
 
