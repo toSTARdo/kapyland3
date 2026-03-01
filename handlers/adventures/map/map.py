@@ -1,7 +1,7 @@
 import json
 import asyncio
 import random
-import datetime, timedelta
+import datetime
 from aiogram import types, F, Router
 from .map_assets import *
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
@@ -28,7 +28,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         stamina = row['stamina']
 
         last_refresh = cooldowns.get("flowers_refresh")
-        can_refresh = not last_refresh or datetime.fromisoformat(last_refresh) < datetime.now() - timedelta(days=1)
+        can_refresh = not last_refresh or datetime.fromisoformat(last_refresh) < datetime.now() - datetime.timedelta(days=1)
 
         if can_refresh:
             new_flowers = {}
