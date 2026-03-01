@@ -243,8 +243,7 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, stats, stats_track, location, lvl FROM capybaras WHERE owner_id = $1", user_id)
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        row = await conn.fetchrow("SELECT inventory, hp, atk, def, state, stats_track, lvl FROM capybaras WHERE owner_id = $1", user_id)        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         stats = json.loads(row['stats']) if isinstance(row['stats'], str) else row['stats']
         track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else row['stats_track']
         
@@ -277,8 +276,8 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
             }
             for key, val in recipe["requirements"].items():
                 if key == "location":
-                    text += f"{'✅' if row['location'] == val else '⏳'} Локація: {row['location']}/{val}\n"
-                    if row['location'] != val: can_craft = False
+                    text += f"{'✅' if row['state'].get('location') == val else '⏳'} Локація: {row['state'].get('location')}/{val}\n"
+                    if row['state'].get('location') != val: can_craft = False
                 elif key == "karma":
                     curr = track.get("karma", 0)
                     text += f"{'✅' if curr <= val else '⏳'} Карма: {curr}/{val}\n"
