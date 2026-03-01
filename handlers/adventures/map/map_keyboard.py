@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory: dict, navigation: dict):
     builder = InlineKeyboardBuilder()
     
-    totems_in_loot = inventory.get("loot", {}).get("totem", 0)
+    totems_in_loot = inventory.get("loot", {}).get("teleport_totem", 0)
     placed_totems = navigation.get("totems", [])
     
     if trees_at_pos:

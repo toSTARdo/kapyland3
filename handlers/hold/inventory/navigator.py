@@ -165,12 +165,14 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             f"🗝️ Ключі: <b>{loot.get('key', 0)}</b>", 
             f"🪛 Відмички: <b>{loot.get('lockpicker', 0)}</b>",
             f"🗃 Скрині: <b>{loot.get('chest', 0)}</b>"
-            f"🗿 Тотеми: <b>{loot.get('totem', 0)}</b>"
+            f"🗿 Тотеми: <b>{loot.get('teleport_totem', 0)}</b>"
         ]
         valid_lines = [l for l in loot_lines if "<b>0</b>" not in l]
         content = "\n".join(valid_lines) if valid_lines else "<i>Твій сейф порожній...</i>"
         if loot.get("chest", 0) > 0:
             builder.button(text=f"🔑 Відкрити", callback_data="open_chest")
+        if loot.get("lockpicker", 0) > 0:
+            builder.button(text=f"🗝️ Використати відмичку", callback_data="use_lockpicker")
         builder.adjust(1)
 
     elif page == "maps":
