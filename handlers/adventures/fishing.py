@@ -68,9 +68,9 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             {"name": "🥝 Ківі", "min_w": 0.5, "max_w": 0.5, "chance": 2, "type": "food", "key": "kiwi"},
             {"name": "🍈 Диня", "min_w": 5.0, "max_w": 5.0, "chance": 4, "type": "food", "key": "melon"},
             
-            {"name": "🗃 Скриня", "min_w": 5.0, "max_w": 10.0, "chance": 2, "type": "special", "key": "chest"},
-            {"name": "🗝️ Ключ", "min_w": 0.1, "max_w": 0.2, "chance": 2, "type": "special", "key": "key"},
-            {"name": "🎟️ Лотерейний квиток", "min_w": 0.01, "max_w": 0.01, "chance": 1, "type": "special", "key": "lottery_ticket"},
+            {"name": "🗃 Скриня", "min_w": 5.0, "max_w": 10.0, "chance": 2, "type": "loot", "key": "chest"},
+            {"name": "🗝️ Ключ", "min_w": 0.1, "max_w": 0.2, "chance": 2, "type": "loot", "key": "key"},
+            {"name": "🎟️ Лотерейний квиток", "min_w": 0.01, "max_w": 0.01, "chance": 1, "type": "loot", "key": "lottery_ticket"},
             {"name": "🫙 Стара мапа", "min_w": 0.1, "max_w": 0.1, "chance": 2, "type": "treasure_map", "key": "treasure_maps"}
         ]
 
