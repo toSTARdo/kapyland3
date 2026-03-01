@@ -11,7 +11,7 @@ from database.postgres_db import create_pool, init_pg
 from handlers import get_handlers_router
 from jobs.send_goodnight import send_goodnight
 from jobs.give_everyday_gift import give_everyday_gift
-from middleware.capy_guard import CapyGuardMiddleware
+from middlewares.capy_guard import CapyGuardMiddleware
 
 app = FastAPI()
 
