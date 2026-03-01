@@ -18,10 +18,11 @@ RESOURCES_POOL = [
 ]
 
 SELL_PRICES = {
-    "wood": 10, "mint": 12, "thyme": 12, "rosemary": 15,
-    "chamomile": 10, "lavender": 15, "tulip": 20, "lotus": 35,
-    "fly_agaric": 25, "mushroom": 8,
-    "carp": 15, "perch": 20, "pufferfish": 40, "octopus": 50, "crab": 45, "jellyfish": 30, "swordfish": 70, "shark": 120
+    "mushroom": 2, "wood": 3, "chamomile": 4, "mint": 5, "thyme": 5,
+    "rosemary": 7, "lavender": 10, "fly_agaric": 12, "tulip": 15, "lotus": 25,
+    
+    "jellyfish": 6, "carp": 8, "perch": 10, "crab": 12, 
+    "pufferfish": 15, "octopus": 20, "swordfish": 25, "shark": 30
 }
 
 def get_item_name(item_key):
@@ -61,6 +62,17 @@ async def get_weekly_bazaar_stock(db_pool):
                     "left": random.randint(5, 15)
                 }
             
+            weekly_sell = {}
+            for res_key, melon_price in SELL_PRICES.items():
+                curr = random.choice(list(CURRENCY_VALUE.keys()))
+                final_val = max(1, melon_price // CURRENCY_VALUE[curr])
+                weekly_sell[res_key] = {"curr": curr, "val": final_val}
+
+            new_state = {
+                "items": new_stock, 
+                "sell_prices": weekly_sell,
+                "next_update": next_monday.isoformat()
+            }
             next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
             new_state = {"items": new_stock, "next_update": next_monday.isoformat()}
             await conn.execute("INSERT INTO world_state (key, value) VALUES ('bazaar_weekly', $1) ON CONFLICT (key) DO UPDATE SET value = $1", json.dumps(new_state))
@@ -103,23 +115,27 @@ async def bazaar_shop(callback: types.CallbackQuery, db_pool):
 
 @router.callback_query(F.data == "bazaar_sell_list")
 async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
-    user_id = callback.from_user.id
+    state, next_up = await get_weekly_bazaar_stock(db_pool)
+    weekly_sell = state.get("sell_prices", {})
+    
     async with db_pool.acquire() as conn:
-        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
+        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", callback.from_user.id)
         inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw or {}
         
         builder = InlineKeyboardBuilder()
-        text = "💰 <b>Твій інвентар для продажу:</b>\n<i>(Ціна за 1 шт. у 🍉)</i>\n━━━━━━━━━━━━━━━━━━━━\n"
+        text = f"⚖️ <b>Курс обміну тижня</b> (до {next_up.strftime('%d.%m')}):\n━━━━━━━━━━━━━━━━━━━━\n"
         found = False
+
         for cat in ["materials", "plants"]:
             for item_key, count in inv.get(cat, {}).items():
-                if count > 0 and item_key in SELL_PRICES:
+                if count > 0 and item_key in weekly_sell:
                     found = True
-                    price = SELL_PRICES[item_key]
-                    text += f"▫️ {get_item_name(item_key)}: {count} шт. (по 🍉{price})\n"
+                    offer = weekly_sell[item_key]
+                    icon = FOOD_ICONS[offer['curr']]
+                    text += f"▫️ {get_item_name(item_key)}: {count} шт. ➡️ <b>{icon}{offer['val']}</b>\n"
                     builder.button(text=f"Здати {get_item_name(item_key)}", callback_data=f"b_sell:{item_key}")
         
-        if not found: text += "\nТвій рюкзак порожній. Нічого здати..."
+        if not found: text += "\nТвій рюкзак порожній..."
         builder.button(text="⬅️ Назад", callback_data="open_bazaar")
         builder.adjust(1)
         await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -127,23 +143,28 @@ async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data.startswith("b_sell:"))
 async def bazaar_process_sell(callback: types.CallbackQuery, db_pool):
     item_key = callback.data.split(":")[1]
-    price = SELL_PRICES.get(item_key, 0)
-    user_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
+        row = await conn.fetchrow("SELECT value FROM world_state WHERE key = 'bazaar_weekly'")
+        weekly_sell = json.loads(row['value']).get("sell_prices", {})
+        
+        if item_key not in weekly_sell:
+            return await callback.answer("❌ Базар це не купує!", show_alert=True)
+            
+        offer = weekly_sell[item_key]
+        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", callback.from_user.id)
         inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
         
         cat = "plants" if item_key in ["mint", "thyme", "rosemary", "chamomile", "lavender", "tulip", "lotus"] else "materials"
         if inv.get(cat, {}).get(item_key, 0) <= 0:
-            return await callback.answer("❌ У тебе цього немає!", show_alert=True)
+            return await callback.answer("❌ Вже немає!", show_alert=True)
             
         inv[cat][item_key] -= 1
         food = inv.setdefault("food", {})
-        food["watermelon_slices"] = food.get("watermelon_slices", 0) + price
+        food[offer['curr']] = food.get(offer['curr'], 0) + offer['val']
         
-        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), user_id)
-        await callback.answer(f"✅ Продано! Отримано 🍉{price}")
+        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), callback.from_user.id)
+        await callback.answer(f"✅ Отримано {FOOD_ICONS[offer['curr']]}{offer['val']}!")
         await bazaar_sell_list(callback, db_pool)
 
 @router.callback_query(F.data.startswith("b_pay:"))
