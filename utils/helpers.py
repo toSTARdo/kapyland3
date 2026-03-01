@@ -160,3 +160,37 @@ def ensure_dict(data):
         except:
             return {}
     return {}
+
+class Paginator:
+    def __init__(self, items, page=0, per_page=5, callback_base="page"):
+        self.items = items if isinstance(items, list) else list(items.items())
+        self.page = page
+        self.per_page = per_page
+        self.callback_base = callback_base
+        self.total_pages = (len(self.items) - 1) // per_page + 1
+
+    def get_page_items(self):
+        start = self.page * self.per_page
+        return self.items[start : start + self.per_page]
+
+    def add_navigation(self, builder):
+        if self.total_pages <= 1:
+            return
+        
+        nav_row = []
+        if self.page > 0:
+            nav_row.append(types.InlineKeyboardButton(
+                text="⬅️", callback_data=f"{self.callback_base}:{self.page - 1}"))
+        else:
+            nav_row.append(types.InlineKeyboardButton(text=" ", callback_data="none"))
+
+        nav_row.append(types.InlineKeyboardButton(
+            text=f"{self.page + 1}/{self.total_pages}", callback_data="none"))
+
+        if self.page < self.total_pages - 1:
+            nav_row.append(types.InlineKeyboardButton(
+                text="➡️", callback_data=f"{self.callback_base}:{self.page + 1}"))
+        else:
+            nav_row.append(types.InlineKeyboardButton(text=" ", callback_data="none"))
+
+        builder.row(*nav_row)
