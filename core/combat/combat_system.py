@@ -27,7 +27,7 @@ class Fighter:
         })
 
         inventory = capy.get("inventory", {})
-        storage = inventory.get("equipment_storage", [])
+        storage = inventory.get("equipment", [])
         
         has_cat_life = any(item.get("name") == "Котяче життя" for item in storage)
         
