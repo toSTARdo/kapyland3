@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from handlers.profile.view import get_profile_kb
 
 router = Router()
 
@@ -29,39 +30,53 @@ def format_time(wake_up_str: str) -> str:
 @router.message(Command("sleep"))
 async def cmd_sleep(event: types.Message | types.CallbackQuery, db_pool):
     uid = event.from_user.id
-    message = event.message if isinstance(event, types.CallbackQuery) else event
     
     status, result_data = await sleep_db_operation(uid, db_pool) 
     
     if status == "no_capy":
-        return await (event.answer("❌ У тебе немає капібари!", show_alert=True) if isinstance(event, types.CallbackQuery) else event.answer("❌ У тебе немає капібари!"))
+        msg = "❌ У тебе немає капібари!"
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer(msg, show_alert=True)
+        return await event.answer(msg)
     
     if status == "already_sleeping":
         time_str = format_time(result_data)
-        text = f"💤 Вже спить! Прокинеться через: {time_str}"
+        msg = f"💤 Капібара вже бачить сни. Прокинеться через: {time_str}"
         if isinstance(event, types.CallbackQuery):
-            return await event.answer(text, show_alert=True)
-        return await event.answer(text)
+            return await event.answer(msg, show_alert=True)
+        return await event.answer(msg, parse_mode="HTML")
 
     if status == "success":
-        builder = InlineKeyboardBuilder()
-        builder.button(text="☀️ Прокинутися зараз", callback_data="wakeup_now")
-        
-        text = (
-            "💤 <b>Капібара згорнулася калачиком...</b>\n"
-            "Вона буде спати 2 години, щоб повністю відновити 100% ⚡.\n\n"
-            "<i>У цей час вона не зможе битися або подорожувати.</i>"
-        )
+        async with db_pool.acquire() as conn:
+            state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
+            current_state = json.loads(state_raw) if isinstance(state_raw, str) else (state_raw or {})
+
+        new_kb = get_profile_kb(current_state)
+        alert_msg = "💤 Капібара лягла спати!"
         
         if isinstance(event, types.CallbackQuery):
-            await event.answer("Капібара лягла спати 😴", show_alert=False)
+            await event.answer(alert_msg, show_alert=True)
+            
             if event.message.photo:
-                await event.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+                await event.message.edit_caption(
+                    caption=event.message.caption,
+                    reply_markup=new_kb,
+                    parse_mode="HTML"
+                )
             else:
-                await event.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+                await event.message.edit_text(
+                    text=event.message.text,
+                    reply_markup=new_kb,
+                    parse_mode="HTML"
+                )
         else:
-            await event.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
-
+            text = (
+                "💤 <b>Капібара згорнулася калачиком...</b>\n"
+                "Вона буде спати 2 години, щоб повністю відновити 100% ⚡.\n\n"
+                "<i>У цей час вона не зможе битися або подорожувати.</i>"
+            )
+            await event.answer(text, reply_markup=new_kb, parse_mode="HTML")
+            
 @router.callback_query(F.data == "wakeup_now")
 async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
@@ -70,12 +85,15 @@ async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
     if status == "error":
         return await callback.answer("❌ Ти вже не спиш!", show_alert=True)
     
-    alert_msg = f"☀️ Пробудження! Відновлено {gain}⚡ стаміни."
+    alert_msg = f"🥥 Капібарі на голову впав кокос і вона проснулася! Вона відновила {gain}⚡ стаміни."
     if status == "overslept":
-        alert_msg = "😴 Капібара повністю виспалася! 100⚡"
+        alert_msg = "😴 Капібара відіспала кінську голову! Стаміна: 100⚡." 
 
-    builder = InlineKeyboardBuilder()
-    builder.button(text="👤 До профілю", callback_data="open_profile")
+    async with db_pool.acquire() as conn:
+        state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
+        current_state = json.loads(state_raw) if isinstance(state_raw, str) else (state_raw or {})
+
+    new_kb = get_profile_kb(current_state)
     
     try:
         await callback.answer(alert_msg, show_alert=True)
@@ -83,16 +101,16 @@ async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
         if callback.message.photo:
             await callback.message.edit_caption(
                 caption=callback.message.caption,
-                reply_markup=builder.as_markup(),
+                reply_markup=new_kb,
                 parse_mode="HTML"
             )
         else:
             await callback.message.edit_text(
                 text=callback.message.text,
-                reply_markup=builder.as_markup(),
+                reply_markup=new_kb,
                 parse_mode="HTML"
             )
-    except Exception as e:
+    except Exception:
         pass
 
 async def sleep_db_operation(tg_id: int, db_pool):
@@ -125,7 +143,8 @@ async def wakeup_db_operation(tg_id: int, db_pool):
         if state.get("status") != "sleep":
             return "error", 0
 
-        start_time = datetime.fromisoformat(state.get("sleep_start", datetime.now(timezone.utc).isoformat()))
+        start_time_str = state.get("sleep_start", datetime.now(timezone.utc).isoformat())
+        start_time = datetime.fromisoformat(start_time_str)
         if start_time.tzinfo is None: start_time = start_time.replace(tzinfo=timezone.utc)
             
         now = datetime.now(timezone.utc)
@@ -140,7 +159,8 @@ async def wakeup_db_operation(tg_id: int, db_pool):
 
         actual_gain = new_stamina - current_stamina
         state.update({"status": "active"})
-        state.pop("sleep_start", None); state.pop("wake_up", None)
+        state.pop("sleep_start", None)
+        state.pop("wake_up", None)
 
         await conn.execute(
             "UPDATE capybaras SET state = $1, stamina = $2 WHERE owner_id = $3", 
