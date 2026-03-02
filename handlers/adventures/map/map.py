@@ -65,7 +65,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         
         map_display = render_pov(
             px, py, discovered, mode, 
-            treasure_maps=inv.get("treasure_maps", []), 
+            treasure_maps=inv.get("loot", {}).get("treasure_maps", []), 
             flowers=nav.get("flowers", {}), 
             trees=nav.get("trees", {}),
             totems=nav.get("totems", [])
@@ -154,7 +154,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         """, stamina-1, zen, json.dumps(nav), json.dumps(inv), json.dumps(state), uid)
 
         is_at_tree = coord_key in nav.get("trees", {})
-        map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("treasure_maps"), nav.get("flowers"), nav.get("trees"), nav.get("totems", []))
+        map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), nav.get("totems", []))
         
         text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
                 f"🧭 Біом: {get_biome_name(ny)} | ✨ Дзен: {zen}\n\n"
@@ -219,7 +219,7 @@ async def handle_teleport(callback: types.CallbackQuery, db_pool):
             UPDATE capybaras SET navigation = $1, stamina = stamina - 15 WHERE owner_id = $2
         """, json.dumps(nav), uid)
         
-        map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), totems)
+        map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), totems)
         text = (f"🌀 <b>Телепортація успішна!</b>\n📍 Ви прибули до: {target['name']} ({nx}, {ny})\n\n{map_display}")
         
         await callback.message.edit_text(
@@ -300,7 +300,7 @@ async def handle_chop_tree(callback: types.CallbackQuery, db_pool):
         map_display = render_pov(
             px, py, nav.get("discovered", []), 
             state.get("mode", "capy"), 
-            inv.get("treasure_maps"), nav.get("flowers"), nav.get("trees"), nav.get("totems", [])
+            inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), nav.get("totems", [])
         )
         
         text = (f"📍 <b>({px}, {py})</b> | {get_stamina_icons(stamina-5)}\n"
