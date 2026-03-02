@@ -7,6 +7,7 @@ from .map_assets import *
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
 from .map_keyboard import get_map_keyboard, get_viewer_keyboard
 from handlers.adventures.quests.quests import start_branching_quest
+from core.combat.battles import run_battle_logic
 
 router = Router()
 
