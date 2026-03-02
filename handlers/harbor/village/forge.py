@@ -334,7 +334,7 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT inventory, equipment, state, stats_track, 
+            SELECT inventory, equipment, state, stats_track, karma,
                    lvl, atk, def, agi, luck, zen, stamina, hunger,
                    wins, total_fights
             FROM capybaras WHERE owner_id = $1
@@ -385,7 +385,7 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
                 "hunger": ("Голод (макс)", row['hunger'], "🍏"),
                 "level": ("Рівень", row['lvl'], "🆙"),
                 "all_stats_sum": ("Здобутий Дзен", sum_stats, "📊"),
-                "karma": ("Карма", row["stats_track"].get("karma", 0), "⚖️")
+                "karma": ("Карма", row["karma"].get("karma", 0), "⚖️")
             }
 
             for key, req_val in recipe["requirements"].items():
