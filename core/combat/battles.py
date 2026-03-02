@@ -98,7 +98,7 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT name, weight, inventory, atk, def, agi, luck 
+            SELECT name, weight, inventory, atk, def, agi, luck , equipment
             FROM capybaras 
             WHERE owner_id = $1
         """, target_id)
