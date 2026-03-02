@@ -120,6 +120,11 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
             eq_data = json.loads(eq_data)
         eq_data = eq_data or {}
 
+        inv = row['inventory']
+        if isinstance(inv, str):
+            inv = json.loads(inv)
+        inv = inv or {}
+
         weapon_obj = eq_data.get("weapon") or {"name": "Лапки", "lvl": 0}
         armor_obj = eq_data.get("armor") or {"name": "Хутро", "lvl": 0}
 
