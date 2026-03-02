@@ -140,6 +140,24 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         
         if len(disc_set) > old_size + 50: zen += 1
 
+        treasure_maps = inv.get("loot", {}).get("treasure_maps", [])
+        map_to_remove = None
+
+        for m in treasure_maps:
+            if m.get("pos") == coord_key:
+                if m.get("type") == "boss_den":
+                    return await run_battle_logic(callback, db_pool, bot_type="pelican_boss")
+                
+                elif m.get("type") == "treasure":
+                    inv["loot"]["chest"] = inv["loot"].get("chest", 0) + 1
+                    loot_msg = "🏴‍☠️ Ти знайшов закопану скриню! (+1 скриня)"
+                    map_to_remove = m
+                    break
+
+        if map_to_remove:
+            treasure_maps.remove(map_to_remove)
+            inv["loot"]["treasure_maps"] = treasure_maps
+
         if coord_key in COORD_QUESTS:
             nav.update({"x": nx, "y": ny, "discovered": list(disc_set)})
             state["mode"] = new_mode
