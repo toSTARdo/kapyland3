@@ -122,7 +122,7 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
             pool = ARTIFACTS.get(rarity, [{"name": "Іржавий ніж"}])
             item = random.choice(pool)
             
-            storage = inv.setdefault("equipment_storage", [])
+            storage = inv.setdefault("equipment", [])
             storage.append({
                 "name": item["name"], 
                 "rarity": rarity, 

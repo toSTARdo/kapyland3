@@ -178,7 +178,7 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     await callback.answer(alert_text, show_alert=True)
     
     try:
-        from handlers.inventory.navigator import render_inventory_page 
+        from handlers.hold.inventory.navigator import render_inventory_page 
         await render_inventory_page(callback.message, user_id, page="potions", is_callback=True)
     except:
         await callback.message.delete()
