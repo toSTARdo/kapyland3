@@ -138,8 +138,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
                             maps_list.append({
                                 "type": "treasure", 
                                 "id": m_id, 
-                                "x": t_x, 
-                                "y": t_y,
+                                "pos": f"{t_x},{t_y}",
                                 "discovered": str(datetime.date.today())
                             })
                             inventory_note = f"🗺️ <b>Ви знайшли карту скарбів #{m_id}!</b> ({t_x}, {t_y})"
