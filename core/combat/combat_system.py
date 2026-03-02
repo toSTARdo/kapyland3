@@ -16,13 +16,15 @@ class Fighter:
         self.agi = stats.get("agility", 0)
         self.luck = stats.get("luck", 0)
 
-        self.w_name = capy.get("equipped_weapon", "Лапки")
-        self.a_name = capy.get("equipped_armor", "Хутро")
+        self.weapon = capy.get("equipped_weapon", "Лапки")
+        self.armor = capy.get("equipped_armor", "Хутро")
         
-        self.weapon_data = config_data["WEAPONS"].get(self.w_name, {
+        self.def_ += self.armor["lvl"]
+
+        self.weapon_data = config_data["WEAPONS"].get(self.weapon, {
             "texts": ["вдаряє лапками {defen}"], "hit_bonus": 0, "power": 1
         })
-        self.armor_data = config_data["ARMOR"].get(self.a_name, {
+        self.armor_data = config_data["ARMOR"].get(self.armor, {
             "text": "отримала удар", "defense": 0
         })
 
@@ -68,11 +70,11 @@ class Fighter:
 class CombatEngine:
     @staticmethod
     def resolve_turn(att: Fighter, defe: Fighter, round_num: int) -> str:
-        if random.random() > att.get_hit_chance():
-            return f"💨 {att.color} {html.bold(att.name)} промахнувся!"
-
         if random.random() < defe.get_dodge_chance():
             return f"⚡ {html.bold(defe.name)} спритно ухилився від атаки!"
+
+        if random.random() > att.get_hit_chance():
+            return f"💨 {att.color} {html.bold(att.name)} промахнувся!"
 
         if random.random() < defe.get_block_chance():
             armor_msg = defe.armor_data.get("text", "заблокував удар")

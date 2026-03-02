@@ -108,16 +108,18 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
         eq = json.loads(row['equipment']) if isinstance(row['equipment'], str) else (row['equipment'] or {})
         raw_equip = eq.get("equipment", [])
         
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
+
         eq_weapon_name = "Лапки"
         eq_armor_name = "Хутро"
 
-        if isinstance(raw_equip, list):
+        '''if isinstance(raw_equip, list):
             for item in raw_equip:
                 if not isinstance(item, dict): continue
                 if item.get("type") == "weapon" and eq_weapon_name == "Лапки":
                     eq_weapon_name = item.get("name", "Лапки")
                 elif item.get("type") == "armor" and eq_armor_name == "Хутро":
-                    eq_armor_name = item.get("name", "Хутро")
+                    eq_armor_name = item.get("name", "Хутро")'''
         
         return {
             "kapy_name": row['name'],
@@ -128,8 +130,8 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
                 "agility": row['agi'] or 1,
                 "luck": row['luck'] or 0
             },
-            "equipped_weapon": eq_weapon_name,
-            "equipped_armor": eq_armor_name,
+            "equipped_weapon": raw_equip["weapon"],
+            "equipped_armor": raw_equip["armor"],
             "inventory": inv,
             "color": "🔴"
         }
