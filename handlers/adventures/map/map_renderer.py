@@ -61,7 +61,7 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
                 tile = FULL_MAP[y][x]
                 
                 if is_snowy_biome and tile not in FOREST_TILES:
-                    snow_seed = hash(f"{x}_{y}_{cycle}")
+                    snow_seed = hash(f"{x}_{y}")
                     if (snow_seed % 12) == 0:
                         display_row.append("❆")
                         continue
