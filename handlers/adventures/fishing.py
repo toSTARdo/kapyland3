@@ -16,7 +16,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT stamina, inventory, fishing_stats 
+            SELECT stamina, inventory, fishing_stats, stats_track
             FROM capybaras WHERE owner_id = $1
         """, uid)
         
