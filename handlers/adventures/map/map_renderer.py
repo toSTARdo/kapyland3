@@ -23,7 +23,7 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
     if treasure_maps:
         for m in treasure_maps:
             if m.get("type") == "boss_den":
-                boss_coords[m['pos']] = m.get("boss_num")
+                boss_coords[m['pos']] = m.get("pos")
             else:
                 treasure_coords.add(m['pos'])
                 
