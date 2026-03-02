@@ -8,6 +8,8 @@ from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
 from .map_keyboard import get_map_keyboard, get_viewer_keyboard
 from handlers.adventures.quests.quests import start_branching_quest
 from core.combat.battles import run_battle_logic
+from config import COORD_QUESTS, MAP_WIDTH, MAP_HEIGHT, FULL_MAP, WATER_TILES, FOREST_TILES, BOSS_ID_MAP
+from utils.items import get_random_plant, get_random_mushroom
 
 router = Router()
 
@@ -147,7 +149,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         for m in treasure_maps:
             if m.get("pos") == coord_key:
                 if m.get("type") == "boss_den":
-                    return await run_battle_logic(callback, db_pool, bot_type="pelican_boss")
+                    return await run_battle_logic(callback, db_pool, bot_type=BOSS_ID_MAP[m.get("boss_num")], is_boss=True)
                 
                 elif m.get("type") == "treasure":
                     inv["loot"]["chest"] = inv["loot"].get("chest", 0) + 1

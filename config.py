@@ -491,3 +491,201 @@ ACHIEVEMENTS = {
     }
 
 }
+
+NPC_REGISTRY = {
+        "parrotbot": {
+            "kapy_name": "Папуга Павло", "color": "🦜", "weight": 5.0,
+            "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
+            "weapon_full": {"name": "Весло", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 0
+        },
+        "mimic": {
+            "kapy_name": "Мімік", "color": "🗃",
+            "stats": {"attack": 4, "defense": 2, "agility": 5, "luck": 2},
+            "weapon_full": {"name": "Зуби акули", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 4
+        },
+        # --- ЕТАП 1: JUA ARCHIPELAGO (ID 1-7) ---
+        "boss_pelican": {
+            "kapy_name": "Пелікан Стед «Ківш»", "color": "🦢",
+            "stats": {"attack": 8, "defense": 5, "agility": 5, "luck": 5},
+            "weapon_full": {"name": "Весло", "lvl": 1},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 10, "is_boss": True
+        },
+        "boss_raccoon_trash": {
+            "kapy_name": "Єнот Ріккі «Сміттяр»", "color": "🦝",
+            "stats": {"attack": 10, "defense": 8, "agility": 10, "luck": 25},
+            "weapon_full": {"name": "Йоржик", "lvl": 2},
+            "armor_full": {"name": "Діряве відро", "lvl": 1},
+            "hp_bonus": 15, "is_boss": True
+        },
+        "boss_rat_king": {
+            "kapy_name": "Щур Шмиг «Чума»", "color": "🐀",
+            "stats": {"attack": 12, "defense": 5, "agility": 20, "luck": 5},
+            "weapon_full": {"name": "Вампірський клинок", "lvl": 1},
+            "armor_full": {"name": "Мівіна", "lvl": 1},
+            "hp_bonus": 20, "is_boss": True
+        },
+        "boss_lynx": {
+            "kapy_name": "Рись «Рвивітер»", "color": "🐆",
+            "stats": {"attack": 14, "defense": 6, "agility": 22, "luck": 10},
+            "weapon_full": {"name": "Совині кігті", "lvl": 2},
+            "armor_full": {"name": "Хутро", "lvl": 2},
+            "hp_bonus": 25, "is_boss": True
+        },
+        "boss_monkey_king": {
+            "kapy_name": "Мавпа Укун «Банан»", "color": "🐒",
+            "stats": {"attack": 15, "defense": 10, "agility": 18, "luck": 15},
+            "weapon_full": {"name": "Чайний посох", "lvl": 2},
+            "armor_full": {"name": "Хутро", "lvl": 3},
+            "hp_bonus": 30, "is_boss": True
+        },
+        "boss_lion_henry": {
+            "kapy_name": "Лев Генрі «Невдача»", "color": "🦁",
+            "stats": {"attack": 18, "defense": 8, "agility": 8, "luck": -5},
+            "weapon_full": {"name": "Розсікач драконів", "lvl": 2}, 
+            "armor_full": {"name": "Діряве відро", "lvl": 3},
+            "hp_bonus": 40, "is_boss": True
+        },
+        "boss_alvida": {
+            "kapy_name": "Леді Альвіда «Кокос»", "color": "👒",
+            "stats": {"attack": 20, "defense": 12, "agility": 10, "luck": 15},
+            "weapon_full": {"name": "Молот Мільйонер", "lvl": 3},
+            "armor_full": {"name": "Рятувальний круг", "lvl": 3},
+            "hp_bonus": 50, "is_boss": True
+        },
+
+        # --- ЕТАП 2: UROBOROSTREAM (ID 8-14) ---
+        "boss_snake_lee": {
+            "kapy_name": "Вуж Лі «Холодна кров»", "color": "🐍",
+            "stats": {"attack": 16, "defense": 10, "agility": 25, "luck": 12},
+            "weapon_full": {"name": "Швабра", "lvl": 4},
+            "armor_full": {"name": "Плащ-невидимка", "lvl": 2},
+            "hp_bonus": 45, "is_boss": True
+        },
+        "boss_otter_river": {
+            "kapy_name": "Видра Ваня «Весло»", "color": "🦦",
+            "stats": {"attack": 18, "defense": 12, "agility": 28, "luck": 15},
+            "weapon_full": {"name": "Весло", "lvl": 5},
+            "armor_full": {"name": "Рятувальний круг", "lvl": 4},
+            "hp_bonus": 55, "is_boss": True
+        },
+        "boss_frog_shinobi": {
+            "kapy_name": "Жаба Джирая «Смертоква»", "color": "🐸",
+            "stats": {"attack": 20, "defense": 10, "agility": 30, "luck": 20},
+            "weapon_full": {"name": "Тенза Зангетсу", "lvl": 4}, 
+            "armor_full": {"name": "Плащ-невидимка", "lvl": 3},
+            "hp_bonus": 50, "is_boss": True
+        },
+        "boss_catfish_gun": {
+            "kapy_name": "Сом Ґан «Безжабрий»", "color": "🐟",
+            "stats": {"attack": 22, "defense": 15, "agility": 12, "luck": 10},
+            "weapon_full": {"name": "Гармата", "lvl": 4},
+            "armor_full": {"name": "Стара бочка", "lvl": 4},
+            "hp_bonus": 65, "is_boss": True
+        },
+        "boss_owl_wise": {
+            "kapy_name": "Сова Софія «Нічна зміна»", "color": "🦉",
+            "stats": {"attack": 20, "defense": 12, "agility": 24, "luck": 25},
+            "weapon_full": {"name": "Совині кігті", "lvl": 5},
+            "armor_full": {"name": "Куртка Коптильника", "lvl": 3},
+            "hp_bonus": 60, "is_boss": True
+        },
+        "boss_fat_cat": {
+            "kapy_name": "Кіт Батон «Хлібчик»", "color": "🐈",
+            "stats": {"attack": 18, "defense": 18, "agility": 5, "luck": 15},
+            "weapon_full": {"name": "Намазка Пікнік", "lvl": 5},
+            "armor_full": {"name": "Стара бочка", "lvl": 5},
+            "hp_bonus": 100, "is_boss": True
+        },
+        "boss_turtle_ancient": {
+            "kapy_name": "Черепаха Тортілла «Панцир»", "color": "🐢",
+            "stats": {"attack": 12, "defense": 20, "agility": 1, "luck": 20},
+            "weapon_full": {"name": "Підзорна труба", "lvl": 3},
+            "armor_full": {"name": "Панцир черепахи", "lvl": 5},
+            "hp_bonus": 120, "is_boss": True
+        },
+
+        # --- ЕТАП 3: STARFJORDS OF WINTER EHWAZ (ID 15-20) ---
+        "boss_hakihaki": {
+            "kapy_name": "Хакіхакі «Однокрилий»", "color": "🦅",
+            "stats": {"attack": 24, "defense": 16, "agility": 22, "luck": 15},
+            "weapon_full": {"name": "Хмарорізи", "lvl": 4},
+            "armor_full": {"name": "Череп ягуара", "lvl": 4},
+            "hp_bonus": 80, "is_boss": True
+        },
+        "boss_husky_kuzan": {
+            "kapy_name": "Хаскі Кузан «Хиба»", "color": "🐺",
+            "stats": {"attack": 22, "defense": 18, "agility": 25, "luck": 25},
+            "weapon_full": {"name": "Гіга сніжинкосюрикен", "lvl": 5},
+            "armor_full": {"name": "Щит Іґґдрасіля", "lvl": 4},
+            "hp_bonus": 90, "is_boss": True
+        },
+        "boss_bear_north": {
+            "kapy_name": "Ведмідь Бернард «Айсберг»", "color": "🐻‍❄️",
+            "stats": {"attack": 25, "defense": 18, "agility": 12, "luck": 15},
+            "weapon_full": {"name": "Сокира Беткапі", "lvl": 5},
+            "armor_full": {"name": "Мамонтовий шарф", "lvl": 4},
+            "hp_bonus": 110, "is_boss": True
+        },
+        "boss_walrus_captain": {
+            "kapy_name": "Морж Морган «Ікло»", "color": "🦭",
+            "stats": {"attack": 22, "defense": 20, "agility": 10, "luck": 20},
+            "weapon_full": {"name": "Таран", "lvl": 5},
+            "armor_full": {"name": "Стара бочка", "lvl": 5},
+            "hp_bonus": 130, "is_boss": True
+        },
+        "boss_whale_moby": {
+            "kapy_name": "Кит Мобі Кап «Біла Скеля»", "color": "🐋",
+            "stats": {"attack": 25, "defense": 20, "agility": 2, "luck": 20},
+            "weapon_full": {"name": "Таран", "lvl": 5},
+            "armor_full": {"name": "Скриня Дейві Джонсона", "lvl": 5},
+            "hp_bonus": 180, "is_boss": True
+        },
+        "boss_penguin_rich": {
+            "kapy_name": "Пінгвін Пін «Монополіст»", "color": "🐧",
+            "stats": {"attack": 25, "defense": 18, "agility": 28, "luck": 30},
+            "weapon_full": {"name": "Молот Мільйонер", "lvl": 5},
+            "armor_full": {"name": "Мітка гетьмана", "lvl": 5},
+            "hp_bonus": 140, "is_boss": True
+        },
+        # SECRET BOSSES
+        "secret_shark": {
+            "kapy_name": "Акула Селахія", "color": "🦈",
+            "stats": {"attack": 35, "defense": 12, "agility": 12, "luck": 15},
+            "weapon_full": {"name": "Зуби акули", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 50, "is_boss": True, "is_secret": True
+        },
+    }
+
+BOSS_ID_MAP = {
+    # --- JUA ARCHIPELAGO (Стартова зона: ID 1-7) ---
+    1: "boss_pelican",       # Введення в механіку
+    2: "boss_raccoon_trash", # Перший тест на удачу (Luck)
+    3: "boss_rat_king",      # Перевірка на спритність (Agility)
+    4: "boss_lynx",          # Швидкі атаки
+    5: "boss_monkey_king",   # Збалансований боєць
+    6: "boss_lion_henry",    # Сильний удар, але косий
+    7: "boss_alvida",        # Фінальний бос архіпелагу
+
+    # --- UROBOROSTREAM (Середина гри: ID 8-14) ---
+    8: "boss_snake_lee",     # Висока спритність у воді
+    9: "boss_otter_river",   # Майстер весла
+    10: "boss_frog_shinobi", # Швидкий та небезпечний
+    11: "boss_catfish_gun",  # Важка артилерія
+    12: "boss_owl_wise",     # Критичні удари вночі
+    13: "boss_fat_cat",      # Танк-амортизатор
+    14: "boss_turtle_ancient", # Максимальний захист (Wall)
+
+    # --- STARFJORDS OF WINTER EHWAZ (Енд-гейм: ID 15-20) ---
+    15: "boss_hakihaki",     # Початок хардкору
+    16: "boss_husky_kuzan",  # Крижаний контроль
+    17: "boss_bear_north",   # Максимальна атака (25)
+    18: "boss_walrus_captain", # Товста шкура (20 Def)
+    19: "boss_whale_moby",   # Найвищий HP у грі (180)
+    20: "boss_penguin_rich"  # Фінальний бос: баланс усіх статів
+}

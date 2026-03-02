@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from handlers.harbor.settings.emotes import send_victory_celebration
 from core.combat.combat_system import Fighter, CombatEngine
 from utils.helpers import grant_exp_and_lvl
-from config import BASE_HITPOINTS, WEAPON, ARMOR
+from config import BASE_HITPOINTS, WEAPON, ARMOR, NPC_REGISTRY
 
 router = Router()
 
@@ -65,44 +65,6 @@ async def handle_fight_bot(callback: types.CallbackQuery, db_pool):
     await callback.answer()
 
 async def get_full_capy_data(target_id, db_pool, b_type=None):
-    NPC_REGISTRY = {
-        "parrotbot": {
-            "kapy_name": "Папуга Павло", "color": "🦜", "weight": 5.0,
-            "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
-            "weapon_full": {"name": "Весло", "lvl": 0},
-            "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 0
-        },
-        "mimic": {
-            "kapy_name": "Мімік", "color": "🗃",
-            "stats": {"attack": 4, "defense": 2, "agility": 5, "luck": 2},
-            "weapon_full": {"name": "Зуби акули", "lvl": 0},
-            "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 4
-        },
-        "boss_pelican": {
-            "kapy_name": "Пелікан Петро", "color": "🦢",
-            "stats": {"attack": 15, "defense": 8, "agility": 5, "luck": 5},
-            "weapon_full": {"name": "Весло", "lvl": 0},
-            "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 7, "is_boss": True
-        },
-        "boss_lynx": {
-            "kapy_name": "Рись Рагнар", "color": "🐆",
-            "stats": {"attack": 22, "defense": 6, "agility": 18, "luck": 7},
-            "weapon_full": {"name": "Совині кігті", "lvl": 0},
-            "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 15, "is_boss": True
-        },
-        "secret_shark": {
-            "kapy_name": "Акула Селахія", "color": "🦈",
-            "stats": {"attack": 35, "defense": 12, "agility": 12, "luck": 15},
-            "weapon_full": {"name": "Зуби акули", "lvl": 0},
-            "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 50, "is_boss": True, "is_secret": True
-        }
-    }
-
     if b_type in NPC_REGISTRY:
         return NPC_REGISTRY[b_type]
 
@@ -143,7 +105,7 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
             "color": "🔴"
         }
 
-async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: int = None, bot_type: str = None):
+async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: int = None, bot_type: str = None, is_boss: bool = False):
     bot = callback.bot
     uid = callback.from_user.id
 
@@ -206,6 +168,8 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
     if not winner:
         res = "🤝 <b>НІЧИЯ! Капі обезсилені впали на травичку...</b>"
+    elif is_boss and winner == p1:
+            reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +5 кг, +10 EXP та запис у книгу героїв!"
     else:
         res = f"🏆 <b>ПЕРЕМОГА {winner.color}!</b>\n{html.bold(winner.name)} здобув звитягу над {html.bold(loser.name)}!"
 
@@ -221,9 +185,31 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
     if winner and loser:
         async with db_pool.acquire() as conn:
-            if winner_id and not is_parrot: 
-                await grant_exp_and_lvl(winner_id, exp_gain=3, weight_gain=3.0, bot=bot, db_pool=db_pool)
-                await conn.execute("UPDATE capybaras SET wins = wins + 1, total_fights = total_fights + 1, stamina = GREATEST(stamina - 5, 0) WHERE owner_id = $1", winner_id)
+            if winner == p1 and not is_parrot:
+                exp_gain = 10 if is_boss else 3
+                weight_gain = 5.0 if is_boss else 3.0
+                
+                await grant_exp_and_lvl(uid, exp_gain=exp_gain, weight_gain=weight_gain, bot=bot, db_pool=db_pool)
+                await conn.execute("""
+                    UPDATE capybaras 
+                    SET wins = wins + 1, 
+                        total_fights = total_fights + 1, 
+                        stamina = GREATEST(stamina - 5, 0) 
+                    WHERE owner_id = $1
+                """, uid)
+
+                if is_boss:
+                    current_boss_progress = await conn.fetchval("SELECT (stats_track->>'boss_defeated')::int FROM capybaras WHERE owner_id = $1", uid) or 0
+                    
+                    current_boss_id = next((k for k, v in BOSS_ID_MAP.items() if v == bot_type), 0)
+                    
+                    if current_boss_id == current_boss_progress + 1:
+                        new_progress = current_boss_progress + 1
+                        await conn.execute("""
+                            UPDATE capybaras 
+                            SET stats_track = stats_track || jsonb_build_object('boss_defeated', $2::int)
+                            WHERE owner_id = $1
+                        """, uid, new_progress)
 
             if loser_id:
                 w_loss = -3.0 if not is_parrot else 0.0
