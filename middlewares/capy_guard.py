@@ -225,6 +225,11 @@ class CapyGuardMiddleware(BaseMiddleware):
                     chest_count = config.get("reward_chest", 0)
                     if chest_count > 0:
                         inv = meta.setdefault("inventory", {})
+                        if isinstance(inv, str):
+                            try:
+                                inv = json.loads(inv)
+                            except json.JSONDecodeError:
+                                inv = {}
                         loot = inv.setdefault("loot", {})
                         loot["chest"] = loot.get("chest", 0) + chest_count
 
