@@ -362,11 +362,18 @@ ACHIEVEMENTS = {
         "reward_title": "Шафа",
         "reward_chest": 3
     },
+    "weight_500": {
+        "name": "🚙 Масивний",
+        "desc": "500 кг! Чого машина не на проїжджій частині!?.",
+        "condition": lambda u: u.get('weight', 0) >= 500,
+        "reward_title": "Фура",
+        "reward_chest": 5
+    },
     "weight_1000": {
         "name": "🌋 Говерла",
         "desc": "1000 кг! Тепер твій хребет — це гірський хребет.",
         "condition": lambda u: u.get('weight', 0) >= 1000,
-        "reward_title": "Фура",
+        "reward_title": "Гора",
         "reward_chest": 10
     },
 
@@ -417,10 +424,17 @@ ACHIEVEMENTS = {
         "reward_title": "Рибалка",
         "reward_chest": 2
     },
+    "old_capy": {
+        "name": "🎣 Капібарний і море",
+        "desc": "Виловити 500 рибин.",
+        "condition": lambda u: u.get('stats_track', {}).get('fish_caught', 0) >= 500,
+        "reward_title": "Сантьяго",
+        "reward_chest": 5
+    },
     "weapon_master": {
         "name": "🔱 Майстер збруї",
         "desc": "Покращити зброю до +5 рівня.",
-        "condition": lambda u: any("+5" in str(v) for v in u.get('equipment', {}).values()),
+        "condition": lambda u: any(5 in str(v) for v in u.get('equipment', {})["weapon"]["lvl"]),
         "reward_title": "Колекціонер",
         "reward_chest": 10
     },
@@ -431,6 +445,13 @@ ACHIEVEMENTS = {
         "desc": "Зварити 30 будь-яких зілль.",
         "condition": lambda u: u.get('stats_track', {}).get('potions_brewed', 0) >= 30,
         "reward_title": "Хімік",
+        "reward_chest": 3
+    },
+    "transmutation": {
+        "name": "🧪 Трансмутація",
+        "desc": "Зварити 300 будь-яких зілль.",
+        "condition": lambda u: u.get('stats_track', {}).get('potions_brewed', 0) >= 300,
+        "reward_title": "Алхімік",
         "reward_chest": 3
     },
 
@@ -448,5 +469,22 @@ ACHIEVEMENTS = {
         "condition": lambda u: u.get('stats_track', {}).get('total_deaths', 0) >= 10,
         "reward_title": "Трунар",
         "reward_chest": 5
+    },
+
+    #--- ІНШЕ ---
+    "fan": {
+        "name": "✨ Фанат",
+        "desc": "Натиснути 5000 кнопок.",
+        "condition": lambda u: u.get('stats_track', {}).get('total_clicks', 0) >= 5000,
+        "reward_title": "Відданий фанат",
+        "reward_chest": 5
+    },
+    "addict": {
+        "name": "😵‍💫 Залежний",
+        "desc": "Натиснути 50000 кнопок.",
+        "condition": lambda u: u.get('stats_track', {}).get('total_clicks', 0) >= 50000,
+        "reward_title": "Кіберзалежний",
+        "reward_chest": 25
     }
+
 }
