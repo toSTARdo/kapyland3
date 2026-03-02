@@ -115,7 +115,6 @@ async def get_weekly_bazaar_stock(db_pool):
                 "currency": g_curr, "cat": "loot", "left": 1
             }
             
-            # 2. Ресурси
             for res in random.sample(RESOURCES_POOL, 5):
                 cat = "materials"
                 

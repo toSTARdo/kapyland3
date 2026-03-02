@@ -67,29 +67,39 @@ async def handle_fight_bot(callback: types.CallbackQuery, db_pool):
 async def get_full_capy_data(target_id, db_pool, b_type=None):
     NPC_REGISTRY = {
         "parrotbot": {
-            "kapy_name": "Папуга Павло", "color": "🦜",
+            "kapy_name": "Папуга Павло", "color": "🦜", "weight": 5.0,
             "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
-            "equipped_weapon": "Весло", "hp_bonus": 0
+            "weapon_full": {"name": "Весло", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 0
         },
         "mimic": {
             "kapy_name": "Мімік", "color": "🗃",
             "stats": {"attack": 4, "defense": 2, "agility": 5, "luck": 2},
-            "equipped_weapon": "Зуби акули", "hp_bonus": 4
+            "weapon_full": {"name": "Зуби акули", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 4
         },
         "boss_pelican": {
             "kapy_name": "Пелікан Петро", "color": "🦢",
             "stats": {"attack": 15, "defense": 8, "agility": 5, "luck": 5},
-            "equipped_weapon": "Весло", "hp_bonus": 7, "is_boss": True
+            "weapon_full": {"name": "Весло", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 7, "is_boss": True
         },
         "boss_lynx": {
             "kapy_name": "Рись Рагнар", "color": "🐆",
             "stats": {"attack": 22, "defense": 6, "agility": 18, "luck": 7},
-            "equipped_weapon": "Совині кігті", "hp_bonus": 15, "is_boss": True
+            "weapon_full": {"name": "Совині кігті", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 15, "is_boss": True
         },
         "secret_shark": {
             "kapy_name": "Акула Селахія", "color": "🦈",
             "stats": {"attack": 35, "defense": 12, "agility": 12, "luck": 15},
-            "equipped_weapon": "Зуби акули", "hp_bonus": 50, "is_boss": True, "is_secret": True
+            "weapon_full": {"name": "Зуби акули", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 50, "is_boss": True, "is_secret": True
         }
     }
 
@@ -105,22 +115,14 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
         
         if not row: return None
         
-        eq = json.loads(row['equipment']) if isinstance(row['equipment'], str) else (row['equipment'] or {})
-        raw_equip = eq.get("equipment", [])
-        
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
+        eq_data = row['equipment']
+        if isinstance(eq_data, str):
+            eq_data = json.loads(eq_data)
+        eq_data = eq_data or {}
 
-        eq_weapon_name = "Лапки"
-        eq_armor_name = "Хутро"
+        weapon_obj = eq_data.get("weapon") or {"name": "Лапки", "lvl": 0}
+        armor_obj = eq_data.get("armor") or {"name": "Хутро", "lvl": 0}
 
-        '''if isinstance(raw_equip, list):
-            for item in raw_equip:
-                if not isinstance(item, dict): continue
-                if item.get("type") == "weapon" and eq_weapon_name == "Лапки":
-                    eq_weapon_name = item.get("name", "Лапки")
-                elif item.get("type") == "armor" and eq_armor_name == "Хутро":
-                    eq_armor_name = item.get("name", "Хутро")'''
-        
         return {
             "kapy_name": row['name'],
             "weight": row['weight'],
@@ -130,8 +132,8 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
                 "agility": row['agi'] or 1,
                 "luck": row['luck'] or 0
             },
-            "equipped_weapon": raw_equip["weapon"],
-            "equipped_armor": raw_equip["armor"],
+            "weapon_full": weapon_obj,
+            "armor_full": armor_obj,
             "inventory": inv,
             "color": "🔴"
         }
