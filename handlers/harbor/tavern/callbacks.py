@@ -136,7 +136,7 @@ async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
         if not can_ram:
             return await callback.answer("💥 Корабель ще лагодять! Спробуй завтра.", show_alert=True)
 
-        updated_cools["ram_cooldown"] = datetime.now().isoformat()
+        updated_cools["ram_cooldown"] = datetime.datetime.now().isoformat()
 
         await conn.execute("""
             UPDATE capybaras 
