@@ -262,7 +262,7 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
                 "name": recipe["name"],
                 "type": item_type,
                 "desc": recipe.get("desc", ""),
-                "rarity": recipe.get("rarity", "common")
+                "rarity": recipe.get("rarity", "common"),
                 "lvl": 0
             }
             inv["equipment"].append(new_item)
