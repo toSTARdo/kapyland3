@@ -105,8 +105,8 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
         
         if not row: return None
         
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
-        raw_equip = inv.get("equipment", [])
+        eq = json.loads(row['equipment']) if isinstance(row['equipment'], str) else (row['equipment'] or {})
+        raw_equip = eq.get("equipment", [])
         
         eq_weapon_name = "Лапки"
         eq_armor_name = "Хутро"
