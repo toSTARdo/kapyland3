@@ -24,17 +24,17 @@ def format_time(seconds):
     minutes, seconds = divmod(remainder, 60)
     return f"{int(hours):02} год {int(minutes):02} хв"
 
-def check_daily_limit(meta, action_key):
+def check_daily_limit(cools_dict, action_key):
+    if not isinstance(cools_dict, dict):
+        cools_dict = {}
+        
     today = datetime.now().strftime("%Y-%m-%d")
-    last_action_date = meta.get("cooldowns", {}).get(action_key)
     
-    if last_action_date == today:
-        return False, today
+    if cools_dict.get(action_key) == today:
+        return False, cools_dict
     
-    if "cooldowns" not in meta:
-        meta["cooldowns"] = {}
-    meta["cooldowns"][action_key] = today
-    return True, today
+    cools_dict[action_key] = today
+    return True, cools_dict
 
 async def consume_stamina(conn, uid: int, activity: str) -> bool:
     from config import STAMINA_COSTS, STAT_WEIGHTS

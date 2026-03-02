@@ -131,11 +131,20 @@ async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
         inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
         cools = row['cooldowns'] if isinstance(row['cooldowns'], dict) else json.loads(row['cooldowns'])
 
-        can_ram, new_cools = check_daily_limit(cools, "ram")
+        can_ram, updated_cools = check_daily_limit(cools, "ram")
+
         if not can_ram:
             return await callback.answer("💥 Корабель ще лагодять! Спробуй завтра.", show_alert=True)
 
-        weapon = equip.get("weapon", {})
+        updated_cools["ram_cooldown"] = datetime.now().isoformat()
+
+        await conn.execute("""
+            UPDATE capybaras 
+            SET cooldowns = $1 
+            WHERE owner_id = $2
+        """, json.dumps(updated_cools), uid)
+
+        weapon = inv.get("equipment", {})
         weapon_name = weapon.get("name", "").lower() if isinstance(weapon, dict) else str(weapon).lower()
         
         has_ram = "таран" in weapon_name or "бур лаганна" in weapon_name
@@ -146,12 +155,6 @@ async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
 
         if not has_ram:
             return await callback.answer("❌ Тобі потрібен 'Таран' або 'Бур Лаганна'!", show_alert=True)
-
-        await conn.execute("""
-            UPDATE capybaras 
-            SET cooldowns = $1 
-            WHERE owner_id = $2
-        """, json.dumps(new_cools), uid)
 
     await callback.message.edit_caption(
         caption="💥 <b>БА-БАХ!</b>\n\nТи влетів у суперника на повному ходу! Тріск дерева, крики капібар — бій починається!", 
@@ -223,14 +226,12 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data.startswith("gift_to:"))
 async def gift_category_select(callback: types.CallbackQuery, db_pool):
     target_id = int(callback.data.split(":")[1])
-    
     builder = InlineKeyboardBuilder()
     builder.button(text="🍎 Їжа", callback_data=f"send_cat:food:{target_id}")
     builder.button(text="💎 Ресурси", callback_data=f"send_cat:materials:{target_id}")
-    builder.button(text="⚔️ Спорядження", callback_data=f"send_cat:loot:{target_id}") # Тепер loot
+    builder.button(text="⚔️ Спорядження", callback_data=f"send_cat:loot:{target_id}")
     builder.button(text="🔙 Назад", callback_data=f"social")
     builder.adjust(2, 1, 1)
-
     await callback.message.edit_caption(
         caption="🎁 <b>Меню подарунків</b>\nОберіть, що саме хочете надіслати друзяці:",
         reply_markup=builder.as_markup(),
@@ -241,33 +242,26 @@ async def gift_category_select(callback: types.CallbackQuery, db_pool):
 async def gift_item_select(callback: types.CallbackQuery, db_pool):
     parts = callback.data.split(":")
     category, target_id, uid = parts[1], int(parts[2]), callback.from_user.id
-    
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("SELECT inventory, cooldowns FROM capybaras WHERE owner_id = $1", uid)
         inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
         cools = row['cooldowns'] if isinstance(row['cooldowns'], dict) else json.loads(row['cooldowns'])
-        
         can_gift, _ = check_daily_limit(cools, "gift")
         if not can_gift:
             return await callback.answer("🎁 Ти вже сьогодні дарував! Спробуй завтра.", show_alert=True)
-
         builder = InlineKeyboardBuilder()
         items = inv.get(category, {})
-        
-        if not items:
+        valid_items = {k: v for k, v in items.items() if v > 0}
+        if not valid_items:
             return await callback.answer("Тут порожньо... 🕸", show_alert=True)
-
-        for item_key, count in items.items():
-            if count > 0:
-                name = DISPLAY_NAMES.get(item_key, item_key)
-                builder.button(
-                    text=f"{name} ({count})", 
-                    callback_data=f"gift_exec:{category}:{item_key}:{target_id}"
-                )
-        
+        for item_key, count in valid_items.items():
+            name = DISPLAY_NAMES.get(item_key, item_key)
+            builder.button(
+                text=f"{name} ({count})", 
+                callback_data=f"gift_exec:{category}:{item_key}:{target_id}"
+            )
         builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data=f"gift_to:{target_id}"))
         builder.adjust(1)
-
         await callback.message.edit_caption(
             caption=f"🎁 <b>Твій рюкзак ({category}):</b>",
             reply_markup=builder.as_markup(),
@@ -278,56 +272,47 @@ async def gift_item_select(callback: types.CallbackQuery, db_pool):
 async def execute_gift_transfer(callback: types.CallbackQuery, db_pool):
     _, category, item_key, target_id = callback.data.split(":")
     uid, target_id = callback.from_user.id, int(target_id)
-    
     async with db_pool.acquire() as conn:
-        sender_name = await conn.fetchval("SELECT username FROM users WHERE tg_id = $1", uid)
-        if not sender_name:
-            sender_name = callback.from_user.first_name or "Таємнича Капібара"
-
+        sender_data = await conn.fetchrow("SELECT username, cooldowns FROM users u JOIN capybaras c ON u.tg_id = c.owner_id WHERE u.tg_id = $1", uid)
+        sender_name = sender_data['username'] if sender_data and sender_data['username'] else callback.from_user.first_name
         res = await conn.execute(f"""
             UPDATE capybaras 
             SET inventory = jsonb_set(inventory, '{{{category}, {item_key}}}', 
-                (GREATEST((inventory->'{category}'->>'{item_key}')::int - 1, 0))::text::jsonb),
+                ((inventory->'{category}'->>'{item_key}')::int - 1)::text::jsonb),
                 karma = karma + 1
             WHERE owner_id = $1 AND (inventory->'{category}'->>'{item_key}')::int > 0
         """, uid)
-
         if res == "UPDATE 0": 
             return await callback.answer("Предмет раптово закінчився! 💨", show_alert=True)
-
         await conn.execute(f"""
             UPDATE capybaras 
-            SET inventory = jsonb_set(inventory, '{{{category}, {item_key}}}', 
-                (COALESCE(inventory->'{category}'->>'{item_key}', '0')::int + 1)::text::jsonb)
+            SET inventory = jsonb_set(
+                inventory, 
+                '{{{category}}}', 
+                (COALESCE(inventory->'{category}', '{{}}')::jsonb || 
+                 jsonb_build_object('{item_key}', (COALESCE(inventory->'{category}'->>'{item_key}', '0')::int + 1)))
+            )
             WHERE owner_id = $1
         """, target_id)
-        
         row_cool = await conn.fetchval("SELECT cooldowns FROM capybaras WHERE owner_id = $1", uid)
-        cools = json.loads(row_cool) if isinstance(row_cool, str) else row_cool
-        _, new_cools = check_daily_limit(cools, "gift")
-        
-        await conn.execute("UPDATE capybaras SET cooldowns = $1 WHERE owner_id = $2", 
-                           json.dumps(new_cools), uid)
-
+        cools = (json.loads(row_cool) if isinstance(row_cool, str) else row_cool) or {}
+        _, updated_cools = check_daily_limit(cools, "gift")
+        await conn.execute("UPDATE capybaras SET cooldowns = $1 WHERE owner_id = $2", json.dumps(updated_cools), uid)
     item_name = DISPLAY_NAMES.get(item_key, item_key)
-    
     await callback.message.edit_caption(
         caption=f"✨ <b>Подарунок надіслано!</b>\nВи передали <b>{item_name}</b> гравцю <code>{target_id}</code>.\nВаша карма зросла на +1 ✨", 
         parse_mode="HTML"
     )
-    
     try:
         await callback.bot.send_message(
             target_id, 
-            f"🎁 Гей! Тобі прийшов подарунок від @{sender_name}: <b>{item_name}</b>!\n"
-            f"<i>Перевір свій інвентар.</i>",
+            f"🎁 Гей! Тобі прийшов подарунок від @{sender_name}: <b>{item_name}</b>!\n<i>Перевір свій інвентар.</i>",
             parse_mode="HTML"
         )
-    except Exception as e:
-        logger.warning(f"Could not notify gift recipient {target_id}: {e}")
-
+    except Exception:
+        pass
     await callback.answer("Подарунок доставлено! 🐾")
-
+    
 @router.callback_query(F.data.startswith("leaderboard"))
 async def show_leaderboard(callback: types.CallbackQuery, db_pool):
     parts = callback.data.split(":")
