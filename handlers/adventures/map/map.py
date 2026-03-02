@@ -8,7 +8,7 @@ from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
 from .map_keyboard import get_map_keyboard, get_viewer_keyboard
 from handlers.adventures.quests.quests import start_branching_quest
 from core.combat.battles import run_battle_logic
-from config import COORD_QUESTS, MAP_WIDTH, MAP_HEIGHT, FULL_MAP, WATER_TILES, FOREST_TILES, BOSS_ID_MAP
+from config import BOSS_ID_MAP
 from utils.items import get_random_plant, get_random_mushroom
 
 router = Router()
