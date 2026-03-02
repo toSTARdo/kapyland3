@@ -57,7 +57,7 @@ class Fighter:
 
     def get_dodge_chance(self) -> float:
         base_dodge = self.agi * STAT_WEIGHTS["agi_to_dodge"]
-        weight_penalty = max(0, (self.weight - 20) / 5) * 0.01
+        weight_penalty = max(0, (self.weight - 20) / 20) * 0.01
         chance = base_dodge - weight_penalty
         return max(0.02, chance)
 
