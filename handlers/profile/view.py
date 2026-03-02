@@ -1,6 +1,7 @@
 import json
 from aiogram import Router, types, F
 from aiogram.filters import Command, or_f
+from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.helpers import format_weight
 
@@ -31,7 +32,6 @@ def get_profile_text(data):
     )
 
 def get_profile_kb(state):
-    """Generates the main profile keyboard based on current state."""
     is_sleeping = state.get("status") == "sleep" if state else False
     
     builder = InlineKeyboardBuilder()
@@ -78,12 +78,23 @@ async def cb_return_to_profile(callback: types.CallbackQuery, db_pool):
     state = data['state']
     state = json.loads(state) if isinstance(state, str) else (state or {})
 
-    await callback.message.delete()
-    
-    await callback.message.answer_photo(
-        photo=IMAGES_URLS["profile"],
+    new_media = InputMediaPhoto(
+        media=IMAGES_URLS["profile"],
         caption=get_profile_text(data),
-        reply_markup=get_profile_kb(state),
         parse_mode="HTML"
     )
+
+    try:
+        await callback.message.edit_media(
+            media=new_media,
+            reply_markup=get_profile_kb(state)
+        )
+    except Exception:
+        await callback.message.answer_photo(
+            photo=IMAGES_URLS["profile"],
+            caption=get_profile_text(data),
+            reply_markup=get_profile_kb(state),
+            parse_mode="HTML"
+        )
+    
     await callback.answer()
