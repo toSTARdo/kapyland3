@@ -53,7 +53,18 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         if not rod_item:
             return await callback.answer("❌ Спочатку екіпіруй вудочку або снасті! 🎣", show_alert=True)
             
-        rod_lvl = rod_item.get("lvl", 0)
+        rod_lvl = rod_item.get("lvl", 0) if rod_item else 0
+        tackle_lvl = tackle_item.get("lvl", 0) if tackle_item else 0
+
+        catch_multiplier = 1
+        multi_note = ""
+
+        if tackle_lvl > 0 and random.random() < (tackle_lvl * 0.03):
+            catch_multiplier = 3
+            multi_note = " 🔥 <b>ПОТРІЙНИЙ УЛОВ! (x3)</b>"
+        elif rod_lvl > 0 and random.random() < (rod_lvl * 0.05):
+            catch_multiplier = 2
+            multi_note = " ✨ <b>ПОДВІЙНИЙ УЛОВ! (x2)</b>"
 
         if stamina < 10:
             return await callback.answer("🪫 Тобі треба відпочити! (Мінімум 10⚡)", show_alert=True)
@@ -98,7 +109,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         ]
 
         found_mythic = False
-        if rod_lvl >= 5 and random.random() < 0.03:
+        if rod_lvl >= 5 and random.random() < 0.01:
             item = {"name": "🔮 Перлина Ехвазу", "min_w": 0.5, "max_w": 0.5, "type": "loot", "key": "pearl_of_ehwaz"}
             found_mythic = True
         else:
@@ -111,7 +122,8 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         stamina -= 10
                 
         if item['type'] != "trash":
-            fishing_stats["total_weight"] = round(fishing_stats.get("total_weight", 0) + fish_weight, 2)
+            total_catch_weight = round(fish_weight * catch_multiplier, 2)
+            fishing_stats["total_weight"] = round(fishing_stats.get("total_weight", 0) + total_catch_weight, 2)
             fishing_stats["max_weight"] = max(fishing_stats.get("max_weight", 0), fish_weight)
 
             if item['type'] == "treasure_map":
@@ -149,8 +161,8 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             else:
                 folder = item['type']
                 target_folder = inventory.setdefault(folder, {})
-                target_folder[item['key']] = target_folder.get(item['key'], 0) + 1
-                inventory_note = f"📦 <i>{item['name']} додано в {folder}!</i>"
+                target_folder[item['key']] = target_folder.get(item['key'], 0) + catch_multiplier
+                inventory_note = f"📦 <i>{item['name']} (x{catch_multiplier}) додано в {folder}!</i>"
         else:
             inventory_note = "🗑️ <i>Це просто сміття. Ви викинули його назад.</i>"
 
