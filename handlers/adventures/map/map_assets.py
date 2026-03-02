@@ -44,6 +44,6 @@ def get_random_mushroom():
 
 def get_biome_name(py, map_height = MAP_HEIGHT):
     progress = py / map_height
-    if progress < 0.35: return "❄️ Зорефьорди Ехвазу"
-    elif 0.35 <= progress < 0.65: return "🌊 Уроборострім"
-    else: return "🏝️ Архіпелаг Джуа" 
+    if progress < 0.35: return {"emoji": "❄️", "name": "Зорефьорди Ехвазу", "id": 3}
+    elif 0.35 <= progress < 0.65: return {"emoji": "🌊", "name": "Уроборострім", "id": 2}
+    else: return {"emoji": "🏝️", "name": "Архіпелаг Джуа", "id": 1} 

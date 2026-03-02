@@ -17,6 +17,9 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
     discovered_set = set(discovered_list)
     
     totem_coords = {f"{t['x']},{t['y']}" for t in totems} if totems else set()
+
+    current_biome = get_biome_name(py)
+    is_snowy_biome = current_biome['id'] == 3
     
     boss_coords = {}
     treasure_coords = set()
@@ -56,6 +59,13 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
                 
             else:
                 tile = FULL_MAP[y][x]
+                
+                if is_snowy_biome and tile not in FOREST_TILES:
+                    snow_seed = hash(f"{x}_{y}_{cycle}")
+                    if (snow_seed % 12) == 0:
+                        display_row.append("❆")
+                        continue
+
                 if tile in FOREST_TILES and c_str not in tree_coords:
                     display_row.append("𖧧")
                 else:

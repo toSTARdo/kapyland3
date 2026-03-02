@@ -75,7 +75,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         
         biome = get_biome_name(py, MAP_HEIGHT)
         text = (f"📍 <b>Карта ({px}, {py})</b> | {get_stamina_icons(stamina)}\n"
-                f"🧭 Біом: {biome}\n🔋 Енергія: {stamina}/100\n\n{map_display}")
+                f"🧭 Біом: {biome['emoji']} {biome['name']}\n🔋 Енергія: {stamina}/100\n\n{map_display}")
         
         is_on_tree = f"{px},{py}" in nav.get("trees", {})
         
@@ -121,7 +121,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 loot_msg = f"Знайдено: {item['name']} 🌿"
             elif icon == "𓋼":
                 item = get_random_mushroom()
-                inv.setdefault("food", {})[item['id']] = inv["materials"].get(item['id'], 0) + 1
+                inv.setdefault("materials", {})[item['id']] = inv["materials"].get(item['id'], 0) + 1
                 loot_msg = f"Знайдено: {item['name']} 🍄"
             
             del flowers[coord_key]
