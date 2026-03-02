@@ -434,7 +434,10 @@ ACHIEVEMENTS = {
     "weapon_master": {
         "name": "🔱 Майстер збруї",
         "desc": "Покращити зброю до +5 рівня.",
-        "condition": lambda u: any(5 in str(v) for v in u.get('equipment', {})["weapon"]["lvl"]),
+        "condition": lambda u: any(
+            item.get('type') == 'weapon' and item.get('lvl', 0) >= 5 
+            for item in u.get('inventory', {}).get('equipment', [])
+            ),
         "reward_title": "Колекціонер",
         "reward_chest": 10
     },
