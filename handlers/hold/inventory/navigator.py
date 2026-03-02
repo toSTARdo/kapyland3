@@ -192,7 +192,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         else:
             map_entries = []
             for m in maps:
-                entry = f"📍 <b>Карта скарбів #{m.get('id', '???')}</b>\n╰ Координати: <code>{m['pos']}</code>"
+                entry = f"📍 <b>Карта скарбів {m.get('id', '???')}</b>\n╰ Координати: <code>{m['pos']}</code>" if m.get("type") == "treasure" else f"💀 <b>Карта лігва Боса №{m.get('boss_num', '???')}</b>\n╰ Координати: <code>{m['pos']}</code>"
                 map_entries.append(entry)
             content = "\n\n".join(map_entries)
 

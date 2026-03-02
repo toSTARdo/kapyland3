@@ -112,8 +112,7 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
                     treasure_maps.append({
                         "type": "boss_den", 
                         "boss_num": next_boss, 
-                        "x": coords["x"],
-                        "y": coords["y"],
+                        "pos": f"{coords['x']},{coords['y']}",
                         "discovered": datetime.datetime.now().isoformat()
                     })
                     rewards.append(f"💀 Карта лігва №{next_boss}")

@@ -128,8 +128,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
                             maps_list.append({
                                 "type": "boss_den", 
                                 "boss_num": next_boss, 
-                                "x": coords["x"], 
-                                "y": coords["y"], 
+                                "pos": f"{coords['x']},{coords['y']}",
                                 "discovered": str(datetime.date.today())
                             })
                             inventory_note = f"💀 <b>Знайдено карту лігва Боса №{next_boss}!</b>"
