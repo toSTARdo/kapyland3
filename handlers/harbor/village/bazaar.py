@@ -117,7 +117,7 @@ async def get_weekly_bazaar_stock(db_pool):
             
             # 2. Ресурси
             for res in random.sample(RESOURCES_POOL, 5):
-                cat = "plants" if res in ["mint", "thyme", "rosemary", "chamomile", "lavender", "tulip", "lotus"] else "materials"
+                cat = "materials"
                 
                 r_curr = random.choice(list(CURRENCY_VALUE.keys()))
                 base_price = SELL_PRICES.get(res, 10)
@@ -161,7 +161,7 @@ async def bazaar_process_sell(callback: types.CallbackQuery, db_pool):
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", callback.from_user.id)
         inv = json.loads(inv_raw) if isinstance(inv_raw, str) else inv_raw
         
-        cat = "plants" if item_key in ["mint", "thyme", "rosemary", "chamomile", "lavender", "tulip", "lotus"] else "materials"
+        cat = "materials"
         if inv.get(cat, {}).get(item_key, 0) <= 0:
             return await callback.answer("❌ Вже немає!", show_alert=True)
             
