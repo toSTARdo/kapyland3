@@ -385,7 +385,7 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
                 "hunger": ("Голод (макс)", row['hunger'], "🍏"),
                 "level": ("Рівень", row['lvl'], "🆙"),
                 "all_stats_sum": ("Здобутий Дзен", sum_stats, "📊"),
-                "karma": ("Карма", row["karma"].get("karma", 0), "⚖️")
+                "karma": ("Карма", row["karma"], "⚖️")
             }
 
             for key, req_val in recipe["requirements"].items():

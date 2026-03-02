@@ -40,7 +40,7 @@
       "name": "Спис Одіна Ґунґнір",
       "class": "fenix",
       "ingredients": ["Молот Мільйонер", "Щит Іґґдрасіля"],
-      "requirements": { "wins": 10, "stamina_regen_total": 100, "clean_chat_days": 1 },
+      "requirements": { "wins": 10, "stamina_regen_total": 100},
       "stats": { "atk": 180, "aoe_chance": 0.4, "divine_shield": 5 },
       "desc": "Божественний захист та удари, що не знають промаху."
     },
