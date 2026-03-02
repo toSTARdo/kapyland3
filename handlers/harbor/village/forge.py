@@ -255,7 +255,7 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         for mat, count in recipe["ingredients"].get("materials", {}).items():
             inv["materials"][mat] -= count
 
-        item_type = recipe.get("type", "loot") # За замовчуванням — лут
+        item_type = recipe.get("type", "loot") 
         
         if item_type in ["weapon", "armor", "artifact"]:
             new_item = {
@@ -263,6 +263,7 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
                 "type": item_type,
                 "desc": recipe.get("desc", ""),
                 "rarity": recipe.get("rarity", "common")
+                "lvl": 0
             }
             inv["equipment"].append(new_item)
         else:
@@ -277,22 +278,54 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         await callback.answer(f"✅ {recipe['name']} виготовлено!", show_alert=True)
         await common_craft_list(callback)
 
-@router.callback_query(F.data == "forge_craft_list")
+ITEMS_PER_PAGE = 5
+
+@router.callback_query(F.data.startswith("forge_craft_list"))
 async def forge_craft_list(callback: types.CallbackQuery, db_pool):
+    parts = callback.data.split(":")
+    current_page = int(parts[1]) if len(parts) > 1 else 0
+    
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
         lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
         if lvl < 20:
             return await callback.answer("❌ Складна робота! Повертайся на 20 рівні.", show_alert=True)
 
+        all_recipes = list(FORGE_RECIPES.get("mythic_artifacts", {}).items())
+        total_items = len(all_recipes)
+        max_page = (total_items - 1) // ITEMS_PER_PAGE
+
+        start_idx = current_page * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        page_items = all_recipes[start_idx:end_idx]
+
         builder = InlineKeyboardBuilder()
-        for r_id, r_data in FORGE_RECIPES.get("mythic_artifacts", {}).items():
+        
+        for r_id, r_data in page_items:
             icon = MYTHIC_ICONS.get(r_data.get("class", "✨"), "✨")
             builder.button(text=f"{icon} {r_data.get('name')}", callback_data=f"mythic_info:{r_id}")
         
-        builder.button(text="⬅️ Назад", callback_data="open_forge")
         builder.adjust(1)
-        await callback.message.edit_caption(caption="⚒️ <b>Доступні креслення:</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
+
+        nav_buttons = []
+        if current_page > 0:
+            nav_buttons.append(types.InlineKeyboardButton(text="⬅️", callback_data=f"forge_craft_list:{current_page - 1}"))
+        
+        nav_buttons.append(types.InlineKeyboardButton(text=f"{current_page + 1}/{max_page + 1}", callback_data="none"))
+        
+        if current_page < max_page:
+            nav_buttons.append(types.InlineKeyboardButton(text="➡️", callback_data=f"forge_craft_list:{current_page + 1}"))
+        
+        builder.row(*nav_buttons)
+        
+        builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="open_forge"))
+
+        caption = f"⚒️ <b>Міфічні креслення</b>\nСтор. {current_page + 1} з {max_page + 1}"
+        
+        try:
+            await callback.message.edit_caption(caption=caption, reply_markup=builder.as_markup(), parse_mode="HTML")
+        except Exception:
+            await callback.answer()
 
 @router.callback_query(F.data.startswith("mythic_info:"))
 async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
@@ -309,10 +342,16 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
         
         if not row: return await callback.answer("❌ Капібару не знайдено")
 
-        inv = row['inventory'] or {}
-        equip = row['equipment'] or {}
-        state = row['state'] or {}
-        track = row['stats_track'] or {}
+        def safe_json(data):
+            if isinstance(data, str):
+                import json
+                return json.loads(data)
+            return data or {}
+
+        inv = safe_json(row['inventory'])
+        equip_worn = safe_json(row['equipment'])
+        
+        items_in_bag = inv.get("equipment", [])
         
         recipe = FORGE_RECIPES.get("mythic_artifacts", {}).get(mythic_id)
         if not recipe: return await callback.answer("❌ Рецепт не знайдено")
@@ -321,27 +360,31 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
         can_craft = True
         
         for ing_name in recipe["ingredients"]:
-            in_loot = inv.get("materials", {}).get(ing_name, 0) > 0 or inv.get("loot", {}).get(ing_name, 0) > 0
-            in_equip = any(ing_name in str(v) for v in equip.values() if v)
+            in_res = inv.get("materials", {}).get(ing_name, 0) > 0 or inv.get("loot", {}).get(ing_name, 0) > 0
             
-            text += f"{'✅' if in_loot or in_equip else '❌'} {ing_name}\n"
-            if not (in_loot or in_equip): can_craft = False
+            in_bag = any(ing_name == (i.get("name") if isinstance(i, dict) else str(i)) for i in items_in_bag)
+            
+            in_worn = any(ing_name in str(v) for v in equip_worn.values() if v)
+            
+            is_present = in_res or in_bag or in_worn
+            text += f"{'✅' if is_present else '❌'} {ing_name}\n"
+            if not is_present: can_craft = False
 
         if "requirements" in recipe:
             text += "\n<b>📜 Особливі умови:</b>\n"
             
-            avg_stats = round((row['atk'] + row['def'] + row['agi'] + row['luck']) / 4, 2)
+            sum_stats = (row['atk'] + row['def'] + row['agi'] + row['luck'])
             
             checks = {
                 "wins": ("Перемоги", row['wins'], "⚔️"),
                 "total_fights": ("Всього боїв", row['total_fights'], "👊"),
                 "clean_chat_days": ("Дні без муту", state.get("clean_days", 0), "😇"),
                 "speed_stat": ("Швидкість", row['agi'], "👟"),
-                "zen": ("Дзен", row['zen'], "❇️"),
+                "zen": ("Наявний Дзен", row['zen'], "❇️"),
                 "stamina": ("Поточна стаміна", row['stamina'], "⚡️"),
                 "hunger": ("Голод (макс)", row['hunger'], "🍏"),
                 "level": ("Рівень", row['lvl'], "🆙"),
-                "all_stats_average": ("Сер. стат", avg_stats, "📊"),
+                "all_stats_sum": ("Здобутий Дзен", sum_stats, "📊"),
                 "karma": ("Карма", track.get("karma", 0), "⚖️")
             }
 
@@ -402,5 +445,5 @@ async def process_mythic_craft(callback: types.CallbackQuery, db_pool):
         await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), user_id)
         await callback.message.edit_caption(
             caption=f"✨ <b>РИТУАЛ ЗАВЕРШЕНО!</b>\n⚡️ <b>{mythic_item['name']}</b>",
-            reply_markup=InlineKeyboardBuilder().button(text="🔥 ГАРАЗД",
+            reply_markup=InlineKeyboardBuilder().button(text="🔥 ЛЕС ГОООУ",
              callback_data="open_forge").as_markup(), parse_mode="HTML")
