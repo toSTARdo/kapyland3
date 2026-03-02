@@ -378,14 +378,14 @@ async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):
             checks = {
                 "wins": ("Перемоги", row['wins'], "⚔️"),
                 "total_fights": ("Всього боїв", row['total_fights'], "👊"),
-                "clean_chat_days": ("Дні без муту", state.get("clean_days", 0), "😇"),
+                #"clean_chat_days": ("Дні без муту", state.get("clean_days", 0), "😇"),
                 "speed_stat": ("Швидкість", row['agi'], "👟"),
                 "zen": ("Наявний Дзен", row['zen'], "❇️"),
                 "stamina": ("Поточна стаміна", row['stamina'], "⚡️"),
                 "hunger": ("Голод (макс)", row['hunger'], "🍏"),
                 "level": ("Рівень", row['lvl'], "🆙"),
                 "all_stats_sum": ("Здобутий Дзен", sum_stats, "📊"),
-                "karma": ("Карма", track.get("karma", 0), "⚖️")
+                "karma": ("Карма", row["stats_track"].get("karma", 0), "⚖️")
             }
 
             for key, req_val in recipe["requirements"].items():
