@@ -16,17 +16,20 @@ class Fighter:
         self.agi = stats.get("agility", 0)
         self.luck = stats.get("luck", 0)
 
-        self.weapon = capy.get("weapon_full", {}).get("name", "Лапки")
-        self.armor = capy.get("armor_full", {}).get("name", "Хутро")
+        self.weapon = capy.get("weapon_full", {"name": "Лапки", "lvl": 0})
+        self.armor = capy.get("armor_full", {"name": "Хутро", "lvl": 0})
         
-        self.def_ += capy.get("armor_full", {}).get("lvl", 0)
-
-        self.weapon_data = config_data["WEAPONS"].get(self.weapon, {
+        w_name = self.weapon.get("name", "Лапки")
+        a_name = self.armor.get("name", "Хутро")
+        
+        self.weapon_data = config_data["WEAPONS"].get(w_name, {
             "texts": ["вдаряє лапками {defen}"], "hit_bonus": 0, "power": 1
         })
-        self.armor_data = config_data["ARMOR"].get(self.armor, {
+        self.armor_data = config_data["ARMOR"].get(a_name, {
             "text": "отримала удар", "defense": 0
         })
+
+        self.def_ += self.armor.get("lvl", 0)
 
         inventory = capy.get("inventory", {})
         storage = inventory.get("equipment", [])

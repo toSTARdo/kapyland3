@@ -7,11 +7,11 @@ def weapon_ability(base_prob):
         def wrapper(att, targets, round_num):
             w_data = att.weapon_data
             rarity = w_data.get("rarity", "common")
-            wlvl = att.weapon.get("lvl", 0)
+            lvl = att.weapon.get("lvl", 0)
             pattern = w_data.get("pattern", "sequential")
             is_aoe = w_data.get("is_aoe", False)
 
-            lvl_bonus = wlvl * 0.05
+            lvl_bonus = lvl * 0.05
             luck_bonus = att.luck * 0.02
             if random.random() > (base_prob + luck_bonus + lvl_bonus):
                 return 0, False, []
