@@ -18,11 +18,14 @@ async def cmd_adventure(event: types.Message | types.CallbackQuery):
 
     text = "🧭 <b>Морські пригоди</b>\n\nКуди відправимо твою капібару сьогодні?"
 
-    if is_callback:
-        try:
-            await event.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
-        except:
-            pass
+    try:
+            if is_media:
+                await msg.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            else:
+                await msg.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        except Exception as e:
+            print(f"Помилка редагування: {e}")
+            
         await event.answer()
     else:
         await event.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
