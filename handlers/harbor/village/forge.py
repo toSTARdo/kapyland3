@@ -243,23 +243,36 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
         inv = ensure_dict(inv_raw)
         recipe = FORGE_RECIPES.get("common_craft", {}).get(recipe_id)
+        if not recipe: return
 
-        user_equip = inv.setdefault("equipment", [])
-        for req_item_name in recipe["ingredients"].get("equipment", []):
-            for i, item in enumerate(user_equip):
-                name_in_inv = item.get("name", "") if isinstance(item, dict) else str(item)
-                if req_item_name in name_in_inv:
-                    user_equip.pop(i)
-                    break
-
-        for mat, count in recipe["ingredients"].get("materials", {}).items():
+        can_craft = True
+        user_equip = inv.get("equipment", [])
+        ingredients = recipe.get("ingredients", {})
+        
+        for mat, count in ingredients.get("materials", {}).items():
             if inv.get("materials", {}).get(mat, 0) < count:
-                can_craft = False; break
-                
+                can_craft = False
+                break
+        
+        temp_equip = list(user_equip)
+        for req_item_name in ingredients.get("equipment", []):
+            found = False
+            for i, item in enumerate(temp_equip):
+                name = item.get("name", "") if isinstance(item, dict) else str(item)
+                if req_item_name in name:
+                    temp_equip.pop(i)
+                    found = True
+                    break
+            if not found:
+                can_craft = False
+                break
+
         if not can_craft:
             return await callback.answer("❌ Недостатньо ресурсів для крафту!", show_alert=True)
+
+        inv["equipment"] = temp_equip
         
-        for mat, count in recipe["ingredients"].get("materials", {}).items():
+        for mat, count in ingredients.get("materials", {}).items():
             inv["materials"][mat] -= count
 
         item_type = recipe.get("type", "loot") 
