@@ -342,7 +342,7 @@ IMAGES_URLS = {
     "harbor": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_harbor.jpg",
     "bazaar": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_bazaar.jpg",
     "meditation": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_meditation.jpg",
-    "tavern": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_tavern.jpg",
+    "tavern": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_tavern.png",
     "fishing": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_fishing.jpg"
 }
 
