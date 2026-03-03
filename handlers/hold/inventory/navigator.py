@@ -6,7 +6,7 @@ from aiogram import Router, types, html, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES, WEAPON, TYPE_ICONS
+from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES, WEAPON, ARMOR, TYPE_ICONS
 from handlers.harbor.village.forge import UPGRADE_CONFIG
 from config import load_game_data
 from utils.helpers import calculate_lvl_data, ensure_dict
@@ -114,6 +114,12 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 pattern = WEAPON.get(raw_name, {}).get("pattern") if item.get("type") == "weapon" else None
                 PATTERN_MAP = {"sequential": "Послідовний", "chaotic": "Хаотичний", "ultimate": "Ультимативний"}
                 clean_name = raw_name
+                if item.get("type") == "weapon":
+                    bonus = WEAPON.get(raw_name, {}).get("hit_bonus", 0)
+                elif item.get("type") == "armor":
+                    bonus = ARMOR.get(raw_name, {}).get("defense", 0)
+                else:
+                    bonus = 0
                 
                 for prefix in UPGRADE_CONFIG["prefixes"].values():
                     if raw_name.startswith(prefix):
@@ -149,6 +155,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         f"{r_icon} <b>{raw_name} {stars}</b>\n"
                         f"━━━━━━━━━━━━━━━\n"
                         f"<i>{item_desc}</i>\n\n"
+                        f"<b>Шанс атаки:</b>\n" + (f"• {bonus*100:.1f}% до влучання\n" if i_type == "weapon" else f"• {bonus*100:.1f}% до захисту\n") +
                         f"<b>Пасивні ефекти:</b>\n" + ("\n".join(f"• {e}" for e in special_effects) if special_effects else "Немає") + "\n"
                         f"<b>Патерн активації:</b> {PATTERN_MAP.get(pattern, pattern) if pattern else 'Немає'}\n"
                         f"━━━━━━━━━━━━━━━\n"
