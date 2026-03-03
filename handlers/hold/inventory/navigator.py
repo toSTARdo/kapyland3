@@ -181,7 +181,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         if loot.get("chest", 0) > 0:
             builder.button(text=f"🔑 Відкрити", callback_data="open_chest")
         if loot.get("lockpicker", 0) > 0:
-            builder.button(text=f"🗝️ Використати відмичку", callback_data="use_lockpicker")
+            builder.button(text=f"🪛 Використати відмичку", callback_data="open_chest")
         builder.adjust(1)
 
     elif page == "maps":
