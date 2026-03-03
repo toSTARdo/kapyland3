@@ -6,7 +6,7 @@ from aiogram import Router, types, html, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES
+from config import ARTIFACTS, RARITY_META, DISPLAY_NAMES, WEAPON, TYPE_ICONS
 from handlers.harbor.village.forge import UPGRADE_CONFIG
 from config import load_game_data
 from utils.helpers import calculate_lvl_data, ensure_dict
@@ -35,7 +35,6 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
     builder = InlineKeyboardBuilder()
     
     ITEMS_PER_PAGE = 5
-    TYPE_ICONS = {"weapon": "🗡️", "armor": "🔰", "artifact": "🧿"}
     title = ""
     content = ""
 
@@ -111,6 +110,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 k = info["key"]
                 
                 raw_name = item.get('name', '???')
+                special_effects = WEAPON.get(raw_name, {}).get("effects", []) if item.get("type") == "weapon" else []
                 clean_name = raw_name
                 
                 for prefix in UPGRADE_CONFIG["prefixes"].values():
@@ -147,12 +147,14 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         f"{r_icon} <b>{raw_name} {stars}</b>\n"
                         f"━━━━━━━━━━━━━━━\n"
                         f"<i>{item_desc}</i>\n\n"
+                        f"Пасивні ефекти:\n" + ("\n".join(f"· {e}" for e in special_effects) if special_effects else "Немає") + "\n"
+                        f"━━━━━━━━━━━━━━━\n"
                         f"💰 Ціна: <b>{price} 🍉</b>"
                     )
                     
                     builder.row(
                         types.InlineKeyboardButton(text="⚔️ Одягнути", callback_data=f"equip:{i_type}:{raw_name}:{lvl}"),
-                        types.InlineKeyboardButton(text=f"🔥 Продати за {price} 🍉", callback_data=f"sell_item:{rarity}:{raw_name}:{lvl}"),
+                        types.InlineKeyboardButton(text=f"💰 {price} 🍉", callback_data=f"sell_item:{rarity}:{raw_name}:{lvl}"),
                         types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{current_page}")
                     )
 

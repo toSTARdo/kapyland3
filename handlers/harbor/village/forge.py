@@ -3,14 +3,12 @@ import asyncio
 from aiogram import types, F, Router
 from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import load_game_data, DISPLAY_NAMES, IMAGES_URLS
+from config import load_game_data, DISPLAY_NAMES, IMAGES_URLS, TYPE_ICONS, MYTHIC_ICONS
 from utils.helpers import ensure_dict
 
 router = Router()
 
 FORGE_RECIPES = load_game_data("data/forge_craft.json")
-TYPE_ICONS = {"weapon": "🗡️", "armor": "🔰", "artifact": "🧿"}
-MYTHIC_ICONS = {"fenix": "🐦‍🔥", "unicorn": "🦄", "dragon": "🐉"}
 
 UPGRADE_CONFIG = {
     "max_lvl": 5,

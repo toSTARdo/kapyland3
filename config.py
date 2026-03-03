@@ -126,6 +126,10 @@ DISPLAY_NAMES = {
             "melon": "🍈 Диня",
         }
 
+#ICONS:
+TYPE_ICONS = {"weapon": "🗡️", "armor": "🔰", "artifact": "🧿", "fenix": "🐦‍🔥", "unicorn": "🦄", "dragon": "🐉"}
+MYTHIC_ICONS = {"fenix": "🐦‍🔥", "unicorn": "🦄", "dragon": "🐉"}
+
 #MISC:
 VERSION = "2.2.0"
 
