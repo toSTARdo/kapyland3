@@ -18,7 +18,11 @@ async def cmd_adventure(event: types.Message | types.CallbackQuery):
 
     text = "🧭 <b>Морські пригоди</b>\n\nКуди відправимо твою капібару сьогодні?"
 
-    try:
+    if is_callback:
+        msg = event.message
+        is_media = msg.photo or msg.video or msg.animation
+        
+        try:
             if is_media:
                 await msg.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
             else:

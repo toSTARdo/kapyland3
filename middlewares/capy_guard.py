@@ -117,7 +117,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                     if wake_time.tzinfo is None:
                         wake_time = wake_time.replace(tzinfo=datetime.timezone.utc)
                     
-                    if now >= wake_time and meta["stamina"] != 0:
+                    if now >= wake_time:
                         meta["status"] = "active"
                         meta["stamina"] = 100
                         needs_update = True

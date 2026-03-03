@@ -89,8 +89,8 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
         current_exp = row['exp'] or 0
         current_zen = row['zen'] or 0
         current_weight = row['weight'] or 20.0
-        current_stamina = row['stamina'] or 100
-        
+        current_stamina = row['stamina'] if row['stamina'] is not None else 100
+
         inventory = row['inventory']
         if isinstance(inventory, str):
             inventory = json.loads(inventory)
