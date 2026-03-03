@@ -42,6 +42,7 @@
       "ingredients": ["Молот Мільйонер", "Щит Іґґдрасіля"],
       "requirements": { "wins": 10, "stamina_regen_total": 100},
       "stats": { "atk": 180, "aoe_chance": 0.4, "divine_shield": 5 },
+      "type": "weapon",
       "desc": "Божественний захист та удари, що не знають промаху."
     },
     "vampire_drill": {
@@ -50,6 +51,7 @@
       "ingredients": ["Бур Лаганна", "Вампірський клинок"],
       "requirements": { "total_fights": 50, "lifesteal_total": 500 },
       "stats": { "ignore_def": 1.0, "lifesteal": 0.35, "spiral_power": 50 },
+      "type": "weapon",
       "desc": "Твій бур прониже небеса, а кров ворогів миттєво затягне твої рани."
     },
     "beast_pelt": {
@@ -58,6 +60,7 @@
       "ingredients": ["Котяче життя", "Череп ягуара", "Плащ-невидимка"],
       "requirements": { "speed_stat": 50 },
       "stats": { "speed": 40, "str": 20, "hp_max": 150, "evasion": 0.25 },
+      "type": "armor",
       "desc": "Котяча грація, швидкість пантери та невидимість підступного тактика."
     },
     "ea_sword": {
@@ -66,6 +69,7 @@
       "ingredients": ["Екскалібур", "Кубок Грааля"],
       "requirements": { "karma": -100 },
       "stats": { "erase_reality_chance": 0.05, "atk": 250, "weight_multiplier": 1.5 },
+      "type": "weapon",
       "desc": "Зброя, що існувала до створення світу."
     },
     "yin_yang_staff": {
@@ -74,6 +78,7 @@
       "ingredients": ["Чайний посох", "Тетерів"],
       "requirements": { "zen": 50 },
       "stats": { "infinite_void": true, "reverse_technique_heal": 40, "hollow_purple_atk": 200 },
+      "type": "weapon",
       "desc": "Опанувавши чайну церемонію та пивну техніку нескінченності, ти пізнав баланс всесвіту."
     },
     "student_lunch": {
@@ -82,6 +87,7 @@
       "ingredients": ["Мівіна", "Рево", "Намазка Пікнік"],
       "requirements": { "stamina": 1, "hunger": 0 },
       "stats": { "hp_lock": 1, "atk_multiplier": 7.7, "crit_chance": 0.9 },
+      "type": "weapon",
       "desc": "Одне ХП, недосип і дике бажання вижити."
     },
     "spas_axe": {
@@ -90,6 +96,7 @@
       "ingredients": ["Трембіта", "Мітка гетьмана", "Шабля характерника"],
       "requirements": { "location": "South Steppes", "level": 50 },
       "stats": { "wolf_morph": true, "ranged_def": 1.0, "magic_slash": 120, "healing_per_turn": 15 },
+      "type": "weapon",
       "desc": "Перевтілення у вовка, магічний удар та повна невразливість до куль."
     },
     "ancestors_spirit": {
@@ -98,6 +105,7 @@
       "ingredients": ["Мамонтовий шарф", "Зуби акули", "Совині кігті", "Панцир черепахи"],
       "requirements": { "all_stats_average": 30 },
       "stats": { "dynamic_beast_mode": true, "weight_gain_buff": 1.2 },
+      "type": "artifact",
       "desc": "Вивільняє звіриний дух пращурів."
     }
   }
