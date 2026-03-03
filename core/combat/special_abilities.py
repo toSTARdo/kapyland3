@@ -1,325 +1,127 @@
 import random
 from aiogram import html
+from config import WEAPON
 
+#HELPERS
+def set_val(obj, attr, val):
+    setattr(obj, attr, val)
+    return 0
+
+def mod_val(obj, attr, val):
+    setattr(obj, attr, max(0, getattr(obj, attr, 0) + val))
+    return 0
+
+def heal(obj, val):
+    setattr(obj, 'hp', min(obj.max_hp, obj.hp + val))
+    return 0
+
+#CORE DECORATOR
 def weapon_ability(base_prob):
     def decorator(func_list):
         state = {'current_idx': 0} 
         def wrapper(att, targets, round_num):
             w_data = att.weapon_data
-            rarity = w_data.get("rarity", "common")
-            lvl = att.weapon.get("lvl", 0)
-            pattern = w_data.get("pattern", "sequential")
-            is_aoe = w_data.get("is_aoe", False)
+            w_name = att.w_name
+            
+            weapon_cfg = WEAPON.get(w_name, {})
+            special_texts = weapon_cfg.get("special_text", [])
+            
+            rarity = weapon_cfg.get("rarity", w_data.get("rarity", "common"))
+            pattern = weapon_cfg.get("pattern", w_data.get("pattern", "sequential"))
+            is_aoe = weapon_cfg.get("is_aoe", w_data.get("is_aoe", False))
 
-            lvl_bonus = lvl * 0.05
+            lvl_bonus = att.weapon.get("lvl", 0) * 0.05
             luck_bonus = att.luck * 0.02
-            if random.random() > (base_prob + luck_bonus + lvl_bonus):
+            chance = base_prob + luck_bonus + lvl_bonus
+            
+            if random.random() > chance:
                 return 0, False, []
 
-            limit = {"common": 1, "rare": 2, "epic": 4, "legendary": 6}.get(rarity, 1)
+            limit = {"common": 1, "rare": 2, "epic": 4, "legendary": 6, "mythic": 6}.get(rarity, 1)
             available = func_list[:limit]
+            
+            if not isinstance(targets, list): 
+                targets = [targets]
+                
             total_dmg, logs = 0, []
-            if not isinstance(targets, list): targets = [targets]
 
-            actions = [available[state['current_idx'] % len(available)]] if pattern == "sequential" else available
-            if pattern == "sequential": state['current_idx'] += 1
+            if pattern == "sequential":
+                idx = state['current_idx'] % len(available)
+                active_indices = [idx]
+                state['current_idx'] += 1
+            else:
+                active_indices = list(range(len(available)))
 
-            for action in actions:
-                for t in (targets if is_aoe else [random.choice(targets)]):
-                    res_val, res_text = action(att, t)
+            for i in active_indices:
+                action = available[i]
+                txt = special_texts[i] if i < len(special_texts) else "✨ Спрацював ефект зброї!"
+                
+                current_targets = targets if is_aoe else [random.choice(targets)]
+                for t in current_targets:
+                    res_val = action(att, t)
                     total_dmg += res_val if isinstance(res_val, (int, float)) else 0
-                    logs.append(res_text)
+                    logs.append(txt)
+                    
             return total_dmg, True, logs
         return wrapper
     return decorator
 
-#COMMON
-hook_snag = weapon_ability(0.1)([
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1)) or 0, "🪝 Гак зачепив ногу! -1 Спритність"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "🏃 Ви вирвали ініціативу! +1 Спритність")
-])
-wooden_leg = weapon_ability(0.1)([
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "🪵 Глухий удар деревом! -1 Атаки")
-])
-heavy_swing = weapon_ability(0.1)([
-    lambda a, d: (1, "🔨 Потужний замах! +1 Шкоди")
-])
-mop_wash = weapon_ability(0.1)([
-    lambda a, d: (setattr(d, 'luck', max(0, d.luck - 2)) or 0, "🧼 Підлога намочена! -2 Удачі")
-])
-yorshik_scrub = weapon_ability(0.1)([
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "🧽 Чистка захисту! -1 Захисту")
-])
+ABILITY_DATA = {
+    # COMMON (0.1)
+    "hook_snag": (0.1, [lambda a, d: mod_val(d, 'agi', -1), lambda a, d: mod_val(a, 'agi', 1)]),
+    "wooden_leg": (0.1, [lambda a, d: mod_val(d, 'atk', -1)]),
+    "heavy_swing": (0.1, [lambda a, d: 1]),
+    "mop_wash": (0.1, [lambda a, d: mod_val(d, 'luck', -2)]),
+    "yorshik_scrub": (0.1, [lambda a, d: mod_val(d, 'def_', -1)]),
 
-#RARE
-entangle_debuff = weapon_ability(0.15)([
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 2)) or 0, "🕸 Ворог заплутався! -2 Спритність"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "⛓ Пута тиснуть! -1 Атаки")
-])
-drunk_fury = weapon_ability(0.15)([
-    lambda a, d: (setattr(a, 'atk', a.atk + 1.5) or 0, "🍺 П'яна відвага! +1.5 Атаки"),
-    lambda a, d: (setattr(a, 'def_', max(0, a.def_ - 1)) or 0, "🥴 Хитає... -1 Захисту")
-])
-bleed_chance = weapon_ability(0.15)([
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🩸 Запах крові! +1 Удача"),
-    lambda a, d: (1, "🔪 Глибокий поріз! +1 Шкоди")
-])
-precision_strike = weapon_ability(0.15)([
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1.5)) or 0, "🎯 Точний удар в стик! -1.5 Захисту"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "👁 Фокус! +1 Удача")
-])
-parry = weapon_ability(0.2)([
-    lambda a, d: (setattr(a, 'def_', a.def_ + 1) or 0, "🛡 Контрудар! +1 Захисту"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "💨 Технічне зміщення! +1 Спритність")
-])
-curse_mark = weapon_ability(0.15)([
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "💀 Чорна мітка! Удача ворога = 0"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "📉 Зустрічний врожай! -1 Захисту")
-])
-cannon_splash = weapon_ability(0.15)([
-    lambda a, d: (1, "💣 Вибух ядра! +1 Шкоди"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1)) or 0, "💨 Контузія! -1 Спритність")
-])
+    # RARE (0.15 - 0.2)
+    "entangle_debuff": (0.15, [lambda a, d: mod_val(d, 'agi', -2), lambda a, d: mod_val(d, 'atk', -1)]),
+    "drunk_fury": (0.15, [lambda a, d: mod_val(a, 'atk', 1.5), lambda a, d: mod_val(a, 'def_', -1)]),
+    "bleed_chance": (0.15, [lambda a, d: mod_val(a, 'luck', 1), lambda a, d: 1]),
+    "precision_strike": (0.15, [lambda a, d: mod_val(d, 'def_', -1.5), lambda a, d: mod_val(a, 'luck', 1)]),
+    "parry": (0.2, [lambda a, d: mod_val(a, 'def_', 1), lambda a, d: mod_val(a, 'agi', 1)]),
+    "curse_mark": (0.15, [lambda a, d: set_val(d, 'luck', 0), lambda a, d: mod_val(d, 'def_', -1)]),
+    "cannon_splash": (0.15, [lambda a, d: 1, lambda a, d: mod_val(d, 'agi', -1)]),
 
-#EPIC
-life_steal = weapon_ability(0.2)([
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🩸 Смак життя! +1 ХП"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 0.5)) or 0, "🥀 Ворог в'яне... -0.5 Атаки"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🍀 Вам щастить! +1 Удача"),
-    lambda a, d: (1, "🔪 Жнива! +1 Шкоди")
-])
-confuse_hit = weapon_ability(0.2)([
-    lambda a, d: (1, "🌀 Запаморочення! +1 Шкоди"),
-    lambda a, d: (setattr(d, 'luck', max(0, d.luck - 2)) or 0, "❓ Де я? -2 Удачі"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "💨 Користуючись моментом! +1 Спритність"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "🛡 Захист відкритий! -1 Захисту")
-])
-freeze_debuff = weapon_ability(0.2)([
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 2)) or 0, "❄️ Обледеніння! -2 Спритність"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 0.5)) or 0, "🧊 Крихка броня! -0.5 Захисту"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 0.5) or 0, "🧥 Крижаний щит! +0.5 Захисту"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "🥶 Замерзлі пальці! -1 Атаки")
-])
-fear_debuff = weapon_ability(0.2)([
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 2)) or 0, "😱 Жах! -2 Атаки"),
-    lambda a, d: (setattr(d, 'luck', max(0, d.luck - 1)) or 0, "📉 Руки дрижать! -1 Удача"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "😈 Ваша перевага! +1 Атаки"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1)) or 0, "🐢 Ступор! -1 Спритність")
-])
-energy_surge = weapon_ability(0.2)([
-    lambda a, d: (setattr(a, 'agi', a.agi + 2) or 0, "⚡ Перевантаження! +2 Спритність"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🎰 Ривок! +1 Удача"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "🔥 Сила тече! +1 Атаки"),
-    lambda a, d: (setattr(a, 'hp', max(1, a.hp - 0.5)) or 1, "🧨 Віддача! 1 Шкоди (собі -0.5 ХП)")
-])
-owl_crit = weapon_ability(0.2)([
-    lambda a, d: (1.5, "🦉 Удар кігтями! +1.5 Шкоди"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "📉 Пробиття! -1 Захисту"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "🦅 Політ! +1 Спритність"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "🍀 Око сови! +2 Удача")
-])
-auto_attack = weapon_ability(0.2)([
-    lambda a, d: (setattr(a, 'atk', a.atk + 0.5) or 0, "⚔️ Пристрілка! +0.5 Атаки"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "🛡 Руйнування стійки! -1 Захисту"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 1) or 0, "🧱 Окопи! +1 Захисту"),
-    lambda a, d: (1, "🔫 Авто-удар! +1 Шкоди")
-])
-rage_boost = weapon_ability(0.2)([
-    lambda a, d: (setattr(a, 'atk', a.atk + 0.5) or 0, "😤 Лють росте! +0.5 Атаки"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 0.5) or 0, "🎲 Азарт! +0.5 Удача"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 0.5)) or 0, "😨 Ворог пригнічений! -0.5 Атаки"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 1) or 0, "🛡 Напролом! +1 Захисту")
-])
-ghost_strike = weapon_ability(0.2)([
-    lambda a, d: (1, "👻 Удар з тіні! +1 Шкоди"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 2) or 0, "🌫 Примарність! +2 Спритність"),
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "🌑 Прокляття пустоти! Удача = 0"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🌌 Зцілення ефіром! +1 ХП")
-])
-crit_5 = weapon_ability(0.2)([
-    lambda a, d: (2, "💣 Критичний вибух! +2 Шкоди"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🎰 Джекпот! +1 Удача"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1)) or 0, "💨 Оглушення! -1 Спритність"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "⚔️ Бойовий дух! +1 Атаки")
-])
+    # EPIC (0.2)
+    "life_steal": (0.2, [lambda a, d: heal(a, 1), lambda a, d: mod_val(d, 'atk', -0.5), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: 1]),
+    "confuse_hit": (0.2, [lambda a, d: 1, lambda a, d: mod_val(d, 'luck', -2), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(d, 'def_', -1)]),
+    "freeze_debuff": (0.2, [lambda a, d: mod_val(d, 'agi', -2), lambda a, d: mod_val(d, 'def_', -0.5), lambda a, d: mod_val(a, 'def_', 0.5), lambda a, d: mod_val(d, 'atk', -1)]),
+    "fear_debuff": (0.2, [lambda a, d: mod_val(d, 'atk', -2), lambda a, d: mod_val(d, 'luck', -1), lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(d, 'agi', -1)]),
+    "energy_surge": (0.2, [lambda a, d: mod_val(a, 'agi', 2), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: mod_val(a, 'atk', 1), lambda a, d: set_val(a, 'hp', max(1, a.hp - 0.5)) or 1]),
+    "owl_crit": (0.2, [lambda a, d: 1.5, lambda a, d: mod_val(d, 'def_', -1), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(a, 'luck', 2)]),
+    "auto_attack": (0.2, [lambda a, d: mod_val(a, 'atk', 0.5), lambda a, d: mod_val(d, 'def_', -1), lambda a, d: mod_val(a, 'def_', 1), lambda a, d: 1]),
+    "rage_boost": (0.2, [lambda a, d: mod_val(a, 'atk', 0.5), lambda a, d: mod_val(a, 'luck', 0.5), lambda a, d: mod_val(d, 'atk', -0.5), lambda a, d: mod_val(a, 'def_', 1)]),
+    "ghost_strike": (0.2, [lambda a, d: 1, lambda a, d: mod_val(a, 'agi', 2), lambda a, d: set_val(d, 'luck', 0), lambda a, d: heal(a, 1)]),
+    "crit_5": (0.2, [lambda a, d: 2, lambda a, d: mod_val(a, 'luck', 1), lambda a, d: mod_val(d, 'agi', -1), lambda a, d: mod_val(a, 'atk', 1)]),
 
-#LEGENDARY
-cat_life = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🐱 Лапка допомоги! +1 ХП"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "🐾 М'яка хода! +1 Спритність"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🎰 Вдача кота! +1 Удача"),
-    lambda a, d: (setattr(d, 'luck', max(0, d.luck - 1.5)) or 0, "😿 Чорний кіт перебіг! -1.5 Удачі"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1.5)) or 0, "🧶 Заплутані нитки! -1.5 Спритності"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1.5) or 0, "😼 Кігті! +1.5 Атаки")
-])
-tea_mastery = weapon_ability(0.4)([ #DONE v1.0
-    lambda a, d: (setattr(a, 'def_', a.def_ + 1.0) or 0, "⚪ <b>Білий чай:</b> Спокій... +1 Захисту (Стак 1)"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 3) or 0, "🟡 <b>Жовтий чай:</b> Просвітлення! +3 Удачі (Стак 2)"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 2)) or 0, "🟢 <b>Зелений чай:</b> Аромат збиває ворога з пантелику! -2 Спритності (Стак 3)"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🔵 <b>Улун:</b> Глибоке відновлення! +1 ХП (Стак 4)"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1.5) or 0, "🟤 <b>Чорний чай:</b> Прихід енергії! +1.5 Атаки (Стак 5)"),
-    lambda a, d: (1.5, "🔴 <b>ПУЕР:</b>💥 ВИБУХ КИТАЮ! Крит 1.5x і обнулення стаків")
-])
-double_strike = weapon_ability(0.3)([
-    lambda a, d: (1, "⚔️ Перший удар! +1 Шкоди"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "🗡 Загострення! +1 Атаки"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 1) or 0, "👟 Швидкий крок! +1 Спритність"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "🛡 Пробиття! -1 Захисту"),
-    lambda a, d: (1.5, "⚔️ Другий удар! +1.5 Шкоди"),
-    lambda a, d: (setattr(d, 'agi', 0) or 0, "🛑 Ступор! Спритність ворога 0")
-])
-crit_20 = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "🎰 Фортуна! +2 Удача"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 2) or 0, "👑 Сила Титана! +2 Атаки"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 2) or 0, "🧱 Моноліт! +2 Захисту"),
-    lambda a, d: (3, "💥 КРИТ-МАШИНА! +3 Шкоди"),
-    lambda a, d: (setattr(a, 'hp', a.max_hp) or 0, "🌟 Повне зцілення! ХП MAX"),
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "💀 Доля вирішена! Удача ворога 0")
-])
-pierce_armor = weapon_ability(0.3)([
-    lambda a, d: (setattr(d, 'def_', 0) or 0, "🔓 Броню знято! Захист ворога 0"),
-    lambda a, d: (1, "📌 Укол! +1 Шкоди"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "🗡 Фокус на слабких місцях! +1 Атаки"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🍀 Влучність! +1 Удача"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1.5)) or 0, "🩸 Болюча рана! -1.5 Атаки"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1)) or 0, "👣 Хромота! -1 Спритність")
-])
-heavy_weight = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'agi', max(0, a.agi - 1)) or 0, "🐘 Тяжка хода! -1 Спритність"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 2.5) or 0, "🌋 Вага світу! +2.5 Атаки"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 2) or 0, "🧱 Сталева стіна! +2 Захисту"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1.5)) or 0, "🏚 Трощення броні! -1.5 Захисту"),
-    lambda a, d: (2, "💥 Землетрус! +2 Шкоди"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🍀 Домінація! +1 Удача")
-])
-range_attack = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "🏹 Далекоглядність! +2 Удача"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 2) or 0, "👟 Дистанція! +2 Спритність"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1.5)) or 0, "📍 Пришпилено! -1.5 Спритності"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "📉 Безпорадність! -1 Атаки"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1.5) or 0, "🎯 Снайпер! +1.5 Атаки"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1.5)) or 0, "🛡 Прошите наскрізь! -1.5 Захисту")
-])
-stun_chance = weapon_ability(0.3)([
-    lambda a, d: (setattr(d, 'agi', 0) or 0, "🌀 СТАН! Спритність ворога 0"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "🥴 Шок! -1 Атаки"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 2)) or 0, "🛡 Беззахисність! -2 Захисту"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🍀 Перевага! +1 Удача"),
-    lambda a, d: (1.5, "🔨 Важкий бах! +1.5 Шкоди"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 1.5) or 0, "🛡 Впевненість! +1.5 Захисту")
-])
-latex_choke = weapon_ability(0.3)([
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 2)) or 0, "🧤 Латексний зашморг! -2 Атаки"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 2)) or 0, "🛑 Брак повітря! -2 Спритність"),
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "🌑 Відчай ворога! Удача 0"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "🎰 Домінація! +2 Удача"),
-    lambda a, d: (setattr(d, 'def_', 0) or 0, "🔓 Захист зламано! Захист ворога 0"),
-    lambda a, d: (1, "🥀 Ослаблення! +1 Шкоди")
-])
-scissor_sever = weapon_ability(0.3)([
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 3)) or 0, "✂️ Розрізана броня! -3 Захисту"),      
-    lambda a, d: (setattr(a, 'agi', a.agi + 2) or 0, "🏃 Швидкі леза! +2 Спритність"), 
-    lambda a, d: (2, "🩸 Відсікання! +2 Шкоди"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "📉 Ворог поранений! -1 Атаки"), 
-    lambda a, d: (setattr(a, 'luck', a.luck + 1) or 0, "🍀 Вдача різника! +1 Удача"),
-    lambda a, d: (setattr(d, 'def_', 0) or 0, "🔓 Фінальний розріз! Захист ворога 0")
-])
-gaulish_might = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'atk', a.atk + 2) or 0, "🏺 Магічне зілля! +2 Атаки"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 2) or 0, "🛡 Незламність! +2 Захисту"), 
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 1.5)) or 0, "🌪 Відкинуто назад! -1.5 Спритності"), 
-    lambda a, d: (1.5, "👊 Удар кабаном! +1.5 Шкоди"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🍗 Відновлення сил! +1 ХП"), 
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 1)) or 0, "📉 Шок від сили! -1 Захисту")
-])
-getsuga_tensho = weapon_ability(0.3)([
-    lambda a, d: (setattr(a, 'agi', a.agi + 3) or 0, "⚡ Швидкість світла! +3 Спритність"),
-    lambda a, d: (1, "🌙 Гецуга! +1 Шкоди"),
-    lambda a, d: (setattr(d, 'def_', max(0, d.def_ - 2)) or 0, "💔 Розріз простору! -2 Захисту"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "🌌 Сила шинігамі! +2 Удача"), 
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "📉 Подавлення! -1 Атаки"), 
-    lambda a, d: (2, "🌙 ТЕНШО! +2 Шкоди")
-])
+    # LEGENDARY (0.3 - 0.4)
+    "cat_life": (0.3, [lambda a, d: heal(a, 1), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: mod_val(d, 'luck', -1.5), lambda a, d: mod_val(d, 'agi', -1.5), lambda a, d: mod_val(a, 'atk', 1.5)]),
+    "tea_mastery": (0.4, [lambda a, d: mod_val(a, 'def_', 1.0), lambda a, d: mod_val(a, 'luck', 3), lambda a, d: mod_val(d, 'agi', -2), lambda a, d: heal(a, 1), lambda a, d: mod_val(a, 'atk', 1.5), lambda a, d: 1.5]),
+    "double_strike": (0.3, [lambda a, d: 1, lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(d, 'def_', -1), lambda a, d: 1.5, lambda a, d: set_val(d, 'agi', 0)]),
+    "crit_20": (0.3, [lambda a, d: mod_val(a, 'luck', 2), lambda a, d: mod_val(a, 'atk', 2), lambda a, d: mod_val(a, 'def_', 2), lambda a, d: 3, lambda a, d: set_val(a, 'hp', a.max_hp), lambda a, d: set_val(d, 'luck', 0)]),
+    "pierce_armor": (0.3, [lambda a, d: set_val(d, 'def_', 0), lambda a, d: 1, lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: mod_val(d, 'atk', -1.5), lambda a, d: mod_val(d, 'agi', -1)]),
+    "heavy_weight": (0.3, [lambda a, d: mod_val(a, 'agi', -1), lambda a, d: mod_val(a, 'atk', 2.5), lambda a, d: mod_val(a, 'def_', 2), lambda a, d: mod_val(d, 'def_', -1.5), lambda a, d: 2, lambda a, d: mod_val(a, 'luck', 1)]),
+    "range_attack": (0.3, [lambda a, d: mod_val(a, 'luck', 2), lambda a, d: mod_val(a, 'agi', 2), lambda a, d: mod_val(d, 'agi', -1.5), lambda a, d: mod_val(d, 'atk', -1), lambda a, d: mod_val(a, 'atk', 1.5), lambda a, d: mod_val(d, 'def_', -1.5)]),
+    "stun_chance": (0.3, [lambda a, d: set_val(d, 'agi', 0), lambda a, d: mod_val(d, 'atk', -1), lambda a, d: mod_val(d, 'def_', -2), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: 1.5, lambda a, d: mod_val(a, 'def_', 1.5)]),
+    "latex_choke": (0.3, [lambda a, d: mod_val(d, 'atk', -2), lambda a, d: mod_val(d, 'agi', -2), lambda a, d: set_val(d, 'luck', 0), lambda a, d: mod_val(a, 'luck', 2), lambda a, d: set_val(d, 'def_', 0), lambda a, d: 1]),
+    "scissor_sever": (0.3, [lambda a, d: mod_val(d, 'def_', -3), lambda a, d: mod_val(a, 'agi', 2), lambda a, d: 2, lambda a, d: mod_val(d, 'atk', -1), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: set_val(d, 'def_', 0)]),
+    "gaulish_might": (0.3, [lambda a, d: mod_val(a, 'atk', 2), lambda a, d: mod_val(a, 'def_', 2), lambda a, d: mod_val(d, 'agi', -1.5), lambda a, d: 1.5, lambda a, d: heal(a, 1), lambda a, d: mod_val(d, 'def_', -1)]),
+    "getsuga_tensho": (0.3, [lambda a, d: mod_val(a, 'agi', 3), lambda a, d: 1, lambda a, d: mod_val(d, 'def_', -2), lambda a, d: mod_val(a, 'luck', 2), lambda a, d: mod_val(d, 'atk', -1), lambda a, d: 2]),
 
-#MYTHIC
-
-odin_spear = weapon_ability(0.4)([
-    lambda a, d: (setattr(a, 'def_', a.def_ + 3) or 0, "🛡️ <b>Спис Одіна:</b> Щит Іґдрасіля розквітає! +3 Захисту"),
-    lambda a, d: (2, "⚡ Удар Гунгніра! +2 Шкоди"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 2)) or 0, "🌿 Живиця Світового Дерева! +2 ХП"),
-    lambda a, d: (2, "🌤️ Сяйво Вальгалли! +2 Шкоди всім (AOE)"),
-    lambda a, d: (setattr(d, 'agi', max(0, d.agi - 2)) or 0, "⚖️ Присуд Асгарда! -2 Спритності"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 2) or 0, "👁️ Око Одіна бачить все! +2 Удачі")
-])
-
-vampire_drill = weapon_ability(0.35)([
-    lambda a, d: (setattr(d, 'def_', 0) or 0, "🌀 <b>Бур Вампіра:</b> ТВІЙ БУР ПРОБ’Є НЕБЕСА! Захист ворога = 0"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + (d.max_hp * 0.1))) or 0, "🩸 Вампіричний оберти! Крадіжка 10% макс. ХП ворога"),
-    lambda a, d: (1.5, "⚙️ Свердління плоті! +1.5 Шкоди"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 1) or 0, "🏎️ Оберти зростають! +1 Атака"),
-    lambda a, d: (setattr(d, 'atk', max(0, d.atk - 1)) or 0, "📉 Метал перекушено! -1 Атака")
-])
-
-panther_hide = weapon_ability(0.45)([
-    lambda a, d: (setattr(a, 'agi', a.agi + 4) or 0, "🐈‍⬛ <b>Шкура Пантери:</b> Грація нічного мисливця! +4 Спритність"),
-    lambda a, d: (setattr(a, 'max_hp', a.max_hp + 5) or setattr(a, 'hp', a.hp + 5) or 0, "🦴 Міць предків! +5 до макс. ХП"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 3) or 0, "🍀 Дев'ять життів! +3 Удачі"),
-    lambda a, d: (1, "🐾 Безшумний випад! +1 Шкоди"),
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "🔮 Погляд ягуара! Удача ворога = 0")
-])
-
-ea_sword = weapon_ability(0.3)([
-    lambda a, d: (3, "🌀 <b>Еа:</b> Енума Еліш! Розрив простору! +3 Шкоди"),
-    lambda a, d: (setattr(d, 'def_', 0) or setattr(d, 'agi', 0) or 0, "🌍 Світ навколо ворога руйнується! DEF та AGI = 0"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 2) or 0, "👑 Закон Вавилону! +2 Атаки"),
-    lambda a, d: (setattr(a, 'hp', a.max_hp) or 0, "🏆 Святий Грааль: Бажання виконано! ХП відновлено")
-])
-
-yin_yang_staff = weapon_ability(0.5)([
-    lambda a, d: (setattr(a, 'atk', a.atk + 5) or setattr(a, 'def_', max(0, a.def_ - 2)) or 0, "☯️ <b>Янь:</b> Екстремальна агресія! +5 Атаки / -2 Захисту"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 5) or setattr(a, 'atk', max(0, a.atk - 2)) or 0, "☯️ <b>Інь:</b> Абсолютний спокій! +5 Захисту / -2 Атаки"),
-    lambda a, d: (setattr(d, 'hp', max(1, d.hp // 2)) or 0, "⚖️ Світова рівновага! ХП ворога поділено навпіл"),
-    lambda a, d: (setattr(a, 'luck', 10) or 0, "☸️ Колесо долі! Удача стає 10")
-])
-
-student_lunch = weapon_ability(0.25)([
-    lambda a, d: (setattr(a, 'hp', 1) or 0, "🍜 <b>Обід Студента:</b> Ти вижив на мівіні... ХП стає 1"),
-    lambda a, d: (10, "⚡⚡⚡ УДАР ДЕДЛАЙНОМ! +10 ШКОДИ (Пів кабіни знесено)"),
-    lambda a, d: (setattr(a, 'luck', a.luck + 5) or 0, "🎓 Надія на халяву! +5 Удачі"),
-    lambda a, d: (setattr(d, 'agi', 0) or 0, "🛋️ Ворог впав у кому від запаху! AGI = 0")
-])
-
-spas_axe = weapon_ability(0.4)([
-    lambda a, d: (setattr(a, 'agi', a.agi + 5) or setattr(a, 'atk', a.atk + 3) or 0, "🐺 <b>СПАС:</b> Перевтілення у Вовка! +5 Спритність / +3 Атака"),
-    lambda a, d: (setattr(a, 'def_', 99) or 0, "💨 Характерництво: Кулі пролітають крізь тебе! Захист MAX на хід"),
-    lambda a, d: (2, "⚡ Магічний удар шаблею! +2 Шкоди"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 3)) or 0, "🌿 Цілющий тютюн... +3 ХП"),
-    lambda a, d: (setattr(d, 'luck', 0) or 0, "🪕 Трембіта кличе на той світ! Удача ворога = 0")
-])
-
-ancestor_spirit = weapon_ability(0.4)([
-    lambda a, d: (1.5, "🦉 Дух Сови! +1.5 Шкоди"),
-    lambda a, d: (setattr(a, 'def_', a.def_ + 2) or 0, "🐢 Дух Черепахи! +2 Захисту"),
-    lambda a, d: (setattr(a, 'agi', a.agi + 2) or 0, "🦈 Дух Акули! +2 Спритність"),
-    lambda a, d: (setattr(a, 'atk', a.atk + 2) or 0, "🦣 Дух Мамонта! +2 Атаки"),
-    lambda a, d: (setattr(a, 'hp', min(a.max_hp, a.hp + 1)) or 0, "🌿 Регенерація природи! +1 ХП")
-])
+    # MYTHIC (0.25 - 0.5)
+    "odin_spear": (0.4, [lambda a, d: mod_val(a, 'def_', 3), lambda a, d: 2, lambda a, d: heal(a, 2), lambda a, d: 2, lambda a, d: mod_val(d, 'agi', -2), lambda a, d: mod_val(a, 'luck', 2)]),
+    "vampire_drill": (0.35, [lambda a, d: set_val(d, 'def_', 0), lambda a, d: heal(a, d.max_hp * 0.1), lambda a, d: 1.5, lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(d, 'atk', -1)]),
+    "panther_hide": (0.45, [lambda a, d: mod_val(a, 'agi', 4), lambda a, d: set_val(a, 'max_hp', a.max_hp + 5) or heal(a, 5), lambda a, d: mod_val(a, 'luck', 3), lambda a, d: 1, lambda a, d: set_val(d, 'luck', 0)]),
+    "ea_sword": (0.3, [lambda a, d: 3, lambda a, d: set_val(d, 'def_', 0) or set_val(d, 'agi', 0), lambda a, d: mod_val(a, 'atk', 2), lambda a, d: heal(a, a.max_hp)]),
+    "yin_yang_staff": (0.5, [lambda a, d: mod_val(a, 'atk', 5) or mod_val(a, 'def_', -2), lambda a, d: mod_val(a, 'def_', 5) or mod_val(a, 'atk', -2), lambda a, d: set_val(d, 'hp', max(1, d.hp // 2)), lambda a, d: set_val(a, 'luck', 10)]),
+    "student_lunch": (0.25, [lambda a, d: set_val(a, 'hp', 1), lambda a, d: 10, lambda a, d: mod_val(a, 'luck', 5), lambda a, d: set_val(d, 'agi', 0)]),
+    "spas_axe": (0.4, [lambda a, d: mod_val(a, 'agi', 5) or mod_val(a, 'atk', 3), lambda a, d: set_val(a, 'def_', 99), lambda a, d: 2, lambda a, d: heal(a, 3), lambda a, d: set_val(d, 'luck', 0)]),
+    "ancestor_spirit": (0.4, [lambda a, d: 1.5, lambda a, d: mod_val(a, 'def_', 2), lambda a, d: mod_val(a, 'agi', 2), lambda a, d: mod_val(a, 'atk', 2), lambda a, d: heal(a, 1)])
+}
 
 ABILITY_REGISTRY = {
-    "none": lambda a, t, r: (0, False, []),
-    "hook_snag": hook_snag, "wooden_leg": wooden_leg, "heavy_swing": heavy_swing,
-    "mop_wash": mop_wash, "yorshik_scrub": yorshik_scrub, "entangle_debuff": entangle_debuff,
-    "drunk_fury": drunk_fury, "bleed_chance": bleed_chance, "precision_strike": precision_strike,
-    "parry": parry, "curse_mark": curse_mark, "cannon_splash": cannon_splash,
-    "life_steal": life_steal, "confuse_hit": confuse_hit, "freeze_debuff": freeze_debuff,
-    "fear_debuff": fear_debuff, "energy_surge": energy_surge, "owl_crit": owl_crit,
-    "auto_attack": auto_attack, "rage_boost": rage_boost, "ghost_strike": ghost_strike,
-    "crit_5": crit_5, "cat_life": cat_life, "tea_mastery": tea_mastery,
-    "double_strike": double_strike, "crit_20": crit_20, "pierce_armor": pierce_armor,
-    "heavy_weight": heavy_weight, "range_attack": range_attack, "stun_chance": stun_chance,
-    "latex_choke": latex_choke, "scissor_sever": scissor_sever, "gaulish_might": gaulish_might,
-    "getsuga_tensho": getsuga_tensho,
-    "odin_spear": odin_spear, "vampire_drill": vampire_drill, "panther_hide": panther_hide,
-    "ea_sword": ea_sword, "yin_yang_staff": yin_yang_staff, "student_lunch": student_lunch,
-    "spas_axe": spas_axe, "ancestor_spirit": ancestor_spirit
+    name: weapon_ability(prob)(funcs) 
+    for name, (prob, funcs) in ABILITY_DATA.items()
 }
+ABILITY_REGISTRY["none"] = lambda a, t, r: (0, False, [])
