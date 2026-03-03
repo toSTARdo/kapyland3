@@ -175,9 +175,10 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         is_at_tree = coord_key in nav.get("trees", {})
         map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), nav.get("totems", []))
-        
+        biome = get_biome_name(ny)
+
         text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
-                f"🧭 Біом: {get_biome_name(ny)} | ✨ Дзен: {zen}\n\n"
+                f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {zen}\n\n"
                 f"{map_display}")
         
         if loot_msg: text += f"\n\n✨ <i>{loot_msg}</i>"
