@@ -18,17 +18,22 @@ def heal(obj, val):
 #CORE DECORATOR
 def weapon_ability(base_prob):
     def decorator(func_list):
-        state = {'current_idx': 0} 
         def wrapper(att, targets, round_num):
+            if not hasattr(att, '_ability_state'):
+                att._ability_state = {}
+            
             w_data = att.weapon_data
             w_name = att.weapon.get("name", "Лапки")
             
+            if w_name not in att._ability_state:
+                att._ability_state[w_name] = 0
+
             weapon_cfg = WEAPON.get(w_name, {})
             special_texts = weapon_cfg.get("special_text", [])
             
             rarity = weapon_cfg.get("rarity", w_data.get("rarity", "common"))
-            pattern = weapon_cfg.get("pattern", w_data.get("pattern", "sequential"))
-            is_aoe = weapon_cfg.get("is_aoe", w_data.get("is_aoe", False))
+            pattern = weapon_cfg.get("pattern", "sequential")
+            is_aoe = weapon_cfg.get("is_aoe", False)
 
             lvl_bonus = att.weapon.get("lvl", 0) * 0.05
             luck_bonus = att.luck * 0.02
@@ -46,9 +51,9 @@ def weapon_ability(base_prob):
             total_dmg, logs = 0, []
 
             if pattern == "sequential":
-                idx = state['current_idx'] % len(available)
+                idx = att._ability_state[w_name] % len(available)
                 active_indices = [idx]
-                state['current_idx'] += 1
+                att._ability_state[w_name] += 1
                 
             elif pattern == "chaotic":
                 idx = random.randrange(len(available))
@@ -60,7 +65,6 @@ def weapon_ability(base_prob):
             for i in active_indices:
                 action = available[i]
                 txt = special_texts[i] if i < len(special_texts) else "✨ Спрацював ефект зброї!"
-                
                 current_targets = targets if is_aoe else [random.choice(targets)]
                 for t in current_targets:
                     res_val = action(att, t)
