@@ -134,13 +134,18 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         elif mode == "capy" and target_tile in WATER_TILES:
             new_mode = "ship"
 
+        old_total = len(nav.get("discovered", []))
+
         disc_set = set(nav.get("discovered", []))
-        old_size = len(disc_set)
         for dy in range(-1, 2):
             for dx in range(-2, 3):
                 disc_set.add(f"{nx+dx},{ny+dy}")
-        
-        if len(disc_set) > old_size + 50: zen += 1
+
+        new_total = len(disc_set)
+
+        if (new_total // 800) > (old_total // 800):
+            zen += 1
+            is_new_zen = True
 
         treasure_maps = inv.get("loot", {}).get("treasure_maps", [])
         map_to_remove = None
@@ -178,7 +183,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         biome = get_biome_name(ny)
 
         text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
-                f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {zen}\n\n"
+                f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {'+1 за відкриття нових земель!' if is_new_zen else zen}\n\n"
                 f"{map_display}")
         
         if loot_msg: text += f"\n\n✨ <i>{loot_msg}</i>"
