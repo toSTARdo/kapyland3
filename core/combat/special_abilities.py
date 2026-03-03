@@ -49,7 +49,12 @@ def weapon_ability(base_prob):
                 idx = state['current_idx'] % len(available)
                 active_indices = [idx]
                 state['current_idx'] += 1
-            else:
+                
+            elif pattern == "chaotic":
+                idx = random.randrange(len(available))
+                active_indices = [idx]
+                
+            elif pattern == "ultimate":
                 active_indices = list(range(len(available)))
 
             for i in active_indices:

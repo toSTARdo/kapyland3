@@ -4,75 +4,75 @@
     
     "Гак": {
         "texts": ["зачепила гаком за вухо", "спробувала підчепити суперника за штани", "зробила піратський пірсинг у боці ворога"],
-        "hit_bonus": 0.02, "power": 1, "special": "hook_snag", "pattern": "sequential", "description": "Старий іржавий, але надійний. Не одна акула була зловлена ним.",
+        "hit_bonus": 0.02, "power": 1, "special": "hook_snag", "pattern": "chaotic", "description": "Старий іржавий, але надійний. Не одна акула була зловлена ним.",
         "special_text": ["🪝 Гак зачепив ногу! -1 Спритність ворога або +1 вашої ініціативи."]
       },
       "Вудочка": {
         "texts": ["зачепила гаком за вухо", "спробувала підчепити суперника за штани", "зробила піратський пірсинг у боці ворога"],
-        "hit_bonus": 0.02, "power": 1, "special": "hook_snag", "pattern": "sequential", "description": "Хтось отримав її від дідуся в спадок. Дозволяє зловити все від бздерки до синього кита.",
+        "hit_bonus": 0.02, "power": 1, "special": "hook_snag", "pattern": "chaotic", "description": "Хтось отримав її від дідуся в спадок. Дозволяє зловити все від бздерки до синього кита.",
         "special_text": ["🪝 Гак зачепив ногу! -1 Спритність ворога або +1 вашої ініціативи."]
       },
       "Дерев'яна нога": {
         "texts": ["вперіщила дерев'яною ногою по лапі", "гупнула протезом так, що аж тріски полетіли", "використала ногу як довбню"],
-        "hit_bonus": 0.02, "power": 1, "special": "wooden_leg", "pattern": "sequential", "description": "Колись на ній ходив капітан, а тепер це твоя зброя.",
+        "hit_bonus": 0.02, "power": 1, "special": "wooden_leg", "pattern": "chaotic", "description": "Колись на ній ходив капітан, а тепер це твоя зброя.",
         "special_text": ["🪵 Глухий удар деревом! -1 Атаки ворога."]
       },
       "Весло": {
         "texts": ["пригріла важким дубовим веслом", "провела потужний гребок по голові ворога", "ляснула площиною весла, наче мухобійкою"],
-        "hit_bonus": 0.02, "power": 1, "special": "heavy_swing", "pattern": "sequential", "description": "Б'є боляче, гребе швидко. Але більше тебе нею б'ють щоб гріб швидше.",
+        "hit_bonus": 0.02, "power": 1, "special": "heavy_swing", "pattern": "chaotic", "description": "Б'є боляче, гребе швидко. Але більше тебе нею б'ють щоб гріб швидше.",
         "special_text": ["🔨 Потужний замах! +1 до базової шкоди."]
       },
       "Швабра": {
         "texts": ["відшмагала мокрою палубною шваброю", "тицьнула брудною ганчіркою прямо в писок", "вимила підлогу ворогом"],
-        "hit_bonus": 0.02, "power": 1, "special": "mop_wash", "pattern": "sequential", "description": "Зброя юнги. Як казав Вуж Лі: Я не боюся капітана з 10000-ним арсеналом, я боюся юнги що помив 10000 палуб.",
+        "hit_bonus": 0.02, "power": 1, "special": "mop_wash", "pattern": "chaotic", "description": "Зброя юнги. Як казав Вуж Лі: Я не боюся капітана з 10000-ним арсеналом, я боюся юнги що помив 10000 палуб.",
         "special_text": ["🧼 Підлога намочена! -2 Удачі ворога."]
       },
       "Йоржик": {
         "texts": ["застосувала гімняну тактику бою", "тицьнула йоржиком в око"],
         "hit_bonus": 0.01, "power": 1, "special": "none", "description": "Звісно використовувати його це гімняна ідея, але в бою все згодиться.",
-        "special_text": ["🧽 Чистка захисту! -1 Захисту ворога."], "pattern": "sequential"
+        "special_text": ["🧽 Чистка захисту! -1 Захисту ворога."], "pattern": "chaotic"
       },
 
 
       "Ром": {
         "texts": ["хильнула рому і пішла в шалену атаку", "видихнула перегаром і вдарила пляшкою", "розбила пляшку об голову ворога (розочка!)"],
-        "hit_bonus": 0.05, "power": 2, "special": "drunk_fury", "special_text": "🍻 <b>Шалена лють!</b> Алкоголь замінив страх болем.", "description": "Для хоробрості і піратських пісень. Стиль п'яної кАпІбАрИии... ГиК!",
-        "special_text": ["🍺 П'яна відвага! +1.5 Атаки", "🥴 Хитає... -1 Захисту"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 2, "special": "drunk_fury", "description": "Для хоробрості і піратських пісень. Стиль п'яної кАпІбАрИии... ГиК!",
+        "special_text": ["🍺 П'яна відвага! +1.5 Атаки", "🥴 Хитає... -1 Захисту"], "pattern":"chaotic"
       },
       "Зуби акули": {
         "texts": ["використала акулячу хватку, лишаючи рани", "вчепилася зубами в найм'якше місце", "клацнула щелепами, розриваючи захист"],
-        "hit_bonus": 0.05, "power": 2, "special": "bleed_chance", "special_text": "🩸 <b>Кровотеча!</b> Зуби залишили глибокі рани.", "description": "Гідна заміна твоїм зубам, що випали від цинги.",
-        "special_text": ["🩸 Запах крові! +1 Удача", "🔪 Глибокий поріз! +1 Шкоди"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 2, "special": "bleed_chance", "description": "Гідна заміна твоїм зубам, що випали від цинги.",
+        "special_text": ["🩸 Запах крові! +1 Удача", "🔪 Глибокий поріз! +1 Шкоди"], "pattern":"chaotic"
       },
       "Рибальські снасті": {
         "texts": ["заплутала ворога в міцну волосінь", "підсікла суперника за п'яту", "закинула сітку, наче на жирного коропа"],
-        "hit_bonus": 0.05, "power": 1, "special": "entangle_debuff", "special_text": "🕸 <b>Сіті затягнулися!</b> Ворог на мить розгубився.", "description": "Заплутують ворога і тебе. Романтично, чи не так?",
-        "special_text": ["🕸 Ворог заплутався! -2 Спритність", "⛓ Пута тиснуть! -1 Атаки"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 1, "special": "entangle_debuff", "description": "Заплутують ворога і тебе. Романтично, чи не так?",
+        "special_text": ["🕸 Ворог заплутався! -2 Спритність", "⛓ Пута тиснуть! -1 Атаки"], "pattern":"chaotic"
       },
       "Підзорна труба": {
         "texts": ["вирахувала слабке місце і вдарила точно в чоло", "використала трубу як кийок", "ткнула лінзою прямо в око"],
-        "hit_bonus": 0.05, "power": 2, "special": "precision_strike", "special_text": "🎯 <b>Точний розрахунок!</b> Удар прийшовся у вразливе місце.", "description": "Колись це була справді корисна річ. Тепер це калейдоскоп.",
-        "special_text": ["🎯 Вразливе місце! -1.5 Захисту", "👁 Фокус! +1 Удача"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 2, "special": "precision_strike", "description": "Колись це була справді корисна річ. Тепер це калейдоскоп.",
+        "special_text": ["🎯 Вразливе місце! -1.5 Захисту", "👁 Фокус! +1 Удача"], "pattern":"chaotic"
       },
       "Катлас": {
         "texts": ["провела майстерний абордажний випад", "блиснула сталлю, розсікаючи повітря", "зробила елегантний поріз поперек живота"],
-        "hit_bonus": 0.05, "power": 3, "special": "parry", "special_text": "⚔️ <b>Майстер фехтування!</b> Катлас готовий відбити наступну атаку.", "description": "Справжня шабля абордажника. Все геніальне просто.",
-        "special_text": ["🛡 Контрудар! +1 Захисту", "💨 Тактичне ухилення! +1 Спритність"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 3, "special": "parry", "description": "Справжня шабля абордажника. Все геніальне просто.",
+        "special_text": ["🛡 Контрудар! +1 Захисту", "💨 Тактичне ухилення! +1 Спритність"], "pattern":"chaotic"
       },
       "Чорна мітка": {
         "texts": ["накликала прокляття темних вод на ворога", "прошепотіла ім'я смерті, дивлячись у вічі", "приклеїла мітку до лоба суперника"],
-        "hit_bonus": 0.05, "power": 4, "special": "curse_mark", "special_text": "☠️ <b>Чорна мітка!</b> Прокляття знизило удачу ворога на -5.", "description": "Прокляття темних вод. Накладає на ворога дебаф що знижує його точність.",
-        "special_text": ["💀 Чорна мітка! Удача ворога = 0", "📉 Зустрічний врожай! -1 Захисту"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 4, "special": "curse_mark", "description": "Прокляття темних вод. Накладає на ворога дебаф що знижує його точність.",
+        "special_text": ["💀 Чорна мітка! Удача ворога = 0", "📉 Зустрічний врожай! -1 Захисту"], "pattern":"chaotic"
       },
       "Гармата": {
         "texts": ["вистрілила ядром прямо в живіт! БАБАХ!", "дала залп картеччю, збиваючи з ніг", "зарядила кавун замість ядра і влучила в голову"],
-        "hit_bonus": 0.05, "power": 4, "special": "cannon_splash", "special_text": "💣 <b>Вибух ядра!</b> Хвиля болю розійшлася по всьому тілу.", "description": "Має шанс влучити в двох капібар в масових боях.",
-        "special_text": ["💣 Вибух ядра! +1 Шкоди", "💨 Контузія! -1 Спритність"], "pattern":"sequential"
+        "hit_bonus": 0.05, "power": 4, "special": "cannon_splash", "description": "Має шанс влучити в двох капібар в масових боях.",
+        "special_text": ["💣 Вибух ядра! +1 Шкоди", "💨 Контузія! -1 Спритність"], "pattern":"chaotic"
       },
       "Риба-меч": {
         "texts": ["простромила ворога гострим носом-мечем", "виконала стрімкий підводний випад", "фехтувала морським рилом, наче справжня піратка"],
-        "hit_bonus": 0.08, "power": 2, "special": "deep_pierce", "special_text": "🗡️ <b>Глибокий прокол!</b> Рило-меч знайшло щілину в захисті.", "description": "Фехтувала морським рилом, наче справжня піратка.",
-        "special_text": ["🗡️ Глибокий прокол! +2 Шкоди", "🌊 Водяний удар! -1 Защита"], "pattern":"sequential"
+        "hit_bonus": 0.08, "power": 2, "special": "deep_pierce", "description": "Фехтувала морським рилом, наче справжня піратка.",
+        "special_text": ["🗡️ Глибокий прокол! +2 Шкоди", "🌊 Водяний удар! -1 Защита"], "pattern":"chaotic"
       },
 
 
@@ -81,7 +81,7 @@
       "hit_bonus": 0.08,
       "power": 4,
       "special": "auto_attack",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Дебелий патик, щоб з'являтися в гості без попереджень.",
       "special_text": [
         "⚔️ Пристрілка! +0.5 Атаки",
@@ -95,7 +95,7 @@
       "hit_bonus": 0.08,
       "power": 3,
       "special": "owl_crit",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Дають високу точність і шанс критичної атаки.",
       "special_text": [
         "🦉 Удар кігтями! +1.5 Шкоди",
@@ -109,7 +109,7 @@
       "hit_bonus": 0.08,
       "power": 5,
       "special": "ghost_strike",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Магічна зброя козаків-магів з південних степів.",
       "special_text": [
         "👻 Удар з тіні! +1 Шкоди",
@@ -123,7 +123,7 @@
       "hit_bonus": 0.05,
       "power": 2,
       "special": "fear_debuff",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Змушує ворога тремтіти від страху і звукових вібрацій.",
       "special_text": [
         "😱 Жах! -2 Атаки",
@@ -137,7 +137,7 @@
       "hit_bonus": 0.08,
       "power": 4,
       "special": "energy_surge",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Як воно в біса навіть попало в цей світ?!. Енергія хімози!",
       "special_text": [
         "⚡ Перевантаження! +2 Спритність",
@@ -151,7 +151,7 @@
       "hit_bonus": 0.08,
       "power": 3,
       "special": "life_steal",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "П'є життєву силу ворога.",
       "special_text": [
         "🩸 Смак життя! +1 ХП",
@@ -165,7 +165,7 @@
       "hit_bonus": 0.08,
       "power": 3,
       "special": "confuse_hit",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Збити з пантелику ворога, спочатку збий себе.",
       "special_text": [
         "🌀 Запаморочення! +1 Шкоди",
@@ -179,7 +179,7 @@
       "hit_bonus": 0.08,
       "power": 3,
       "special": "freeze_debuff",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Тільки такі сніжинища випадали під час снігопаду в північних землях.",
       "special_text": [
         "❄️ Обледеніння! -2 Спритність",
@@ -193,7 +193,7 @@
       "hit_bonus": 0.08,
       "power": 6,
       "special": "crit_5",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Бідний олень попав під гарячу руку капітана Капі Клауса.",
       "special_text": [
         "💣 Критичний вибух! +2 Шкоди",
@@ -207,7 +207,7 @@
       "hit_bonus": 0.10,
       "power": 3,
       "special": "range_attack",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Зброя ніндзя, що поєднує в собі серп і ланцюг.",
       "special_text": ["⛓️ Дистанційний захват! +1.5 Спритності", "⛏️ Підсікання! -1 Захисту ворога"]
     },
@@ -218,7 +218,7 @@
       "hit_bonus": 0.10,
       "power": 7,
       "special": "crit_20",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Легендарний меч короля Капіртура.",
       "special_text": [
         "🎰 Фортуна! +2 Удача",
@@ -250,7 +250,7 @@
       "hit_bonus": 0.10,
       "power": 8,
       "special": "pierce_armor",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Скупчення незламного духу у формі спіралі. Ігнорує броню.",
       "special_text": [
         "🔓 Броню знято! Захист ворога 0",
@@ -282,7 +282,7 @@
       "hit_bonus": -0.10,
       "power": 10,
       "special": "heavy_weight",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Більше схожий на шмат металу. Повільний, але нищівний.",
       "special_text": [
         "🐘 Тяжка хода! -1 Спритність",
@@ -298,7 +298,7 @@
       "hit_bonus": 0.10,
       "power": 5,
       "special": "stun_chance",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Винахід геніального капібари Фейнмана Апельсиновича.",
       "special_text": [
         "🌀 СТАН! Спритність ворога 0",
@@ -346,7 +346,7 @@
       "hit_bonus": 0.10,
       "power": 3,
       "special": "gaulish_might",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Збільшує всі показники та дарує пишні вуса.",
       "special_text": [
         "🏺 Магічне зілля! +2 Атаки",
@@ -362,7 +362,7 @@
       "hit_bonus": 0.10,
       "power": 3,
       "special": "latex_choke",
-      "pattern": "sequential",
+      "pattern": "chaotic",
       "description": "Мегапуцька для приниження ворога.",
       "special_text": [
         "🧤 Латексний зашморг! -2 Атаки",
@@ -395,7 +395,7 @@
       "hit_bonus": 0.15,
       "power": 12,
       "special": "odin_spear",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Легендарна зброя Всебатька. Вона ніколи не промахується повз долю.",
       "special_text": [
         "🛡️ Спис Одіна: Щит Іґдрасіля розквітає! +3 Захисту",
@@ -411,7 +411,7 @@
       "hit_bonus": 0.15,
       "power": 11,
       "special": "vampire_drill",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Твій бур, що проткне небеса, але за ціну свіжої крові.",
       "special_text": [
         "🌀 Бур Вампіра: ТВІЙ БУР ПРОБ’Є НЕБЕСА! Захист ворога = 0",
@@ -426,7 +426,7 @@
       "hit_bonus": 0.15,
       "power": 9,
       "special": "panther_hide",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Стародавній артефакт, що дарує швидкість та дев'ять життів.",
       "special_text": [
         "🐈‍⬛ Шкура Пантери: Грація нічного мисливця! +4 Спритність",
@@ -441,7 +441,7 @@
       "hit_bonus": 0.15,
       "power": 15,
       "special": "ea_sword",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Зброя, що існувала до створення світу. Розриває саму тканину буття.",
       "special_text": [
         "🌀 Еа: Енума Еліш! Розрив простору! +3 Шкоди",
@@ -455,7 +455,7 @@
       "hit_bonus": 0.15,
       "power": 10,
       "special": "yin_yang_staff",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Повний баланс між руйнуванням та спокоєм.",
       "special_text": [
         "☯️ Янь: Екстремальна агресія! +5 Атаки / -2 Захисту",
@@ -469,7 +469,7 @@
       "hit_bonus": 0.15,
       "power": 25,
       "special": "student_lunch",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Страва, заправлена сльозами та енергетиком. Небезпечна для життя.",
       "special_text": [
         "🍜 Обід Студента: Ти вижив на мівіні... ХП стає 1",
@@ -483,7 +483,7 @@
       "hit_bonus": 0.15,
       "power": 13,
       "special": "spas_axe",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Забута техніка козацьких магів. Робить власника невловимим.",
       "special_text": [
         "🐺 СПАС: Перевтілення у Вовка! +5 Спритність / +3 Атака",
@@ -498,7 +498,7 @@
       "hit_bonus": 0.15,
       "power": 10,
       "special": "ancestor_spirit",
-      "pattern": "sequential",
+      "pattern": "ultimate",
       "description": "Вся фауна прадавніх часів стоїть за твоєю спиною.",
       "special_text": [
         "🦉 Дух Сови! +1.5 Шкоди",
