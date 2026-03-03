@@ -145,7 +145,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         if (new_total // 800) > (old_total // 800):
             zen += 1
-            is_new_zen = True
+            await callback.answer("✨ Знання нових досліджених ділянок переповнюють тебе. +1 Дзен!", show_alert=True)
 
         treasure_maps = inv.get("loot", {}).get("treasure_maps", [])
         map_to_remove = None
@@ -183,7 +183,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         biome = get_biome_name(ny)
 
         text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
-                f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {'+1 за відкриття нових земель!' if is_new_zen else zen}\n\n"
+                f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {zen}\n\n"
                 f"{map_display}")
         
         if loot_msg: text += f"\n\n✨ <i>{loot_msg}</i>"
