@@ -110,7 +110,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 k = info["key"]
                 
                 raw_name = item.get('name', '???')
-                special_effects = WEAPON.get(raw_name, {}).get("effects", []) if item.get("type") == "weapon" else []
+                special_effects = WEAPON.get(raw_name, {}).get("special_text", []) if item.get("type") == "weapon" else []
                 pattern = WEAPON.get(raw_name, {}).get("pattern") if item.get("type") == "weapon" else None
                 PATTERN_MAP = {"sequential": "Послідовний", "chaotic": "Хаотичний", "ultimate": "Ультимативний"}
                 clean_name = raw_name
@@ -149,8 +149,8 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         f"{r_icon} <b>{raw_name} {stars}</b>\n"
                         f"━━━━━━━━━━━━━━━\n"
                         f"<i>{item_desc}</i>\n\n"
-                        f"Пасивні ефекти:\n" + ("\n".join(f"· {e}" for e in special_effects) if special_effects else "Немає") + "\n"
-                        f"Патерн активації: {PATTERN_MAP.get(pattern, pattern) if pattern else 'Немає'}\n"
+                        f"<b>Пасивні ефекти:</b>\n" + ("\n".join(f"• {e}" for e in special_effects) if special_effects else "Немає") + "\n"
+                        f"<b>Патерн активації:</b> {PATTERN_MAP.get(pattern, pattern) if pattern else 'Немає'}\n"
                         f"━━━━━━━━━━━━━━━\n"
                         f"💰 Ціна: <b>{price} 🍉</b>"
                     )
