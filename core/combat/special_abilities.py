@@ -21,7 +21,7 @@ def weapon_ability(base_prob):
         state = {'current_idx': 0} 
         def wrapper(att, targets, round_num):
             w_data = att.weapon_data
-            w_name = att.w_name
+            w_name = att.weapon.get("name", "Лапки")
             
             weapon_cfg = WEAPON.get(w_name, {})
             special_texts = weapon_cfg.get("special_text", [])
