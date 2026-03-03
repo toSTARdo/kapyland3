@@ -217,7 +217,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                 await conn.execute("UPDATE capybaras SET total_fights = total_fights + 1, stamina = GREATEST(stamina - 5, 0) WHERE owner_id = $1", loser_id)
 
         if winner_id == uid and not is_parrot:
-            await send_victory_celebration(main_msg, uid)
+            await send_victory_celebration(main_msg, chat_id=callback.message.chat.id, user_id=uid, db_pool=db_pool)
 
 @router.callback_query(F.data == "fight_bot")
 async def handle_fight_bot(callback: types.CallbackQuery, db_pool):

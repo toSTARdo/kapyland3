@@ -99,9 +99,9 @@ async def send_victory_celebration(bot: Bot, chat_id: int, user_id: int, db_pool
 
         try:
             if m_type == "gif":
-                await bot.send_animation(chat_id, f_id, caption="✨ Твоя капібара святкує перемогу!")
+                await bot.send_animation(chat_id, f_id, caption="✨ Перемога!")
             elif m_type == "photo":
-                await bot.send_photo(chat_id, f_id, caption="✨ Твоя капібара святкує перемогу!")
+                await bot.send_photo(chat_id, f_id, caption="✨ Перемога!")
             elif m_type == "sticker":
                 await bot.send_sticker(chat_id, f_id)
         except Exception as e:
