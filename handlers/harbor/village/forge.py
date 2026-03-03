@@ -251,6 +251,13 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
                 if req_item_name in name_in_inv:
                     user_equip.pop(i)
                     break
+
+        for mat, count in recipe["ingredients"].get("materials", {}).items():
+            if inv.get("materials", {}).get(mat, 0) < count:
+                can_craft = False; break
+                
+        if not can_craft:
+            return await callback.answer("❌ Недостатньо ресурсів для крафту!", show_alert=True)
         
         for mat, count in recipe["ingredients"].get("materials", {}).items():
             inv["materials"][mat] -= count
@@ -276,7 +283,7 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         )
         
         await callback.answer(f"✅ {recipe['name']} виготовлено!", show_alert=True)
-        await common_craft_list(callback)
+        await common_craft_list(callback, db_pool)
 
 ITEMS_PER_PAGE = 5
 
