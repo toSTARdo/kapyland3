@@ -44,10 +44,10 @@ BASE_HITPOINTS = BASE_HEARTS * UNITS_PER_HEART
 BASE_BLOCK_CHANCE = 0.05
 STAT_WEIGHTS = {
     # FIGHT
-    "atk_to_hit": 0.04,
-    "def_to_block": 0.05,
-    "agi_to_dodge": 0.03,
-    "luck_to_crit": 0.02,
+    "atk_to_hit": 0.01, # max ATK 90%: 60 base + 20 stats + 10 weapon = 90% hit chance
+    "def_to_block": 0.005, # max DEF 30%: 5 base + 10 stats + 15 armor = 30% block chance
+    "agi_to_dodge": 0.02, # max AGI 40%: 20 stats= 40% dodge chance
+    "luck_to_crit": 0.01, # max LCK 20%: 20 stats= 20% sp. effect chance
     
     # NON-FIGHT
     "agi_to_trap": 0.03,

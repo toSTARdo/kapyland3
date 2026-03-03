@@ -6,6 +6,8 @@ from config import IMAGES_URLS
 
 router = Router()
 
+STAT_CAP = 20
+
 @router.callback_query(F.data == "zen_upgrade")
 async def meditation_menu(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
@@ -31,10 +33,10 @@ async def meditation_menu(callback: types.CallbackQuery, db_pool):
     )
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="⚔️ ATK", callback_data="upgrade_stat:atk")
-    builder.button(text="🛡️ DEF", callback_data="upgrade_stat:def")
-    builder.button(text="💨 AGI", callback_data="upgrade_stat:agi")
-    builder.button(text="🍀 LCK", callback_data="upgrade_stat:luck")
+    builder.button(text="⚔️ ATK" if row['atk'] < STAT_CAP else "⚔️ ATK (MAКС)", callback_data="upgrade_stat:atk")
+    builder.button(text="🛡️ DEF" if row['def'] < STAT_CAP else "🛡️ DEF (MAКС)", callback_data="upgrade_stat:def")
+    builder.button(text="💨 AGI" if row['agi'] < STAT_CAP else "💨 AGI (MAКС)", callback_data="upgrade_stat:agi")
+    builder.button(text="🍀 LCK" if row['luck'] < STAT_CAP else "🍀 LCK (MAКС)", callback_data="upgrade_stat:luck")
     builder.button(text="🔙 Назад", callback_data="open_profile_main") 
     builder.adjust(2, 2, 1)
 
@@ -54,17 +56,26 @@ async def process_stat_upgrade(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        zen_points = await conn.fetchval("SELECT zen FROM capybaras WHERE owner_id = $1", uid)
+        row = await conn.fetchrow(
+            f"SELECT zen, {stat_key} FROM capybaras WHERE owner_id = $1", uid
+        )
         
-        if zen_points is None or zen_points < 1:
+        if not row:
+            return await callback.answer("❌ Помилка завантаження даних.")
+
+        if row['zen'] < 1:
             return await callback.answer("🕯 Твоя чакра порожня... Треба більше дзену!", show_alert=True)
 
+        if row[stat_key] >= STAT_CAP:
+            return await callback.answer(f"🏆 {stat_key.upper()} вже на максимумі!", show_alert=True)
+
+        # Оновлення бази
         await conn.execute(f"""
             UPDATE capybaras 
             SET zen = zen - 1, {stat_key} = {stat_key} + 1 
             WHERE owner_id = $1
         """, uid)
     
-    await callback.answer(f"✨ Оммм... {stat_key.upper()} збільшено!")
+    await callback.answer(f"✨ Оммм... {stat_key.upper()} тепер {row[stat_key] + 1}!")
     
     await meditation_menu(callback, db_pool)

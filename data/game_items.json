@@ -2,62 +2,62 @@
     "WEAPONS" : {
             "Вудочка": {
                 "texts": ["зачепила гаком за вухо", "спробувала підчепити суперника за штани", "зробила піратський пірсинг у боці ворога"],
-                "hit_bonus": 0.04, "power": 1, "special":"hook_snag", "pattern": "sequential",
+                "hit_bonus": 0.02, "power": 1, "special":"hook_snag", "pattern": "sequential",
                 "special_text": ""
             },
             "Гак": {
                 "texts": ["зачепила гаком за вухо", "спробувала підчепити суперника за штани", "зробила піратський пірсинг у боці ворога"],
-                "hit_bonus": 0.04, "power": 1, "special": "hook_snag", "pattern": "sequential",
+                "hit_bonus": 0.02, "power": 1, "special": "hook_snag", "pattern": "sequential",
                 "special_text": ""
             },
             "Дерев'яна нога": {
                 "texts": ["вперіщила дерев'яною ногою по лапі", "гупнула протезом так, що аж тріски полетіли", "використала ногу як довбню"],
-                "hit_bonus": 0.03, "power": 1, "special": "wooden_leg", "pattern": "sequential",
+                "hit_bonus": 0.02, "power": 1, "special": "wooden_leg", "pattern": "sequential",
                 "special_text": ""
             },
             "Весло": {
                 "texts": ["пригріла важким дубовим веслом", "провела потужний гребок по голові ворога", "ляснула площиною весла, наче мухобійкою"],
-                "hit_bonus": 0.05, "power": 1, "special": "heavy_swing", "pattern": "sequential",
+                "hit_bonus": 0.02, "power": 1, "special": "heavy_swing", "pattern": "sequential",
                 "special_text": ""
             },
             "Рибальські снасті": {
                 "texts": ["заплутала ворога в міцну волосінь", "підсікла суперника за п'яту", "закинула сітку, наче на жирного коропа"],
-                "hit_bonus": 0.08, "power": 1, "special": "entangle_debuff", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 1, "special": "entangle_debuff", "pattern": "sequential",
                 "special_text": "🕸 <b>Сіті затягнулися!</b> Ворог на мить розгубився."
             },
             "Швабра": {
                 "texts": ["відшмагала мокрою палубною шваброю", "тицьнула брудною ганчіркою прямо в писок", "вимила підлогу ворогом"],
-                "hit_bonus": 0.06, "power": 1, "special": "mop_wash", "pattern": "sequential",
+                "hit_bonus": 0.02, "power": 1, "special": "mop_wash", "pattern": "sequential",
                 "special_text": "помила тобою підлогу"
             },
             "Ром": {
                 "texts": ["хильнула рому і пішла в шалену атаку", "видихнула перегаром і вдарила пляшкою", "розбила пляшку об голову ворога (розочка!)"],
-                "hit_bonus": 0.06, "power": 2, "special": "drunk_fury", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 2, "special": "drunk_fury", "pattern": "sequential",
                 "special_text": "🍻 <b>Шалена лють!</b> Алкоголь замінив страх болем."
             },
             "Зуби акули": {
                 "texts": ["використала акулячу хватку, лишаючи рани", "вчепилася зубами в найм'якше місце", "клацнула щелепами, розриваючи захист"],
-                "hit_bonus": 0.08, "power": 2, "special": "bleed_chance", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 2, "special": "bleed_chance", "pattern": "sequential",
                 "special_text": "🩸 <b>Кровотеча!</b> Зуби залишили глибокі рани."
             },
             "Підзорна труба": {
                 "texts": ["вирахувала слабке місце і вдарила точно в чоло", "використала трубу як кийок", "ткнула лінзою прямо в око"],
-                "hit_bonus": 0.14, "power": 2, "special": "precision_strike", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 2, "special": "precision_strike", "pattern": "sequential",
                 "special_text": "🎯 <b>Точний розрахунок!</b> Удар прийшовся у вразливе місце."
             },
             "Катлас": {
                 "texts": ["провела майстерний абордажний випад", "блиснула сталлю, розсікаючи повітря", "зробила елегантний поріз поперек живота"],
-                "hit_bonus": 0.10, "power": 3, "special": "parry", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 3, "special": "parry", "pattern": "sequential",
                 "special_text": "⚔️ <b>Майстер фехтування!</b> Катлас готовий відбити наступну атаку."
             },
             "Антикомпас": {
                 "texts": ["збила з пантелику, і ворог вмазав собі в чоло", "показала хибний напрямок удару", "змусила ворога крутитися дзиґою"],
-                "hit_bonus": 0.09, "power": 3, "special": "confuse_hit", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 3, "special": "confuse_hit", "pattern": "sequential",
                 "special_text": "🌀 <b>Дезорієнтація!</b> Ворог не розуміє, де північ, а де твій кулак."
             },
             "Гіга сніжинкосюрикен": {
                 "texts": ["заморозила рухи ворога магічним холодом", "вцілила гострим льодом прямо в серце", "запустила холодний диск, що ріже наскрізь"],
-                "hit_bonus": 0.10, "power": 3, "special": "freeze_debuff", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 3, "special": "freeze_debuff", "pattern": "sequential",
                 "special_text": "❄️ <b>Обмороження!</b> Лапки ворога задубіли..."
             },
             "Трембіта": {
@@ -67,7 +67,7 @@
             },
             "Рево": {
                 "texts": ["відкрила банку і пішла на таран з енергією", "пшикнула газом у морду ворога", "зарядилася енергією хімози на повну"],
-                "hit_bonus": 0.10, "power": 4, "special": "energy_surge", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 4, "special": "energy_surge", "pattern": "sequential",
                 "special_text": "⚡ <b>Енергетичний сплеск!</b> Капібара бачить звуки та відчуває швидкість."
             },
             "Вампірський клинок": {
@@ -77,17 +77,17 @@
             },
             "Чорна мітка": {
                 "texts": ["накликала прокляття темних вод на ворога", "прошепотіла ім'я смерті, дивлячись у вічі", "приклеїла мітку до лоба суперника"],
-                "hit_bonus": 0.12, "power": 4, "special": "curse_mark", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 4, "special": "curse_mark", "pattern": "sequential",
                 "special_text": "☠️ <b>Чорна мітка!</b> Прокляття знизило удачу ворога на -5."
             },
             "Гармата": {
                 "texts": ["вистрілила ядром прямо в живіт! БАБАХ!", "дала залп картеччю, збиваючи з ніг", "зарядила кавун замість ядра і влучила в голову"],
-                "hit_bonus": 0.15, "power": 4, "special": "cannon_splash", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 4, "special": "cannon_splash", "pattern": "sequential",
                 "special_text": "💣 <b>Вибух ядра!</b> Хвиля болю розійшлася по всьому тілу."
             },
             "Таран": {
                 "texts": ["розігналася і вдарила металевим носом", "пішла на абордажний пролом", "вгатила всією масою, наче скажений буйвол"],
-                "hit_bonus": 0.07, "power": 4, "special": "auto_attack", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 4, "special": "auto_attack", "pattern": "sequential",
                 "special_text": ""
             },
             "Сокира Беткапі": {
@@ -97,47 +97,47 @@
             },
             "Шабля характерника": {
                 "texts": ["зробила магічний розчерк, розрізаючи долю", "зникла в тумані й вдарила зі спини", "заворожила ворога танцем сталі"],
-                "hit_bonus": 0.12, "power": 5, "special": "ghost_strike", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 5, "special": "ghost_strike", "pattern": "sequential",
                 "special_text": "👻 <b>Магічний розчерк!</b> Шабля пройшла крізь реальність."
             },
             "Котяче життя": {
                 "texts": ["використала магію, ставши невловимою", "подряпала обличчя з грацією кішки", "вдарила м'якою лапкою, що приховує сталь"],
-                "hit_bonus": 0.04, "power": 5, "special": "cat_life", "pattern": "sequential",
+                "hit_bonus": 0.05, "power": 5, "special": "cat_life", "pattern": "sequential",
                 "special_text": ""
             },
             "Чайний посох": {
                 "texts": ["вивільнила силу всіх чаїв світу", "ошпарила суперника магічним окропом", "вдарила посохом"],
-                "hit_bonus": 0.15, "power": 5, "special": "tea_mastery", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 5, "special": "tea_mastery", "pattern": "sequential",
                 "special_text": "🍵 <b>Чайна церемонія болю!</b> Смак бергамоту стає нестерпним."
             },
             "Ріг Рудольфа": {
                 "texts": ["засліпила сяйвом рога і вмазала", "протаранила вогняним носом", "викликала новорічне диво болю"],
-                "hit_bonus": 0.05, "power": 6, "special": "crit_5", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 6, "special": "crit_5", "pattern": "sequential",
                 "special_text": "💥 <b>КРИТИЧНИЙ УДАР!</b> Ріг сяє яскравіше за зірку."
             },
             "Молот Мільйонер": {
                 "texts": ["викликала грім і блискавку на ворога", "вдарила з силою розлюченого багатія", "земля здригнулася від удару молотом"],
-                "hit_bonus": 0.05, "power": 6, "special": "double_strike", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 6, "special": "double_strike", "pattern": "sequential",
                 "special_text": "⚡ <b>Нищівний удар!</b> Блискавка б'є двічі."
             },
             "Екскалібур": {
                 "texts": ["вразила королівським світлом меча", "підняла меч до неба і розсікла темряву", "ударила зі шляхетністю справжньої королеви"],
-                "hit_bonus": 0.15, "power": 7, "special": "crit_20", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 7, "special": "crit_20", "pattern": "sequential",
                 "special_text": "👑 <b>Королівський критичний удар!</b> Доля обрала переможця."
             },
             "Бур Лаганна": {
                 "texts": ["пробила небеса і захист ворога", "закрутила спіраль руйнування", "використала Гіга-Дриль-Прорив!"],
-                "hit_bonus": 0.20, "power": 8, "special": "pierce_armor", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 8, "special": "pierce_armor", "pattern": "sequential",
                 "special_text": "🎯 <b>ПРОБИТТЯ!</b> Через небеса!"
             },
             "Розсікач драконів": {
                 "texts": ["опустила шмат металу на ворога", "просто розчавила суперника вагою меча", "вдарила так, що навіть дракони злякалися"],
-                "hit_bonus": -0.05, "power": 10, "special": "heavy_weight", "pattern": "sequential",
+                "hit_bonus": -0.10, "power": 10, "special": "heavy_weight", "pattern": "sequential",
                 "special_text": "🦾 <b>Надмірна вага!</b> Удар був повільним, але нищівним."
             },
             "Кусарігама": {
                 "texts": ["закрутила ланцюг і вдарила здалеку", "підтягнула ворога ближче до гострого серпа", "обмотала шию ворога залізним ланцюгом"],
-                "hit_bonus": 0.15, "power": 3, "special": "range_attack", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 3, "special": "range_attack", "pattern": "sequential",
                 "special_text": ""
             },
             "Пушка Тесли": {
@@ -147,28 +147,28 @@
             },
             "Совині кігті": {
                 "texts": ["гостро полоснула кігтями по очах", "вчепилася в плече, проколюючи шкіру", "зробила безшумний піке-удар зверху"],
-                "hit_bonus": 0.15, "power": 3, "special": "owl_crit", "pattern": "sequential",
+                "hit_bonus": 0.08, "power": 3, "special": "owl_crit", "pattern": "sequential",
                 "special_text": "🦉 <b>Нічний мисливець!</b> Кігті знайшли слабке місце."
             },
             "Резиновий член": {
                 "texts": ["поводила по губах", "відшльопав", "взяла на удушення свої латексним шлангом"],
-                "hit_bonus": 0.15, "power": 3, "special": "owl_crit", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 3, "special": "owl_crit", "pattern": "sequential",
                 "special_text": "Засадила по самі гланди!"
             },
             "Хмарорізи": {
                 "texts": ["розполовинила броню одним клацанням", "зірвала з ворога всі нитки гідності"],
-                "hit_bonus": 0.15, "power": 3, "special": "scissor_sever", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 3, "special": "scissor_sever", "pattern": "sequential",
                 "special_text": "Засадила по самі гланди!"
             },
             "Зілля Обелікса": {
                 "texts": ["нагодувала кабаном прямо з розбігу", "переїхала ворога своєю масою", "прописала такий аперкот, що ворог полетів у стратосферу"],
-                "hit_bonus": 0.15, "power": 3, "special": "gaulish_might", "pattern": "sequential",
+                "hit_bonus": 0.10, "power": 3, "special": "gaulish_might", "pattern": "sequential",
                 "special_text": "Засадила по самі гланди!"
             },
             "Тенза Зангетсу": {
                 "texts": ["зникає у спалаху швидкості та з'являється за спиною",  "випускає чорну енергію", "наносить серію розрізів, які майже неможливо помітити"
                     ],
-                    "hit_bonus": 0.2, 
+                    "hit_bonus": 0.10, 
                     "power": 4, 
                     "special": "getsuga_tensho", 
                     "pattern": "sequential",
@@ -180,7 +180,7 @@
                     "виконала стрімкий підводний випад", 
                     "фехтувала морським рилом, наче справжня піратка"
                 ],
-                "hit_bonus": 0.2, 
+                "hit_bonus": 0.08, 
                 "power": 2, 
                 "special": "deep_pierce", 
                 "pattern": "sequential",
@@ -269,6 +269,7 @@
             {"name": "Антикомпас", "type": "weapon", "desc": "Звучить цікаво, але насправді це просто хтось підписав сторони світу в хибному порядку. Щоб збити з пантелику ворога, спочатку збий себе (Хрю Дзи)"},
             {"name": "Гіга сніжинкосюрикен", "type": "weapon", "desc": "Тільки такі сніжинища випадали під час снігопаду в північних землях.Заморожує лапки ворога. Зменшує шанс ворога на успішну атаку на наступний хід при активації"},
             {"name": "Ріг Рудольфа", "type": "weapon", "desc": "Бідний олень попав під гарячу руку капітана Капі Клауса. Сліпуче червоне світло і дає шанс критичної атаки."},
+            {"name": "Кусариґама", "type": "weapon", "desc": "Зброя ніндзя, що поєднує в собі серп і ланцюг. Дозволяє атакувати з відстані."},
             {"name": "Череп ягуара", "type": "armor", "desc": "Броня з хижака. Мабуть не одного. Більше психологічний ефект ніж реальний. Дає +2 щити."},
             {"name": "Мітка гетьмана", "type": "armor", "desc": "Святий захист від прокльонів. Підозріло виглядає як слід від підкови. А ще історики кажуть гетьман погано ладнав з зебрами. До чого це я... О, так Дає +2 щити."},
             {"name": "Намазка Пікнік", "type" : "artifact", "desc" : "Дешево і смачно. І легендарно (не лега)."}
