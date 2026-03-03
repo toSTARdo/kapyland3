@@ -54,6 +54,19 @@ async def handle_accept(callback: types.CallbackQuery, db_pool):
     if callback.from_user.id != opponent_id:
         return await callback.answer("Це виклик не для тебе! ⛔", show_alert=True)
 
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT owner_id, stamina FROM capybaras WHERE owner_id IN ($1, $2)",
+            challenger_id, opponent_id
+        )
+        
+        stats = {row['owner_id']: row['stamina'] for row in rows}
+        
+        if stats.get(opponent_id, 0) < 5:
+            return await callback.answer("У тебе недостатньо енергії (треба 5 ⚡)!", show_alert=True)
+        if stats.get(challenger_id, 0) < 5:
+            return await callback.answer("У суперника закінчилася енергія! Бій скасовано. ❌", show_alert=True)
+
     await callback.message.edit_text("🚀 Бій прийнято! Капібари виходять на дуель... (-5 ⚡)")
     asyncio.create_task(run_battle_logic(callback, db_pool, opponent_id=challenger_id))
     await callback.answer()
