@@ -138,7 +138,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                 p2_data = {
                     "kapy_name": f"👻 Привид {row['name']}",
                     "lvl": row['final_lvl'],
-                    "hp_bonus": int((row['final_lvl'] * 10) * 0.6),
+                    "hp_bonus": 0,
                     "stats": {
                         "attack": max(1, int(g_stats.get('atk', 1) * 0.6)),
                         "defense": int(g_stats.get('def', 0) * 0.6),
@@ -220,23 +220,41 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
         if is_ghost:
             g_inv = p2_data["raw_inv"]
             recovered = []
+            
             async with db_pool.acquire() as conn:
-                curr_inv = json.loads(await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", uid))
+                row = await conn.fetchrow("""
+                    SELECT c.inventory, u.reincarnation_count 
+                    FROM capybaras c
+                    JOIN users u ON c.owner_id = u.user_id
+                    WHERE c.owner_id = $1
+                """, uid)     
+
+                curr_inv = json.loads(row['inventory'])
+                reinc_count = row['reincarnation_count'] or 0
+                
+                spiritual_power = min(1.0, reinc_count * 0.1)
+                
                 for cat in ["food", "materials", "equipment"]:
                     if cat in g_inv and g_inv[cat]:
                         items = list(g_inv[cat]) if isinstance(g_inv[cat], (list, dict)) else []
                         if not items: continue
                         
-                        loot_count = min(len(items), 2)
-                        for _ in range(loot_count):
-                            target = random.choice(items)
+                        max_possible = len(items)
+                        loot_count = max(1, int(max_possible * spiritual_power))
+                        
+                        selected_items = random.sample(items, k=loot_count)
+                        
+                        for target in selected_items:
                             if cat == "equipment":
                                 curr_inv.setdefault(cat, []).append(target)
-                                recovered.append(target.get("name", "Екіпіровка"))
+                                recovered.append(f"✨ {target.get('name', 'Екіпіровка')}")
                             else:
-                                count = g_inv[cat][target]
-                                curr_inv[cat][target] = curr_inv[cat].get(target, 0) + count
-                                recovered.append(f"{target} x{count}")
+                                total_qty = g_inv[cat][target]
+                                recovered_qty = max(1, int(total_qty * random.uniform(0.5, 1.0)))
+                                
+                                curr_inv.setdefault(cat, {})
+                                curr_inv[cat][target] = curr_inv[cat].get(target, 0) + recovered_qty
+                                recovered.append(f"{target} x{recovered_qty}")
                 
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv), uid)
                 await conn.execute("DELETE FROM graveyard WHERE id = $1", tomb_id)
@@ -247,7 +265,9 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                     nav["loot"]["treasure_maps"] = [m for m in nav["loot"]["treasure_maps"] if not (m.get("type") == "tomb" and m.get("id") == tomb_id)]
                 await conn.execute("UPDATE capybaras SET navigation = $1 WHERE owner_id = $2", json.dumps(nav), uid)
 
-            reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b>\n{', '.join(recovered)}"
+            reinc_text = f"<i>(Духовна сила: {int(spiritual_power*100)}%)</i>"
+            reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b> {reinc_text}\n{', '.join(recovered)}"
+    
         elif is_boss:
             reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +5 кг, +10 EXP"
         elif not is_parrot:
@@ -255,7 +275,10 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
     elif winner == p2:
         res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} виявився сильнішим."
-        reward_info = "\n\n📉 <b>Наслідки:</b>\n🥈 -3 кг"
+        if is_parrot:
+            reward_info = "\n\n🦜 <i>Папуга Павло дає тобі пораду: «Більше тренуйся, сопляк!»</i>"
+        else:
+            reward_info = "\n\n📉 <b>Збитки:</b>\n🥈 -3 кг"
 
     await main_msg.edit_text(f"🏁 <b>БІЙ ЗАВЕРШЕНО</b>\n━━━━━━━━━━━━━━\n{res}{reward_info}", parse_mode="HTML")
 

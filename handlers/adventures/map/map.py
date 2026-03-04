@@ -112,6 +112,16 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         coord_key = f"{nx},{ny}"
         loot_msg = ""
         
+        if target_tile == "꩜":
+            if random.random() < 0.30:
+                await callback.answer("🌊 ВИР ЗАТЯГУЄ ТЕБЕ НА ГЛИБИНУ!", show_alert=True)
+                
+                nav.update({"x": nx, "y": ny}) 
+                await conn.execute("UPDATE capybaras SET navigation=$1, stamina=stamina-1 WHERE owner_id=$2", 
+                                   json.dumps(nav), uid)
+                
+                return await run_battle_logic(callback, db_pool, bot_type="mantis_shrimp")
+
         flowers = nav.get("flowers", {})
         if coord_key in flowers:
             icon = flowers[coord_key]
