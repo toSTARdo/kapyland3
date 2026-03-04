@@ -113,7 +113,20 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         loot_msg = ""
         
         if target_tile == "꩜":
-            if random.random() < 0.30:
+            if event_roll < 0.01:
+                await callback.answer("💀 ВОДА ЗАПОВНЮЄ ЛЕГЕНІ... ТИ ВТОПИВСЯ!", show_alert=True)
+                
+                death_data = await handle_death(uid, db_pool, death_reason="Затягнута у безодню 🌊")
+                
+                await callback.message.answer(
+                    f"🌊 <b>ТРАГЕДІЯ БЕЗОДНІ!</b>\n\n"
+                    f"Вир виявився сильнішим за твій корабель. Твоє тіло винесло на далекий берег...\n"
+                    f"✨ Твій дух загартувався! Новий показник: x{death_data.get('new_mult', 1.0)}"
+                )
+                
+                return 
+
+            elif event_roll < 0.31:
                 await callback.answer("🌊 ВИР ЗАТЯГУЄ ТЕБЕ НА ГЛИБИНУ!", show_alert=True)
                 
                 nav.update({"x": nx, "y": ny}) 

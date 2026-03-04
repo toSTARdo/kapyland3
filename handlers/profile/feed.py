@@ -26,26 +26,60 @@ async def try_feed_capybara(db_pool, user_id: int, weight_gain: float):
 
 @router.message(Command("feed"))
 @router.callback_query(F.data == "feed_capy")
-async def cmd_feed(message: types.Message, db_pool):
-    uid = message.from_user.id
-    
-    gain = round(random.uniform(0, 5), 2)
-    
-    result = await try_feed_capybara(db_pool, uid, gain)
-    
-    grant_exp_and_lvl(uid, exp_gain=int(gain), weight_gain=gain, db_pool=db_pool)
+async def cmd_feed(event: types.Message | types.CallbackQuery, db_pool):
+    is_callback = isinstance(event, types.CallbackQuery)
+    message = event.message if is_callback else event
+    user = event.from_user
+    uid = user.id
 
-    if not result:
-        async with db_pool.acquire() as conn:
-            last_feed = await conn.fetchval("SELECT last_feed FROM capybaras WHERE owner_id = $1", uid)
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT weight, lvl, last_feed, name 
+            FROM capybaras WHERE owner_id = $1
+        """, uid)
         
+        if not row:
+            return await message.answer("❌ Капібару не знайдено. Натисни /start")
+
+        last_feed = row['last_feed']
         if last_feed:
             next_feed = last_feed + timedelta(hours=8)
-            remaining = next_feed - datetime.now(last_feed.tzinfo)
-            time_str = format_time(remaining.total_seconds())
-            return await message.answer(f"⏳ Капібара ще сита! Приходь через: {time_str}", parse_mode="HTML")
+            now = datetime.now(last_feed.tzinfo)
+            if now < next_feed:
+                remaining = next_feed - now
+                time_str = format_time(remaining.total_seconds())
+                msg = f"⏳ Капібара ще сита! Приходь через: {time_str}"
+                if is_callback:
+                    return await event.answer(msg, show_alert=True)
+                return await message.answer(msg)
+
+        gain = round(random.uniform(1.5, 5.0), 2)
+        current_weight = row['weight']
+        current_lvl = row['lvl']
         
-        return await message.answer("❌ Капібару не знайдено. Натисни /start")
+        max_safe_weight = 50 + (current_lvl * 10)
+        new_weight = current_weight + gain
+        
+        pop_chance = 0
+        if new_weight > max_safe_weight:
+            pop_chance = (new_weight - max_safe_weight) * 0.1
+            
+        if random.random() < pop_chance:
+            benefit = await handle_death(uid, db_pool, death_reason="Луснула від переїдання 🍉")
+            
+            death_text = (
+                f"💥 <b>БА-БАХ!</b>\n\n"
+                f"Шлунок {row['name']} не витримав такої кількості їжі і вибухнув!\n"
+                f"✨ Але дух капібари переродився! Новий множник: <b>x{benefit.get('new_mult', 1.0)}</b>"
+            )
+            
+            if is_callback:
+                await event.answer("💥 БА-БАХ!", show_alert=True)
+            return await message.answer(death_text, parse_mode="HTML")
+
+        await conn.execute(UPDATE_FEED_SQL, uid, gain)
+        
+        await grant_exp_and_lvl(uid, exp_gain=int(gain), weight_gain=0, bot=event.bot, db_pool=db_pool)
 
     await message.answer(
         f"🍎 Смакота!\n"
