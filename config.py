@@ -69,7 +69,8 @@ RARITY_META = {
     "Common": {"emoji": "⚪️", "label": "Звичайний", "color": 0x808080},
     "Rare": {"emoji": "🔵", "label": "Рідкісний", "color": 0x0000FF},
     "Epic": {"emoji": "🟣", "label": "Епічний", "color": 0xA020F0},
-    "Legendary": {"emoji": "💎", "label": "Легендарний", "color": 0xFFD700}
+    "Legendary": {"emoji": "💎", "label": "Легендарний", "color": 0xFFD700},
+    "Mythic": {"emoji": "🐉", "label": "Міфічний", "color": 0xFF4500}
 }
 
 #====================ITEMS LIST============================#
