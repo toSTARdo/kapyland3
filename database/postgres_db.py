@@ -114,6 +114,7 @@ async def init_pg(pool):
                 name TEXT,
                 final_lvl INTEGER,
                 final_stats JSONB,
+                ghost_inventory JSONB,
                 death_reason TEXT,
                 born_at TIMESTAMP,
                 died_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

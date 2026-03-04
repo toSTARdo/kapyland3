@@ -194,3 +194,23 @@ class Paginator:
             nav_row.append(types.InlineKeyboardButton(text=" ", callback_data="none"))
 
         builder.row(*nav_row)
+
+def calculate_reincarnation_benefit(profile: dict):
+    current_lvl = profile.get('lvl', 1)
+    current_mult = profile.get('reincarnation_multiplier', 1.0)
+    
+    if current_lvl < 10:
+        bonus = 0.0
+        can_reincarnate = False
+    else:
+        bonus = round(current_lvl / 100, 2)
+        can_reincarnate = True
+    
+    new_mult = round(current_mult + bonus, 2)
+    
+    return {
+        "can_reincarnate": can_reincarnate,
+        "bonus": bonus,
+        "new_mult": new_mult,
+        "required_lvl": 10
+    }

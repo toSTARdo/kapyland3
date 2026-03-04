@@ -7,6 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from utils.helpers import grant_exp_and_lvl
 from handlers.hold.inventory.navigator import render_inventory_page
+from core.reincarnation.death import handle_death
 
 router = Router()
 
@@ -51,18 +52,24 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
     WEIGHT_TABLE = {
-        "tangerines": 0.5,
-        "watermelon_slices": 1.0,
+        "tangerines": 0.1,
+        "watermelon_slices": 0.5,
         "melon": 5.0,
         "mango": 0.5,
-        "kiwi": 0.5
+        "kiwi": 0.1
     }
     
     async with db_pool.acquire() as conn:
-        inv_json = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
-        if inv_json is None: return
+        row = await conn.fetchrow(
+            "SELECT inventory, lvl, weight FROM capybaras WHERE owner_id = $1", 
+            user_id
+        )
+        if not row: return
 
-        inv = json.loads(inv_json) if isinstance(inv_json, str) else inv_json
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        current_lvl = row['lvl']
+        current_weight = row['weight']
+        
         current_count = inv.get("food", {}).get(food_type, 0)
         
         if current_count <= 0:
@@ -73,6 +80,23 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         unit_weight = WEIGHT_TABLE.get(food_type, 0.5)
         total_bonus = to_eat * unit_weight
         
+        max_safe_weight = 50 + (current_lvl * 10)
+        new_weight = current_weight + total_bonus
+        
+        pop_chance = 0
+        if new_weight > max_safe_weight:
+            pop_chance = (new_weight - max_safe_weight) * 0.1
+            
+        if random.random() < pop_chance:
+            await callback.answer("💥 БА-БАХ! Капібара луснула від жадібності!", show_alert=True)
+            benefit = await handle_death(user_id, db_pool, death_reason="Луснула від переїдання 🍉")
+            
+            await callback.message.answer(
+                f"💀 Твоя капібара не змогла вмістити стільки їжі і вибухнула!\n"
+                f"✨ Але її дух сильніший за шлунок! Новий множник: x{benefit['new_mult']}"
+            )
+            return await render_inventory_page(callback.message, user_id, db_pool, page="food", is_callback=True)
+
         exp_gain = int(total_bonus)
         if total_bonus < 1 and random.random() < total_bonus:
             exp_gain = 1
