@@ -63,7 +63,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         row = await conn.fetchrow("""
             SELECT c.inventory, c.lvl, c.weight, u.reincarnation_multiplier 
             FROM capybaras c
-            JOIN users u ON c.owner_id = u.user_id
+            JOIN users u ON c.owner_id = u.tg_id
             WHERE c.owner_id = $1
         """, user_id)
         
