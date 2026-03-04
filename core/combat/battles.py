@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from handlers.harbor.settings.emotes import send_victory_celebration
 from core.combat.combat_system import Fighter, CombatEngine
-from utils.helpers import grant_exp_and_lvl
+from utils.helpers import grant_exp_and_lvl, ensure_dict
 from config import BASE_HITPOINTS, WEAPON, ARMOR, NPC_REGISTRY, BOSS_ID_MAP
 
 router = Router()
@@ -130,6 +130,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             if row:
                 g_stats = json.loads(row['final_stats'])
                 g_inv = json.loads(row['ghost_inventory'])
+                g_inv = ensure_dict(g_inv)
                 
                 g_eq = g_inv.get("equipment", [])
                 g_weapons = [i for i in g_eq if isinstance(i, dict) and i.get("type") == "weapon"]
