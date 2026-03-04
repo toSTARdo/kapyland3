@@ -24,7 +24,7 @@ def get_profile_text(data):
     state = json.loads(state) if isinstance(state, str) else (state or {})
     current_title = state.get('current_title', '')
 
-    title_line = f"{current_title}\n" if current_title else ""
+    title_line = f"{current_title}" if current_title else ""
     return (
         f"<b>₍ᐢ•(ܫ)•ᐢ₎ {data['name']} «{title_line}»</b>\n"
         f"________________________________\n\n"

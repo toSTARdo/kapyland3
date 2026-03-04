@@ -184,7 +184,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 
                 elif m_type == "tomb":
                     await callback.answer("👻 Перед тобою з'явився привид предка...", show_alert=True)
-                    return await run_battle_logic(callback, db_pool, is_ghost=True, tomb_id=m.get("id"))
+                    return await run_battle_logic(callback, db_pool, is_ghost=True, tomb_id=m.get("owner_id"))
 
                 elif m_type == "treasure":
                     inv["loot"]["chest"] = inv["loot"].get("chest", 0) + 1

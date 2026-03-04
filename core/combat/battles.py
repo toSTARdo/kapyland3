@@ -126,7 +126,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
 
     if is_ghost and tomb_id:
         async with db_pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT name, final_lvl, final_stats, ghost_inventory FROM graveyard WHERE id = $1", tomb_id)
+            row = await conn.fetchrow("SELECT name, final_lvl, final_stats, ghost_inventory FROM graveyard WHERE owner_id = $1", tomb_id)
             if row:
                 g_stats = json.loads(row['final_stats'])
                 g_inv = json.loads(row['ghost_inventory'])
