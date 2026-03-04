@@ -107,6 +107,8 @@ async def get_weekly_bazaar_stock(db_pool):
         
         if not state.get("next_update") or now > datetime.fromisoformat(state["next_update"]):
             new_stock = {}
+            sorted_cur = sorted(CURRENCY_VALUE.items(), key=lambda x: x[1], reverse=True)
+
             all_gacha = [i["name"] for r in ARTIFACTS.values() for i in r]
             g_key = random.choice(all_gacha)
             g_curr = random.choice(list(CURRENCY_VALUE.keys()))
@@ -116,20 +118,31 @@ async def get_weekly_bazaar_stock(db_pool):
             }
             
             for res in random.sample(RESOURCES_POOL, 5):
-                cat = "materials"
+                base_p = SELL_PRICES.get(res, 10)
+                markup_price = int(base_p * random.uniform(1.3, 1.8))
                 
-                r_curr = random.choice(list(CURRENCY_VALUE.keys()))
-                base_price = SELL_PRICES.get(res, 10)
+                final_curr, final_cost = "watermelon_slices", markup_price
+                for c_name, c_nom in sorted_cur:
+                    if markup_price >= c_nom:
+                        final_curr, final_cost = c_name, markup_price // c_nom
+                        break
+                
                 new_stock[res] = {
-                    "cost": max(1, int(base_price * random.uniform(1.3, 1.8)) // CURRENCY_VALUE[r_curr]),
-                    "currency": r_curr, "cat": cat, "left": random.randint(5, 15)
+                    "cost": max(1, final_cost),
+                    "currency": final_curr, "cat": "materials", "left": random.randint(5, 15)
                 }
 
             weekly_sell = {}
             for res_key, base_price in SELL_PRICES.items():
-                curr = random.choice(list(CURRENCY_VALUE.keys()))
-                val = max(1, base_price // CURRENCY_VALUE[curr])
-                weekly_sell[res_key] = {"curr": curr, "val": val}
+                target_curr, target_val = "watermelon_slices", base_price
+                
+                for curr_name, curr_nominal in sorted_cur:
+                    if base_price >= curr_nominal:
+                        target_curr = curr_name
+                        target_val = base_price // curr_nominal
+                        break
+                
+                weekly_sell[res_key] = {"curr": target_curr, "val": target_val}
 
             next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
             
