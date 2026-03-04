@@ -70,7 +70,7 @@ async def bazaar_shop(callback: types.CallbackQuery, db_pool):
     
 @router.callback_query(F.data == "bazaar_sell_list")
 async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
-   state = await get_weekly_bazaar_stock(db_pool)
+    state = await get_weekly_bazaar_stock(db_pool)
     sell_prices = state.get("sell_prices", {})
     
     async with db_pool.acquire() as conn:
