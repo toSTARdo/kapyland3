@@ -20,8 +20,13 @@ def get_stamina_icons(stamina):
     return "⚡ ● ●" if stamina > 0 else "● ● ●"
 
 def get_profile_text(data):
+    state = data['state']
+    state = json.loads(state) if isinstance(state, str) else (state or {})
+    current_title = state.get('current_title', '')
+
+    title_line = f"{current_title}\n" if current_title else ""
     return (
-        f"<b>ദ്ദി₍ᐢ•(ܫ)•ᐢ₎ {data['name']}</b>\n"
+        f"<b>ദ്ദി₍ᐢ•(ܫ)•ᐢ₎ {data['name']} {data['title_line']}</b>\n"
         f"________________________________\n\n"
         f"🌟 Рівень: <b>{data['lvl']}</b> ({data['exp']} XP)\n"
         f"⚖️ Вага: <b>{format_weight(data['weight']):.2f} кг</b>\n\n"

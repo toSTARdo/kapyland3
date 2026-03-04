@@ -170,7 +170,11 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         target = await conn.fetchrow("""
-            SELECT u.username, c.name as capy_name, c.lvl, c.karma, c.zen, c.meta, s.name as ship_name
+            SELECT 
+                u.username, 
+                c.name as capy_name, c.lvl, c.karma, c.weight, c.state,
+                c.equipment, c.stats,
+                s.name as ship_name
             FROM users u 
             JOIN capybaras c ON u.tg_id = c.owner_id 
             LEFT JOIN ships s ON c.ship_id = s.id
@@ -180,19 +184,20 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
     if not target:
         return await callback.answer("Капібара зникла у тумані...")
 
-    meta = json.loads(target['meta']) if isinstance(target['meta'], str) else target['meta']
+    state = target['state'] if isinstance(target['state'], dict) else json.loads(target['state'] or '{}')
+    equip = target['equipment'] if isinstance(target['equipment'], dict) else json.loads(target['equipment'] or '{}')
+    stats = target['stats'] if isinstance(target['stats'], dict) else json.loads(target['stats'] or '{}')
     
-    weight = meta.get("weight", 0.0)
-    status = meta.get("status", "active")
-    mood = meta.get("mood", "чілово")
-    equip = meta.get("equipment", {})
-    stats = meta.get("stats", {})
+    current_title = state.get('current_title', '')
+    status = state.get("status", "active")
+    mood = state.get("mood", "чілово")
     
+    title_display = f" «{current_title}»" if current_title else ""
     status_text = "💤 Спить" if status == "sleep" else "🐾 Гуляє архіпелагом"
     karma_title = "😇 Свята булочка" if target['karma'] > 50 else "😈 Мародерна капі" if target['karma'] < -50 else "😐 Нейтральна капі"
     
     text = (
-        f"📜 <b>Детальне досьє: {target['capy_name']}</b>\n"
+        f"📜 <b>Детальне досьє: {target['capy_name']}{title_display}</b>\n"
         f"👤 Власник: {target['username']}\n"
         f"🚢 Човен: <b>{target['ship_name'] or 'Самотній плавець'}</b>\n"
         f"━━━━━━━━━━━━━━━\n"
@@ -201,17 +206,17 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
         f"🔹 <b>Настрій:</b> {mood}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"🎖 <b>Рівень:</b> {target['lvl']}\n"
-        f"⚖️ <b>Вага:</b> {weight} кг\n"
+        f"⚖️ <b>Вага:</b> {target['weight']} кг\n"
         f"━━━━━━━━━━━━━━━\n"
         f"⚔️ <b>Арсенал:</b>\n"
-        f"└ Снаряда: <b>{equip.get('weapon', 'Лапки')['name'] if isinstance(equip.get('weapon', 'Лапки'), dict) else equip.get('weapon', 'Лапки')}</b>\n"
+        f"└ Зброя: <b>{equip.get('weapon', {}).get('name', 'Лапки') if isinstance(equip.get('weapon'), dict) else equip.get('weapon', 'Лапки')}</b>\n"
         f"└ Захист: <b>{equip.get('armor', 'Хутро')}</b>\n"
         f"└ Реліквія: <b>{equip.get('artifact') or 'Порожньо'}</b>\n\n"
         f"<b>Показники:</b>\n"
         f"🔥 ATK: <b>{round(100*(BASE_HIT_CHANCE + STAT_WEIGHTS['atk_to_hit'] * stats.get('attack', 1)), 0)}%</b>  |  "
         f"🛡️ DEF: <b>{round(100*(BASE_BLOCK_CHANCE + STAT_WEIGHTS['def_to_block'] * stats.get('defense', 1)), 0)}%</b>\n"
         f"💨 AGI: <b>{round(100*(STAT_WEIGHTS['agi_to_dodge'] * stats.get('agility', 1)), 0)}%</b>  |  "
-        f"🍀 LCK: <b>+{round(100*(STAT_WEIGHTS['luck_to_crit'] * stats.get('luck', 1)), 0)}%</b>\n"
+        f"🍀 LCK: <b>+{round(100*(STAT_WEIGHTS['luck_to_crit'] * stats.get('luck', 1)), 0)}%</b>\n\n"
         f"<i>Капібара виглядає {mood.lower()}, здається, вона готова до пригод.</i>"
     )
 

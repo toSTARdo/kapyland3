@@ -16,6 +16,7 @@ def get_settings_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     
     builder.row(InlineKeyboardButton(text="📝 Змінити ім'я", callback_data="change_name_start"))
+    builder.row(InlineKeyboardButton(text="🎖 Обрати Титул", callback_data="open_titles_list"))
     builder.row(InlineKeyboardButton(text="📖 Довідник", callback_data="open_manual_main"))
     builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
     builder.row(InlineKeyboardButton(text="👾 Повідомити про баг", callback_data="report_bug_start"))
@@ -96,6 +97,54 @@ async def report_bug_finish(message: types.Message, state: FSMContext, bot):
         await message.answer(f"❌ Помилка при надсиланні репорту: {e}")
     
     await state.clear()
+
+@router.callback_query(F.data == "open_titles_list")
+async def show_titles(callback: types.CallbackQuery, db_pool):
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT unlocked_titles, state FROM capybaras WHERE owner_id = $1", 
+            uid
+        )
+    
+    if not row or not row['unlocked_titles']:
+        return await callback.answer("❌ У тебе ще немає розблокованих титулів!", show_alert=True)
+
+    titles = row['unlocked_titles']
+    current_state = row['state'] if isinstance(row['state'], dict) else json.loads(row['state'] or '{}')
+    current_title = current_state.get('current_title', "Немає")
+
+    builder = InlineKeyboardBuilder()
+    text = f"🎖 <b>Твої титули</b>\nПоточний: <b>{current_title}</b>\n\nОбери титул, який бачитимуть інші:"
+
+    for title in titles:
+        prefix = "✅ " if title == current_title else ""
+        builder.button(text=f"{prefix}{title}", callback_data=f"set_title:{title}")
+
+    builder.adjust(1)
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="open_settings"))
+    
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("set_title:"))
+async def process_set_title(callback: types.CallbackQuery, db_pool):
+    new_title = callback.data.split(":")[1]
+    uid = callback.from_user.id
+
+    async with db_pool.acquire() as conn:
+        state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
+        state = state_raw if isinstance(state_raw, dict) else json.loads(state_raw or '{}')
+        
+        state['current_title'] = new_title
+        
+        await conn.execute(
+            "UPDATE capybaras SET state = $1 WHERE owner_id = $2", 
+            json.dumps(state, ensure_ascii=False), uid
+        )
+
+    await callback.answer(f"🎖 Титул «{new_title}» встановлено!")
+    await show_titles(callback, db_pool) 
 
 #MANUAL
 
