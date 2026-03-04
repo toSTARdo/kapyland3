@@ -152,10 +152,16 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         for m in treasure_maps:
             if m.get("pos") == coord_key:
-                if m.get("type") == "boss_den":
+                m_type = m.get("type")
+                
+                if m_type == "boss_den":
                     return await run_battle_logic(callback, db_pool, bot_type=BOSS_ID_MAP[m.get("boss_num")], is_boss=True)
                 
-                elif m.get("type") == "treasure":
+                elif m_type == "tomb":
+                    await callback.answer("👻 Перед тобою з'явився привид предка...", show_alert=True)
+                    return await run_battle_logic(callback, db_pool, is_ghost=True, tomb_id=m.get("id"))
+
+                elif m_type == "treasure":
                     inv["loot"]["chest"] = inv["loot"].get("chest", 0) + 1
                     loot_msg = "🏴‍☠️ Ти знайшов закопану скриню! (+1 скриня)"
                     map_to_remove = m

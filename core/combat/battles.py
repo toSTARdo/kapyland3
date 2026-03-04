@@ -118,7 +118,7 @@ async def get_full_capy_data(target_id, db_pool, b_type=None):
             "color": "🔴"
         }
 
-async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: int = None, bot_type: str = None, is_boss: bool = False):
+async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: int = None, bot_type: str = None, is_boss: bool = False, is_ghost: bool = False, tomb_id: int = None):
     bot = callback.bot
     uid = callback.from_user.id
 
@@ -128,7 +128,37 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             return await callback.answer("🪫 Твоя капібара надто стомлена для бою! (Треба мінімум 5⚡)", show_alert=True)
     
     p1_data = await get_full_capy_data(uid, db_pool)
-    p2_data = await get_full_capy_data(opponent_id, db_pool, b_type=bot_type)
+    p2_data = None
+
+    if is_ghost and tomb_id:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT name, final_lvl, final_stats, ghost_inventory FROM graveyard WHERE id = $1", tomb_id)
+            if row:
+                g_stats = json.loads(row['final_stats'])
+                g_inv = json.loads(row['ghost_inventory'])
+                
+                g_weapons = [item for item in g_inv.get("equipment", []) if item.get("type") == "weapon"]
+                g_armors = [item for item in g_inv.get("equipment", []) if item.get("type") == "armor"]
+                
+                selected_weapon = random.choice(g_weapons) if g_weapons else {"name": "Примарні лапки", "lvl": 1}
+                selected_armor = random.choice(g_armors) if g_armors else {"name": "Саван", "lvl": 1}
+
+                p2_data = {
+                    "name": f"👻 Привид {row['name']}",
+                    "lvl": row['final_lvl'],
+                    "hp": 3,
+                    "atk": g_stats.get('atk', 1),
+                    "def": g_stats.get('def', 0),
+                    "agi": g_stats.get('agi', 1),
+                    "luck": g_stats.get('luck', 0),
+                    "color": "⚪️",
+                    "equipment": {"weapon": selected_weapon, "armor": selected_armor},
+                    "is_ghost": True,
+                    "raw_inv": g_inv
+                }
+
+    if not p2_data:
+        p2_data = await get_full_capy_data(opponent_id, db_pool, b_type=bot_type)
 
     if not p1_data or not p2_data:
         return await callback.message.answer("❌ Помилка: Дані капібари не знайдено.")
@@ -179,20 +209,46 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
     winner_id = uid if winner == p1 else opponent_id if winner == p2 else None
     loser_id = opponent_id if winner == p1 else uid if winner == p2 else None
 
-    if not winner:
-        res = "🤝 <b>НІЧИЯ! Капі обезсилені впали на травичку...</b>"
-    elif is_boss and winner == p1:
-            reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +5 кг, +10 EXP та запис у книгу героїв!"
-    else:
-        res = f"🏆 <b>ПЕРЕМОГА {winner.color}!</b>\n{html.bold(winner.name)} здобув звитягу над {html.bold(loser.name)}!"
-
     is_parrot = (bot_type == "parrotbot")
+    res = "🤝 <b>НІЧИЯ!</b>"
     reward_info = ""
-    if winner:
-        if is_parrot:
-            reward_info = "\n\n<i>Це був тренувальний бій. Досвід не нараховано.</i>"
-        else:
-            reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 {winner.name}: +3 кг, +3 EXP\n🥈 {loser.name}: -3 кг"
+
+    if winner == p1:
+        res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
+        if is_ghost:
+            g_inv = p2_data["raw_inv"]
+            recovered = []
+            async with db_pool.acquire() as conn:
+                curr_inv = json.loads(await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", uid))
+                for cat in ["food", "materials", "equipment"]:
+                    if cat in g_inv and g_inv[cat]:
+                        items = list(g_inv[cat])
+                        loot_count = min(len(items), 2)
+                        for _ in range(loot_count):
+                            target = random.choice(items)
+                            if cat == "equipment":
+                                curr_inv.setdefault(cat, []).append(target)
+                                recovered.append(target.get("name", "Екіпіровка"))
+                            else:
+                                count = g_inv[cat][target]
+                                curr_inv[cat][target] = curr_inv[cat].get(target, 0) + count
+                                recovered.append(f"{target} x{count}")
+                await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv), uid)
+                await conn.execute("DELETE FROM graveyard WHERE id = $1", tomb_id)
+                
+                nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", uid)
+                nav = json.loads(nav_raw)
+                nav["loot"]["treasure_maps"] = [m for m in nav.get("loot", {}).get("treasure_maps", []) if not (m.get("type") == "tomb" and m.get("id") == tomb_id)]
+                await conn.execute("UPDATE capybaras SET navigation = $1 WHERE owner_id = $2", json.dumps(nav), uid)
+
+            reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b>\n{', '.join(recovered)}"
+        elif is_boss:
+            reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +5 кг, +10 EXP"
+        elif not is_parrot:
+            reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +3 кг, +3 EXP"
+    elif winner == p2:
+        res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} виявився сильнішим."
+        reward_info = "\n\n📉 <b>Наслідки:</b>\n🥈 -3 кг"
 
     await main_msg.edit_text(f"🏁 <b>БІЙ ЗАВЕРШЕНО</b>\n━━━━━━━━━━━━━━\n{res}{reward_info}", parse_mode="HTML")
 
@@ -201,41 +257,22 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             if winner == p1 and not is_parrot:
                 exp_gain = 10 if is_boss else 3
                 weight_gain = 5.0 if is_boss else 3.0
-                
                 await grant_exp_and_lvl(uid, exp_gain=exp_gain, weight_gain=weight_gain, bot=bot, db_pool=db_pool)
-                await conn.execute("""
-                    UPDATE capybaras 
-                    SET wins = wins + 1, 
-                        total_fights = total_fights + 1, 
-                        stamina = GREATEST(stamina - 5, 0) 
-                    WHERE owner_id = $1
-                """, uid)
-
+                await conn.execute("UPDATE capybaras SET wins=wins+1, total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", uid)
+                
                 if is_boss:
-                    current_boss_progress = await conn.fetchval("SELECT (stats_track->>'boss_defeated')::int FROM capybaras WHERE owner_id = $1", uid) or 0
-                    
-                    current_boss_id = next((k for k, v in BOSS_ID_MAP.items() if v == bot_type), 0)
-                    
-                    if current_boss_id == current_boss_progress + 1:
-                        new_progress = current_boss_progress + 1
-                        await conn.execute("""
-                            UPDATE capybaras 
-                            SET stats_track = stats_track || jsonb_build_object('boss_defeated', $2::int)
-                            WHERE owner_id = $1
-                        """, uid, new_progress)
+                    curr_prog = await conn.fetchval("SELECT (stats_track->>'boss_defeated')::int FROM capybaras WHERE owner_id=$1", uid) or 0
+                    curr_id = next((k for k, v in BOSS_ID_MAP.items() if v == bot_type), 0)
+                    if curr_id == curr_prog + 1:
+                        await conn.execute("UPDATE capybaras SET stats_track=stats_track || jsonb_build_object('boss_defeated', $2::int) WHERE owner_id=$1", uid, curr_prog+1)
 
-            if loser_id:
+            if loser_id and not is_ghost:
                 w_loss = -3.0 if not is_parrot else 0.0
                 await grant_exp_and_lvl(loser_id, exp_gain=0, weight_gain=w_loss, bot=bot, db_pool=db_pool)
-                await conn.execute("UPDATE capybaras SET total_fights = total_fights + 1, stamina = GREATEST(stamina - 5, 0) WHERE owner_id = $1", loser_id)
+                await conn.execute("UPDATE capybaras SET total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", loser_id)
 
         if winner_id == uid and not is_parrot:
-                await send_victory_celebration(
-                    bot=callback.bot, 
-                    chat_id=callback.message.chat.id, 
-                    user_id=uid, 
-                    db_pool=db_pool
-                )
+            await send_victory_celebration(bot=callback.bot, chat_id=callback.message.chat.id, user_id=uid, db_pool=db_pool)
                 
 @router.callback_query(F.data == "fight_bot")
 async def handle_fight_bot(callback: types.CallbackQuery, db_pool):

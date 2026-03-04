@@ -21,14 +21,22 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
     current_biome = get_biome_name(py)
     is_snowy_biome = current_biome['id'] == 3
     
-    boss_coords = {}
+    boss_coords = set()
     treasure_coords = set()
+    tomb_coords = set()
+
     if treasure_maps:
         for m in treasure_maps:
-            if m.get("type") == "boss_den":
-                boss_coords[m['pos']] = m.get("pos")
+            pos = m.get('pos')
+            m_type = m.get("type")
+            if not pos: continue
+            
+            if m_type == "boss_den":
+                boss_coords.add(pos)
+            elif m_type == "tomb":
+                tomb_coords.add(pos)
             else:
-                treasure_coords.add(m['pos'])
+                treasure_coords.add(pos)
                 
     flower_coords = flowers if flowers else {}
     tree_coords = trees if trees else {}
@@ -46,6 +54,8 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
             elif c_str not in discovered_set:
                 display_row.append(FOG_ICON)
             
+            elif c_str in tomb_coords:
+                display_row.append("♰")
             elif c_str in totem_coords:
                 display_row.append("☥")
             elif c_str in boss_coords:

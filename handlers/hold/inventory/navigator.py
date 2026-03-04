@@ -199,13 +199,28 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
     elif page == "maps":
         title = "🗺 <b>Твої Карти</b>"
         maps = inv.get("loot", {}).get("treasure_maps", [])
+        
         if not maps:
             content = "<i>У тебе немає жодної карти.</i>"
         else:
+            TEMPLATES = {
+                "tomb": "⚰️ <b>Карта до могили №{id}</b>\n╰ Координати: <code>{pos}</code>\n<i>   Тут спочиває твій предок...</i>",
+                "boss": "💀 <b>Карта лігва Боса №{boss_num}</b>\n╰ Координати: <code>{pos}</code>",
+                "treasure": "📍 <b>Карта скарбів {id}</b>\n╰ Координати: <code>{pos}</code>"
+            }
+
             map_entries = []
             for m in maps:
-                entry = f"📍 <b>Карта скарбів {m.get('id', '???')}</b>\n╰ Координати: <code>{m['pos']}</code>" if m.get("type") == "treasure" else f"💀 <b>Карта лігва Боса №{m.get('boss_num', '???')}</b>\n╰ Координати: <code>{m['pos']}</code>"
+                m_type = m.get("type", "treasure")
+                tpl = TEMPLATES.get(m_type, TEMPLATES["treasure"])
+                
+                entry = tpl.format(
+                    id=m.get('id', '???'),
+                    pos=m.get('pos', '?,?'),
+                    boss_num=m.get('boss_num', m.get('id', '???'))
+                )
                 map_entries.append(entry)
+                
             content = "\n\n".join(map_entries)
 
     elif page == "materials":
