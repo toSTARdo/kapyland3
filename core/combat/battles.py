@@ -263,14 +263,14 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
         elif is_boss and boss_cfg:
             reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +{boss_cfg['weight']} кг, +{boss_cfg['exp']} EXP"
         elif not is_parrot:
-            reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +3 кг, +3 EXP"
+            reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +{winner.hp} кг, +{winner.hp} EXP"
 
     elif winner == p2:
         res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} виявився сильнішим."
         if is_parrot:
             reward_info = "\n\n🦜 <i>Папуга Павло дає тобі пораду: «Більше тренуйся, сопляк!»</i>"
         else:
-            reward_info = "\n\n📉 <b>Збитки:</b>\n🥈 -3 кг"
+            reward_info = f"\n\n📉 <b>Збитки:</b>\n🥈 -{winner.hp} кг"
 
     await main_msg.edit_text(f"🏁 <b>БІЙ ЗАВЕРШЕНО</b>\n━━━━━━━━━━━━━━\n{res}{reward_info}", parse_mode="HTML")
 
