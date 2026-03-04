@@ -226,7 +226,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                 row = await conn.fetchrow("""
                     SELECT c.inventory, u.reincarnation_count 
                     FROM capybaras c
-                    JOIN users u ON c.owner_id = u.user_id
+                    JOIN users u ON c.owner_id = u.tg_id
                     WHERE c.owner_id = $1
                 """, uid)     
                 curr_inv = json.loads(row['inventory'])
