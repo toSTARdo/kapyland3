@@ -4,6 +4,7 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from datetime import datetime, timedelta
 from utils.helpers import format_time, grant_exp_and_lvl
+from core.reincarnation.death import handle_death 
 
 router = Router()
 
