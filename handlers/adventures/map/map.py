@@ -109,6 +109,8 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         state = json.loads(row['state'])
         zen = row['zen']
 
+        target_tile = FULL_MAP[ny][nx]
+        event_roll = random.random()
         coord_key = f"{nx},{ny}"
         loot_msg = ""
         
