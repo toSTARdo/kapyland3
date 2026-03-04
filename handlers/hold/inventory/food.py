@@ -85,7 +85,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         
         total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
         
-        max_safe_weight = 50 + (current_lvl * 10)
+        max_safe_weight = 50 + (current_lvl * 20)
         new_weight = current_weight + total_bonus
         
         pop_chance = 0
