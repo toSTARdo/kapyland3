@@ -60,15 +60,19 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
     }
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT inventory, lvl, weight FROM capybaras WHERE owner_id = $1", 
-            user_id
-        )
+        row = await conn.fetchrow("""
+            SELECT c.inventory, c.lvl, c.weight, u.reincarnation_multiplier 
+            FROM capybaras c
+            JOIN users u ON c.owner_id = u.user_id
+            WHERE c.owner_id = $1
+        """, user_id)
+        
         if not row: return
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         current_lvl = row['lvl']
         current_weight = row['weight']
+        reinc_mult = row['reincarnation_multiplier'] or 1.0
         
         current_count = inv.get("food", {}).get(food_type, 0)
         
@@ -78,7 +82,8 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
 
         to_eat = 1 if amount_type == "one" else current_count
         unit_weight = WEIGHT_TABLE.get(food_type, 0.5)
-        total_bonus = to_eat * unit_weight
+        
+        total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
         
         max_safe_weight = 50 + (current_lvl * 10)
         new_weight = current_weight + total_bonus
@@ -93,16 +98,15 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
             
             await callback.message.answer(
                 f"💀 Твоя капібара не змогла вмістити стільки їжі і вибухнула!\n"
-                f"✨ Але її дух сильніший за шлунок! Новий множник: x{benefit['new_mult']}"
+                f"✨ Але її дух сильніший за шлунок! Новий множник: x{benefit.get('new_mult', 1.0)}"
             )
-            return await render_inventory_page(callback.message, user_id, db_pool, page="food", is_callback=True)
+            return
 
         exp_gain = int(total_bonus)
         if total_bonus < 1 and random.random() < total_bonus:
             exp_gain = 1
 
         inv["food"][food_type] -= to_eat
-        
         await conn.execute(
             "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
             json.dumps(inv, ensure_ascii=False), user_id
@@ -111,10 +115,11 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
     res = await grant_exp_and_lvl(user_id, exp_gain=exp_gain, weight_gain=total_bonus, bot=callback.bot, db_pool=db_pool)
 
     if not res:
-        return await callback.answer("🤔 Щось пішло не так з травленням...")
+        return await callback.answer("🤔 Щось пішло не так...")
     
+    mult_text = f" (x{reinc_mult}) 💫" if reinc_mult > 1 else ""
     await callback.answer(
-        f"😋 Капі-ням!\n"
+        f"😋 Капі-ням!{mult_text}\n"
         f"⚖️ Вага: +{total_bonus} кг\n"
         f"✨ Досвід: +{exp_gain} EXP",
         show_alert=False

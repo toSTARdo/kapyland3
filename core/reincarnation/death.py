@@ -42,6 +42,9 @@ async def handle_death(user_id: int, db_pool, death_reason: str = "Невідо�
     starting_inventory = {
         "food": {}, "materials": {},
         "loot": {
+            "lottery_ticket": 5,
+            "chest": 1,
+            "key": 1,
             "treasure_maps": [{
                 "id": new_reinc_count,
                 "owner_id": user_id,

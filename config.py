@@ -708,3 +708,31 @@ BOSS_ID_MAP = {
     19: "boss_whale_moby",   # Найвищий HP у грі (180)
     20: "boss_penguin_rich"  # Фінальний бос: баланс усіх статів
 }
+
+BOSS_REWARDS = {
+    # --- JUA ARCHIPELAGO (ID 1-7) ---
+    "boss_pelican":       {"weight": 5.0,  "exp": 15},
+    "boss_raccoon_trash": {"weight": 6.0,  "exp": 20},
+    "boss_rat_king":      {"weight": 7.5,  "exp": 30},
+    "boss_lynx":          {"weight": 9.0,  "exp": 45},
+    "boss_monkey_king":   {"weight": 11.0, "exp": 60},
+    "boss_lion_henry":    {"weight": 13.5, "exp": 80},
+    "boss_alvida":        {"weight": 18.0, "exp": 120},
+
+    # --- UROBOROSTREAM (ID 8-14) ---
+    "boss_snake_lee":     {"weight": 22.0, "exp": 180},
+    "boss_otter_river":   {"weight": 25.0, "exp": 250},
+    "boss_frog_shinobi":  {"weight": 30.0, "exp": 350},
+    "boss_catfish_gun":   {"weight": 35.0, "exp": 450},
+    "boss_owl_wise":      {"weight": 42.0, "exp": 600},
+    "boss_fat_cat":       {"weight": 50.0, "exp": 800},
+    "boss_turtle_ancient":{"weight": 65.0, "exp": 1100},
+
+    # --- STARFJORDS OF WINTER EHWAZ (ID 15-20) ---
+    "boss_hakihaki":      {"weight": 80.0,  "exp": 1500},
+    "boss_husky_kuzan":   {"weight": 100.0, "exp": 2200},
+    "boss_bear_north":    {"weight": 130.0, "exp": 3500},
+    "boss_walrus_captain":{"weight": 170.0, "exp": 5000},
+    "boss_whale_moby":    {"weight": 220.0, "exp": 8000},
+    "boss_penguin_rich":  {"weight": 350.0, "exp": 15000}
+}

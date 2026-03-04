@@ -215,12 +215,13 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
     res = "🤝 <b>НІЧИЯ!</b>"
     reward_info = ""
 
+    boss_cfg = BOSS_REWARDS.get(bot_type) if is_boss else None
+
     if winner == p1:
         res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
         if is_ghost:
             g_inv = p2_data["raw_inv"]
             recovered = []
-            
             async with db_pool.acquire() as conn:
                 row = await conn.fetchrow("""
                     SELECT c.inventory, u.reincarnation_count 
@@ -228,37 +229,28 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                     JOIN users u ON c.owner_id = u.user_id
                     WHERE c.owner_id = $1
                 """, uid)     
-
                 curr_inv = json.loads(row['inventory'])
                 reinc_count = row['reincarnation_count'] or 0
-                
                 spiritual_power = min(1.0, reinc_count * 0.1)
                 
                 for cat in ["food", "materials", "equipment"]:
                     if cat in g_inv and g_inv[cat]:
                         items = list(g_inv[cat]) if isinstance(g_inv[cat], (list, dict)) else []
-                        if not items: continue
-                        
-                        max_possible = len(items)
-                        loot_count = max(1, int(max_possible * spiritual_power))
-                        
-                        selected_items = random.sample(items, k=loot_count)
-                        
-                        for target in selected_items:
-                            if cat == "equipment":
-                                curr_inv.setdefault(cat, []).append(target)
-                                recovered.append(f"✨ {target.get('name', 'Екіпіровка')}")
-                            else:
-                                total_qty = g_inv[cat][target]
-                                recovered_qty = max(1, int(total_qty * random.uniform(0.5, 1.0)))
-                                
-                                curr_inv.setdefault(cat, {})
-                                curr_inv[cat][target] = curr_inv[cat].get(target, 0) + recovered_qty
-                                recovered.append(f"{target} x{recovered_qty}")
+                        if items:
+                            loot_count = max(1, int(len(items) * spiritual_power))
+                            selected_items = random.sample(items, k=loot_count)
+                            for target in selected_items:
+                                if cat == "equipment":
+                                    curr_inv.setdefault(cat, []).append(target)
+                                    recovered.append(f"✨ {target.get('name', 'Екіпіровка')}")
+                                else:
+                                    total_qty = g_inv[cat][target]
+                                    recovered_qty = max(1, int(total_qty * random.uniform(0.5, 1.0)))
+                                    curr_inv.setdefault(cat, {})[target] = curr_inv[cat].get(target, 0) + recovered_qty
+                                    recovered.append(f"{target} x{recovered_qty}")
                 
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv), uid)
                 await conn.execute("DELETE FROM graveyard WHERE id = $1", tomb_id)
-                
                 nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", uid)
                 nav = json.loads(nav_raw)
                 if "loot" in nav and "treasure_maps" in nav["loot"]:
@@ -268,8 +260,8 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
             reinc_text = f"<i>(Духовна сила: {int(spiritual_power*100)}%)</i>"
             reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b> {reinc_text}\n{', '.join(recovered)}"
     
-        elif is_boss:
-            reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +5 кг, +10 EXP"
+        elif is_boss and boss_cfg:
+            reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +{boss_cfg['weight']} кг, +{boss_cfg['exp']} EXP"
         elif not is_parrot:
             reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +3 кг, +3 EXP"
 
@@ -285,8 +277,13 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
     if winner and loser:
         async with db_pool.acquire() as conn:
             if winner == p1 and not is_parrot:
-                exp_gain = 10 if is_boss else 3
-                weight_gain = 5.0 if is_boss else 3.0
+                if is_boss and boss_cfg:
+                    exp_gain = boss_cfg['exp']
+                    weight_gain = boss_cfg['weight']
+                else:
+                    exp_gain = winner.hp
+                    weight_gain = winner.hp
+
                 await grant_exp_and_lvl(uid, exp_gain=exp_gain, weight_gain=weight_gain, bot=bot, db_pool=db_pool)
                 await conn.execute("UPDATE capybaras SET wins=wins+1, total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", uid)
                 
@@ -297,13 +294,15 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                         await conn.execute("UPDATE capybaras SET stats_track=stats_track || jsonb_build_object('boss_defeated', $2::int) WHERE owner_id=$1", uid, curr_prog+1)
             
             if loser == p1:
-                await grant_exp_and_lvl(uid, exp_gain=0, weight_gain=-3.0, bot=bot, db_pool=db_pool)
+                await grant_exp_and_lvl(uid, exp_gain=0, weight_gain=-1*winner.hp, bot=bot, db_pool=db_pool)
                 await conn.execute("UPDATE capybaras SET total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", uid)
 
-            if loser_id and loser_id != uid and not is_ghost:
-                w_loss = -3.0 if not is_parrot else 0.0
-                await grant_exp_and_lvl(loser_id, exp_gain=0, weight_gain=w_loss, bot=bot, db_pool=db_pool)
-                await conn.execute("UPDATE capybaras SET total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", loser_id)
+            if opponent_id and opponent_id != uid and not is_ghost and not is_boss:
+                if winner == p2:
+                    await grant_exp_and_lvl(opponent_id, exp_gain=winner.hp, weight_gain=winner.hp, bot=bot, db_pool=db_pool)
+                else:
+                    await grant_exp_and_lvl(opponent_id, exp_gain=0, weight_gain=-1*winner.hp, bot=bot, db_pool=db_pool)
+                await conn.execute("UPDATE capybaras SET total_fights=total_fights+1, stamina=GREATEST(stamina-5, 0) WHERE owner_id=$1", opponent_id)
 
         if winner == p1 and not is_parrot:
             await send_victory_celebration(bot=callback.bot, chat_id=callback.message.chat.id, user_id=uid, db_pool=db_pool)
