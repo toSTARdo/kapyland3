@@ -1,3 +1,5 @@
+import json
+
 from utils.helpers import calculate_reincarnation_benefit
 from database.crud_capybaras import get_full_profile
 
