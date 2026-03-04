@@ -197,7 +197,7 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
     karma_title = "😇 Свята булочка" if target['karma'] > 50 else "😈 Мародерна капі" if target['karma'] < -50 else "😐 Нейтральна капі"
     
     text = (
-        f"📜 <b>Детальне досьє: {target['capy_name']}{title_display}</b>\n"
+        f"📜 <b>Детальне досьє: {target['capy_name']} «{title_line}»</b>\n"
         f"👤 Власник: {target['username']}\n"
         f"🚢 Човен: <b>{target['ship_name'] or 'Самотній плавець'}</b>\n"
         f"━━━━━━━━━━━━━━━\n"

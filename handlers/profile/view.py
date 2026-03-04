@@ -26,7 +26,7 @@ def get_profile_text(data):
 
     title_line = f"{current_title}\n" if current_title else ""
     return (
-        f"<b>ദ്ദി₍ᐢ•(ܫ)•ᐢ₎ {data['name']} {title_line}</b>\n"
+        f"<b>ദ്ദി₍ᐢ•(ܫ)•ᐢ₎ {data['name']} «{title_line}»</b>\n"
         f"________________________________\n\n"
         f"🌟 Рівень: <b>{data['lvl']}</b> ({data['exp']} XP)\n"
         f"⚖️ Вага: <b>{format_weight(data['weight']):.2f} кг</b>\n\n"
