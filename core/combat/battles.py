@@ -219,60 +219,60 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
     boss_cfg = BOSS_REWARDS.get(bot_type) if is_boss else None
 
     if winner == p1:
-    res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
-    if is_ghost:
-        g_inv = p2_data["raw_inv"]
-        recovered = []
-        async with db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT c.inventory, u.reincarnation_count 
-                FROM capybaras c
-                JOIN users u ON c.owner_id = u.tg_id
-                WHERE c.owner_id = $1
-            """, uid)     
-            
-            curr_inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'] or '{}')
-            reinc_count = row['reincarnation_count'] or 0
-            spiritual_power = min(1.0, reinc_count * 0.1)
-            
-            for cat in ["food", "materials", "equipment"]:
-                if cat in g_inv and g_inv[cat]:
-                    items = list(g_inv[cat]) if isinstance(g_inv[cat], (list, dict)) else []
-                    if items:
-                        loot_count = max(1, int(len(items) * spiritual_power))
-                        selected_items = random.sample(items, k=loot_count)
-                        for target in selected_items:
-                            if cat == "equipment":
-                                curr_inv.setdefault(cat, []).append(target)
-                                recovered.append(f"✨ {target.get('name', 'Екіпіровка')}")
-                            else:
-                                total_qty = g_inv[cat][target]
-                                recovered_qty = max(1, int(total_qty * random.uniform(0.5, 1.0)))
-                                curr_inv.setdefault(cat, {})[target] = curr_inv.get(cat, {}).get(target, 0) + recovered_qty
-                                recovered.append(f"{target} x{recovered_qty}")
+        res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
+        if is_ghost:
+            g_inv = p2_data["raw_inv"]
+            recovered = []
+            async with db_pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT c.inventory, u.reincarnation_count 
+                    FROM capybaras c
+                    JOIN users u ON c.owner_id = u.tg_id
+                    WHERE c.owner_id = $1
+                """, uid)     
+                
+                curr_inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'] or '{}')
+                reinc_count = row['reincarnation_count'] or 0
+                spiritual_power = min(1.0, reinc_count * 0.1)
+                
+                for cat in ["food", "materials", "equipment"]:
+                    if cat in g_inv and g_inv[cat]:
+                        items = list(g_inv[cat]) if isinstance(g_inv[cat], (list, dict)) else []
+                        if items:
+                            loot_count = max(1, int(len(items) * spiritual_power))
+                            selected_items = random.sample(items, k=loot_count)
+                            for target in selected_items:
+                                if cat == "equipment":
+                                    curr_inv.setdefault(cat, []).append(target)
+                                    recovered.append(f"✨ {target.get('name', 'Екіпіровка')}")
+                                else:
+                                    total_qty = g_inv[cat][target]
+                                    recovered_qty = max(1, int(total_qty * random.uniform(0.5, 1.0)))
+                                    curr_inv.setdefault(cat, {})[target] = curr_inv.get(cat, {}).get(target, 0) + recovered_qty
+                                    recovered.append(f"{target} x{recovered_qty}")
 
-            loot_data = curr_inv.setdefault("loot", {})
-            maps_list = loot_data.get("treasure_maps", [])
-            for m in maps_list:
-                if m.get("type") == "tomb" and m.get("id") == tomb_id:
-                    m["is_beaten"] = True
-            
-            await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv, ensure_ascii=False), uid)
-            
-            nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", uid)
-            nav = nav_raw if isinstance(nav_raw, dict) else json.loads(nav_raw or '{}')
-            
-            if "loot" in nav and "treasure_maps" in nav["loot"]:
-                for m in nav["loot"]["treasure_maps"]:
+                loot_data = curr_inv.setdefault("loot", {})
+                maps_list = loot_data.get("treasure_maps", [])
+                for m in maps_list:
                     if m.get("type") == "tomb" and m.get("id") == tomb_id:
                         m["is_beaten"] = True
-            
-            await conn.execute("UPDATE capybaras SET navigation = $1 WHERE owner_id = $2", json.dumps(nav, ensure_ascii=False), uid)
+                
+                await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv, ensure_ascii=False), uid)
+                
+                nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", uid)
+                nav = nav_raw if isinstance(nav_raw, dict) else json.loads(nav_raw or '{}')
+                
+                if "loot" in nav and "treasure_maps" in nav["loot"]:
+                    for m in nav["loot"]["treasure_maps"]:
+                        if m.get("type") == "tomb" and m.get("id") == tomb_id:
+                            m["is_beaten"] = True
+                
+                await conn.execute("UPDATE capybaras SET navigation = $1 WHERE owner_id = $2", json.dumps(nav, ensure_ascii=False), uid)
 
-            await conn.execute("UPDATE graveyard SET is_looted = TRUE WHERE id = $1", tomb_id)
+                await conn.execute("UPDATE graveyard SET is_looted = TRUE WHERE id = $1", tomb_id)
 
-        reinc_text = f"<i>(Духовна сила: {int(spiritual_power*100)}%)</i>"
-        reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b> {reinc_text}\n{', '.join(recovered)}"
+            reinc_text = f"<i>(Духовна сила: {int(spiritual_power*100)}%)</i>"
+            reward_info = f"\n\n👻 <b>СПАДЩИНА ПРЕДКА:</b> {reinc_text}\n{', '.join(recovered)}"
 
         elif is_boss and boss_cfg:
             reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +{boss_cfg['weight']} кг, +{boss_cfg['exp']} EXP"
