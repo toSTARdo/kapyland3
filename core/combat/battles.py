@@ -254,7 +254,7 @@ async def run_battle_logic(callback: types.CallbackQuery, db_pool, opponent_id: 
                 loot_data = curr_inv.setdefault("loot", {})
                 maps_list = loot_data.get("treasure_maps", [])
                 for m in maps_list:
-                    if m.get("type") == "tomb" and m.get("id") == tomb_id:
+                    if m.get("type") == "tomb" and m.get("owner_id") == tomb_id:
                         m["is_beaten"] = True
                 
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(curr_inv, ensure_ascii=False), uid)
