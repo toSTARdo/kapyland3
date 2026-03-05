@@ -56,7 +56,15 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         "watermelon_slices": 0.5,
         "melon": 5.0,
         "mango": 0.5,
-        "kiwi": 0.1
+        "kiwi": 0.1,
+        "mushroom": 0.2,
+        "fly_agaric": 0.1
+}
+    }
+
+    TOXIC_CHANCE = {
+        "mushroom": 0.01,
+        "fly_agaric": 0.05
     }
     
     async with db_pool.acquire() as conn:
@@ -101,6 +109,22 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
                 f"✨ Але її дух сильніший за шлунок! Новий множник: x{benefit.get('new_mult', 1.0)}"
             )
             return
+
+        toxic_risk = TOXIC_CHANCE.get(food_type, 0)
+
+        if toxic_risk > 0:
+            total_toxic_chance = 1 - (1 - toxic_risk) ** to_eat
+            
+            if random.random() < total_toxic_chance:
+                await callback.answer("🍄 Ой-ой... Світ став надто яскравим...", show_alert=True)
+                benefit = await handle_death(user_id, db_pool, death_reason=f"Отруївся грибом ({food_type}) 🍄‍🟫")
+                
+                    await callback.message.answer(
+                    f"💀 Твоя капібара отруїлася грибом і загинула!\n"
+                    f"✨ Але її просвітило! Новий множник: x{benefit.get('new_mult', 1.0)}"
+                )
+
+                return
 
         exp_gain = int(total_bonus)
         if total_bonus < 1 and random.random() < total_bonus:

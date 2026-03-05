@@ -41,7 +41,8 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
     if page == "food":
         title = "🍎 <b>Провізія</b>"
         food = inv.get("food", {})
-        food_names = {"tangerines": "🍊", "melon": "🍈", "watermelon_slices": "🍉", "mango": "🥭", "kiwi": "🥝"}
+        food_names = {"tangerines": "🍊", "melon": "🍈", "watermelon_slices": "🍉", "mango": "🥭", "kiwi": "🥝",
+        "mushroom": "🍄‍🟫", "fly_agaric": "🍄"}
         active_food = {k: v for k, v in food.items() if v > 0}
         
         if not active_food:

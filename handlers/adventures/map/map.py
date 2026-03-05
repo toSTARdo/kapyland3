@@ -146,7 +146,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 loot_msg = f"Знайдено: {item['name']} 🌿"
             elif icon == "𓋼":
                 item = get_random_mushroom()
-                inv.setdefault("materials", {})[item['id']] = inv["materials"].get(item['id'], 0) + 1
+                inv.setdefault("food", {})[item['id']] = inv["food"].get(item['id'], 0) + 1
                 loot_msg = f"Знайдено: {item['name']} 🍄"
             
             del flowers[coord_key]
