@@ -85,13 +85,13 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         
         total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
         
-        max_safe_weight = 50 + (current_lvl * 30)
-        new_weight = current_weight + total_bonus
-        
+        safe_one_time_limit = 5.0 + (current_lvl * 0.5) 
+
         pop_chance = 0
-        if new_weight > max_safe_weight:
-            pop_chance = (new_weight - max_safe_weight) * 0.1
-            
+        if total_bonus > safe_one_time_limit:
+            excess = total_bonus - safe_one_time_limit
+            pop_chance = min(0.95, excess * 0.01)
+
         if random.random() < pop_chance:
             await callback.answer("💥 БА-БАХ! Капібара луснула від жадібності!", show_alert=True)
             benefit = await handle_death(user_id, db_pool, death_reason="Луснула від переїдання 🍉")
