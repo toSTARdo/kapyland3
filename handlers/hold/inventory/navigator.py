@@ -290,7 +290,7 @@ async def handle_sell_equipment(callback: types.CallbackQuery, db_pool):
         inv_eq = inv.get("equipment", [])
         found = False
         for i, it in enumerate(inv_eq):
-            if it.get("name") == item_name and it.get("lvl") == lvl:
+            if it.get("name") == item_name and it.get("lvl", 0) == lvl:
                 inv_eq.pop(i)
                 found = True
                 break
