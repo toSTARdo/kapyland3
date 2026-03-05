@@ -182,10 +182,11 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 if m_type == "boss_den":
                     return await run_battle_logic(callback, db_pool, bot_type=BOSS_ID_MAP[m.get("boss_num")], is_boss=True)
                 
-                elif m_type == "tomb":
+                elif m_type == "tomb" and not m.get("is_beaten"):
                     await callback.answer("👻 Перед тобою з'явився привид предка...", show_alert=True)
                     return await run_battle_logic(callback, db_pool, is_ghost=True, tomb_id=m.get("owner_id"))
-
+                elif m_type == "tomb" and m.get("is_beaten"):
+                    await callback.answer("👻 Ну шо ти голова? Як поживаєш?", show_alert=True)
                 elif m_type == "treasure":
                     inv["loot"]["chest"] = inv["loot"].get("chest", 0) + 1
                     loot_msg = "🏴‍☠️ Ти знайшов закопану скриню! (+1 скриня)"

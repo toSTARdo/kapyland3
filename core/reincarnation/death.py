@@ -50,7 +50,8 @@ async def handle_death(user_id: int, db_pool, death_reason: str = "Невідо�
                 "owner_id": user_id,
                 "pos": f"{approx_x},{approx_y}",
                 "type": "tomb",
-                "description": f"Місце спочинку {data['name']}. Кажуть, там бачили привидів..."
+                "description": f"Місце спочинку {data['name']}. Кажуть, там бачили привидів...",
+                "is_beaten": False
             }]
         },
         "potions": {}, "maps": {}
