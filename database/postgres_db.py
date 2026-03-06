@@ -1,17 +1,24 @@
 import asyncpg
 import logging
+import ssl
 from config import POSTGRE_URL
+
+POSTGRE_URL = "postgresql://neondb_owner:npg_3GWqKQ0JhFRY@ep-solitary-butterfly-agjuh9dk-pooler.c-2.eu-central-1.aws.neon.tech/neondb"
+
 logger = logging.getLogger(__name__)
 
 async def create_pool():
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
     try:
         pool = await asyncpg.create_pool(
             dsn=POSTGRE_URL,
-            min_size=5,
-            max_size=20,
+            ssl=ctx, 
+            min_size=1,
+            max_size=10,
             command_timeout=60,
-            statement_cache_size=0,
-            max_cached_statement_lifetime=0
         )
         logger.info("✅ Postgres Connection Pool established.")
         return pool

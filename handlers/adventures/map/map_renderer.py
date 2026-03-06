@@ -3,9 +3,9 @@ from config import FULL_MAP, PLAYER_ICON, SHIP_ICON
 
 def get_stamina_icons(stamina):
     if stamina > 66: return "⚡⚡⚡"
-    if stamina > 33: return "⚡⚡"
-    if stamina > 0: return "⚡"
-    return "🪫"
+    if stamina > 33: return "⚡⚡ ●"
+    if stamina > 0: return "⚡ ● ●"
+    return " ● ● ●"
 
 def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers=None, trees=None, totems=None):
     win_w, win_h = 15, 8

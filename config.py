@@ -17,8 +17,8 @@ def load_game_data(filepath):
 
 #===================ENVIROMENT VARS======================#
 
-TOKEN = os.getenv("BOT_TOKEN")
-DEV_ID = os.getenv("DEV_ID")
+TOKEN="8321592158:AAH2W6mPuP1MxWYHOmzXIJm1mKAahL2Se2U"
+DEV_ID="807986999"
 MONGO_URL = os.getenv("MONGO_URL")
 POSTGRE_URL = os.getenv("POSTGRE_URL")
 

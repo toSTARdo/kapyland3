@@ -168,7 +168,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         new_total = len(disc_set)
 
-        if (new_total // 800) > (old_total // 800):
+        if (new_total // 300) > (old_total // 300):
             zen += 1
             await callback.answer("✨ Знання нових досліджених ділянок переповнюють тебе. +1 Дзен!", show_alert=True)
 
@@ -214,7 +214,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), nav.get("totems", []))
         biome = get_biome_name(ny)
 
-        text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)}\n"
+        text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)} | 🌍 {(new_total/22500)*100}% ({new_total%300}/300)\n"
                 f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {zen}\n\n"
                 f"{map_display}")
         
