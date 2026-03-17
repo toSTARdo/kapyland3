@@ -24,16 +24,106 @@
       "desc": "Різьблена фігурка капібари з мерехтливими очима. Дозволяє переміщатися між встановленими на мапі тотемами.",
       "success_rate": 1.0
     },
-    "swordfish_sword": {
-      "name": "Риба-меч",
+    "random_totem": {
+      "name": "Тотем Хаосу",
+      "emoji": "🗿",
+      "ingredients": {
+        "equipment": ["Грибна бодяга"],
+        "materials": {
+          "teleport_totem": 1
+        }
+      },
+      "desc": "Дозволяє переміщатися між випадковими точками на мапі.",
+      "success_rate": 1.0
+    },
+    "control_totem": {
+      "name": "Тотем Контролю",
+      "emoji": "🗿",
+      "ingredients": {
+        "equipment": ["Саморобна мапа"],
+        "materials": {
+          "teleport_totem": 1
+        }
+      },
+      "desc": "Дозволяє переміщатися між довільними точками на мапі.",
+      "success_rate": 1.0
+    },
+    "swordfish_blade": {
+      "name": "Клинок Риби-меча",
       "emoji": "🗡️",
       "ingredients": {
         "equipment": ["Катлас"],
-        "materials": {
-          "swordfish": 10
-        }
+        "materials": { "swordfish": 10 }
       },
-      "desc": "Гарпун, посилений сталевим клинком. Ідеально підходить для полювання на морських чудовиськ."}
+      "desc": "Гарпун, посилений кісткою глибоководної риби. Ідеально для полювання на 'Пороги'.",
+      "success_rate": 0.9,
+      "type": "equipment"
+    },
+    "jellyfish_lamp": {
+    "name": "Медузна Лампа",
+    "emoji": "🏮🪼",
+    "ingredients": {
+      "equipment": ["Слоїк"],
+      "materials": { 
+        "jellyfish": 10, 
+        "shell": 3, 
+        "rosemary": 2 
+      }
+    },
+    "desc": "Живе сяйво медуз пробиває навіть найгустіший туман Зорефйордів. Збільшує радіус огляду на мапі.",
+    "success_rate": 1.0,
+    "type": "artifact"
+    },
+    "lacrima": {
+      "name": "Лакрима",
+      "emoji": "⚗️",
+      "ingredients": {
+        "materials": {"jar":1, "time_potion": 1 }
+      },
+      "desc": "Магічна крапля, що пахне вчорашнім днем. Дозволяє зберегти душу в паралельному часовому шарі.",
+      "success_rate": 1.0
+    },
+    "handmade_map": {
+      "name": "Саморобна мапа",
+      "emoji": "🗺️",
+      "ingredients": {
+        "materials": { "paper": 20, "blueberry": 1 }
+      },
+      "desc": "Нещасний шмат паперу, що дозволить закопати скарб і не забути.",
+      "success_rate": 1.0
+    },
+    "simple_rod": {
+      "name": "Вудочка",
+      "emoji": "🎣",
+      "ingredients": {
+        "materials": { "wood": 5 }
+      },
+      "desc": "Гнучка гілка з прив'язаною ліскою. Не виглядає надійною, але карася витримає.",
+      "success_rate": 1.0,
+      "type": "weapon"
+    },
+    "strong_rod": {
+      "name": "Посилена вудочка",
+      "emoji": "🎣",
+      "ingredients": {
+        "equipment": ["Вудочка"],
+        "materials": { "bone": 20}
+      },
+      "desc": "Каркас зміцнений кістками морських чудовиськ. Тепер можна замахнутися на щось важче за черевик.",
+      "success_rate": 1.0,
+      "type": "weapon"
+    },
+    "metal_rod": {
+      "name": "Металева вудочка",
+      "emoji": "🎣",
+      "ingredients": {
+        "equipment": ["Посилена вудочка"],
+        "materials": { "iron": 5 }
+      },
+      "desc": "Вершина інженерної думки архіпелагу. Витримає навіть розлючену акулу (мабуть).",
+      "success_rate": 1.0,
+      "type": "weapon"
+    }
   },
   "mythic_artifacts": {
     "odins_spear": {
@@ -107,6 +197,78 @@
       "stats": { "dynamic_beast_mode": true, "weight_gain_buff": 1.2 },
       "type": "artifact",
       "desc": "Вивільняє звіриний дух пращурів."
+    },
+    "yata_no_kagami": {
+      "name": "Дзеркало Ята-но Кагамі",
+      "class": "fenix",
+      "ingredients": ["Очі Медузи", "Плащ-невидимка", "Катана Оні"],
+      "requirements": { "evasion_total": 50, "reflect_kills": 5 },
+      "stats": { "reflect_damage": 1.0, "true_sight": true, "stealth_bonus": 20 },
+      "type": "armor",
+      "desc": "Віддзеркалює будь-яку атаку прямо в пику агресору. Бачиш невидиме, залишаючись непомітним."
+    },
+    "svallin_shield": {
+      "name": "Сваллін: Крижаний Охолоджувач",
+      "class": "unicorn",
+      "ingredients": ["Сніжкосюрікен", "Молот Тора", "Айсберг у банці"],
+      "requirements": { "fire_resistance": 80 },
+      "stats": { "aoe_freeze_radius": 15, "ass_cooling": 100, "heat_nullification": true },
+      "type": "armor",
+      "desc": "Охолоджує все навколо, включаючи нерви власника та перегрітий від тертя гіроскоп."
+    },
+    "aegis_shield": {
+      "name": "Егіда Афіни",
+      "class": "fenix",
+      "ingredients": ["Голова Горгони", "Золоте Руно", "Магнітний Аквамарин"],
+      "requirements": { "wins": 100, "frighten_foes_total": 20 },
+      "stats": { "petrification_chance": 0.15, "all_def": 120, "magnetic_stability": 50 },
+      "type": "armor",
+      "desc": "Щит, що паралізує ворогів жахом. Вмонтований аквамарин стабілізує віз навіть у 10-бальний шторм."
+    },
+    "hermes_boots": {
+      "name": "Тапки Гермеса (На всі чотири лапи)",
+      "class": "unicorn",
+      "ingredients": ["Перо Сім'я", "Сандалі швидкості", "Котяче життя"],
+      "requirements": { "speed_stat": 80, "travel_distance": 1000 },
+      "stats": { "speed": 100, "water_walking": true, "quadruped_bonus": 1.5 },
+      "type": "artifact",
+      "desc": "Дозволяють піратам бігати по воді, коли суша стає занадто нерухомою."
+    },
+    "orpheus_lyre": {
+      "name": "Ліра Орфея для Матюкливих Пісень",
+      "class": "dragon",
+      "ingredients": ["Струни з кишок Левіафана", "Дерево Іґґдрасіль", "Бочка рому"],
+      "requirements": { "charisma": 40, "insults_shouted": 100 },
+      "stats": { "morale_boost": 50, "enemy_confusion_chance": 0.6, "sea_shanty_power": 1.2 },
+      "type": "weapon",
+      "desc": "Навіть Цербер затикає вуха, коли пірати починають співати під цю ліру. Гіроскоп крутиться швидше від басів."
+    },
+    "ariadne_thread": {
+      "name": "Нитка Аріадни",
+      "class": "unicorn",
+      "ingredients": ["Клубок долі", "Магнітна руда"],
+      "requirements": { "location": "Labyrinth of Dust" },
+      "stats": { "navigation_accuracy": 1.0, "anti_trap_radar": true, "home_teleport_chance": 0.05 },
+      "type": "artifact",
+      "desc": "Вказує шлях до найближчої води або пабу. Ніколи не заплутаєшся в тривимірному просторі."
+    },
+    "hades_helm": {
+      "name": "Шолом Темряви Аїда",
+      "class": "dragon",
+      "ingredients": ["Тінь Гіннунгагап", "Череп ягуара", "Магнітний Віваніт"],
+      "requirements": { "karma": -50, "stealth_kills": 30 },
+      "stats": { "invisibility": true, "fear_aura": 30, "night_vision": true },
+      "type": "armor",
+      "desc": "Ти стаєш самою темрявою. Твої кроки не чути, а твій погляд висмоктує надію."
+    },
+    "trident_32_teeth": {
+      "name": "Тризуб-32-зуб (Посмішка Посейдона)",
+      "class": "dragon",
+      "ingredients": ["Зуби акули", "Тризуб", "Срібна нитка"],
+      "requirements": { "level": 32, "sea_creatures_slain": 32 },
+      "stats": { "atk": 232, "ocean_wrath_damage": 100, "bite_vampirism": 0.32 },
+      "type": "weapon",
+      "desc": "Кожен зубець — це ікла стародавнього жаху. Б’є боляче, кусає ще болючіше."
     }
   }
 }

@@ -1,10 +1,12 @@
 import json
+import html
 
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from utils.helpers import get_main_menu_chunk
 
 from config import IMAGES_URLS, DEV_ID
 
@@ -14,36 +16,81 @@ class SettingsStates(StatesGroup):
     waiting_for_new_name = State()
     waiting_for_bug_report = State()
 
-def get_settings_kb() -> InlineKeyboardMarkup:
+def get_settings_kb(quicklinks_enabled: bool, menu_page: int = 0) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     
     builder.row(InlineKeyboardButton(text="📝 Змінити ім'я", callback_data="change_name_start"))
+    
+    # Текст кнопки залежить від стану
+    ql_status = "✅" if quicklinks_enabled else "❌"
+    builder.row(InlineKeyboardButton(
+        text=f"🔗 Швидкі посилання: {ql_status}", 
+        callback_data="toggle_quicklinks"
+    ))
+    
     builder.row(InlineKeyboardButton(text="🎖 Обрати Титул", callback_data="open_titles_list"))
     builder.row(InlineKeyboardButton(text="📖 Довідник", callback_data="open_manual_main"))
     builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
-    builder.row(InlineKeyboardButton(text="👾 Повідомити про баг", callback_data="report_bug_start"))
-    
+    builder.row(InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start"))
     builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
+    
+    # Додаємо чанк, якщо активовано
+    if quicklinks_enabled:
+        get_main_menu_chunk(builder, page=menu_page, callback_prefix="open_settings")
     
     return builder.as_markup()
 
 @router.message(F.text.startswith("⚙️"))
-@router.callback_query(F.data == "open_settings")
-async def show_settings(event: types.Message | types.CallbackQuery):
+@router.callback_query(F.data.startswith("open_settings"))
+async def show_settings(event: types.Message | types.CallbackQuery, db_pool):
     is_callback = isinstance(event, types.CallbackQuery)
-    message = event.message if is_callback else event
+    user_id = event.from_user.id
     
-    text = "⚙️ <b>Налаштування капібари</b>\n\nТут ти можеш змінити ім'я свого улюбленця або налаштувати візуальні ефекти для перемог."
+    # Визначаємо сторінку чанка
+    menu_page = 0
+    if is_callback and ":p" in event.data:
+        menu_page = int(event.data.split(":p")[1])
+
+    async with db_pool.acquire() as conn:
+        row_val = await conn.fetchval("SELECT quicklinks FROM users WHERE tg_id = $1", user_id)
+        quicklinks_enabled = row_val if row_val is not None else True
+
+    text = "⚙️ <b>Налаштування капібари</b>\n\nТут ти можеш змінити ім'я свого улюбленця або налаштувати швидке меню."
+    kb = get_settings_kb(quicklinks_enabled, menu_page)
     
     if is_callback:
-        await message.edit_caption(caption=text, reply_markup=get_settings_kb(), parse_mode="HTML")
+        # Використовуємо універсальний метод оновлення
+        try:
+            await event.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML")
+        except:
+            await event.message.edit_reply_markup(reply_markup=kb)
+        await event.answer()
     else:
-        await message.answer_photo(
-            photo=IMAGES_URLS["village_main"],
-            caption=text,
-            reply_markup=get_settings_kb(),
-            parse_mode="HTML"
+        await event.answer_photo(photo=IMAGES_URLS["village_main"], caption=text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "toggle_quicklinks")
+async def toggle_quicklinks(callback: types.CallbackQuery, db_pool):
+    user_id = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        # Інвертуємо значення row (NOT row)
+        # COALESCE допомагає, якщо значення NULL
+        new_val = await conn.fetchval(
+            """
+            UPDATE users 
+            SET quicklinks = NOT COALESCE(quicklinks, TRUE) 
+            WHERE tg_id = $1 
+            RETURNING quicklinks
+            """, 
+            user_id
         )
+
+    await callback.answer(f"Меню {'увімкнено' if new_val else 'вимкнено'}")
+    
+    # Оновлюємо клавіатуру на місці
+    await callback.message.edit_reply_markup(
+        reply_markup=get_settings_kb(quicklinks_enabled=new_val)
+    )
 
 @router.callback_query(F.data == "change_name_start")
 async def rename_start(callback: types.CallbackQuery, state: FSMContext):
@@ -73,30 +120,89 @@ async def rename_finish(message: types.Message, state: FSMContext, db_pool):
         parse_mode="HTML"
     ) 
 
-@router.callback_query(F.data == "report_bug_start")
-async def report_bug_start(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(SettingsStates.waiting_for_bug_report)
+@router.callback_query(F.data == "report_start")  # Змінив назву з bug_start на загальну
+async def report_category_choice(callback: types.CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="👾 Баг", callback_data="report_type:bug")
+    builder.button(text="💡 Пропозиції", callback_data="report_type:idea")
+    builder.button(text="⚖️ Скарга/Баланс", callback_data="report_type:complaint")
+    builder.button(text="❓ Інше", callback_data="report_type:other")
+    builder.adjust(2)
+
     await callback.message.answer(
-        "🐜 <b>Опиши проблему</b>\n\nБудь ласка, напиши максимально детально, що пішло не так. Якщо є можливість — додай скріншот помилки.",
+        "📝 <b>Центр підтримки</b>\n\nОберіть тип вашого звернення:",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("report_type:"))
+async def report_bug_start(callback: types.CallbackQuery, state: FSMContext):
+    report_type = callback.data.split(":")[1]
+    await state.update_data(report_type=report_type) # Зберігаємо тип
+    await state.set_state(SettingsStates.waiting_for_bug_report)
+    
+    prompts = {
+        "bug": "Будь ласка, напиши максимально детально, що пішло не так. Якщо є можливість — додай скріншот помилки.",
+        "idea": "Яку круту фічу ти хочеш бачити в Planet Mofu?",
+        "complaint": "На що або на кого ти хочеш поскаржитися?",
+        "other": "Напиши своє питання або пропозицію."
+    }
+    
+    await callback.message.answer(
+        f"✍️ <b>{prompts.get(report_type)}</b>\n\nМожна додати фото/скріншот.",
         parse_mode="HTML"
     )
     await callback.answer()
 
 @router.message(SettingsStates.waiting_for_bug_report)
-async def report_bug_finish(message: types.Message, state: FSMContext, bot):
-    bug_text = message.text or "[Повідомлення без тексту, можливо фото]"
-    user_info = f"Від: {message.from_user.full_name} (@{message.from_user.username}, ID: {message.from_user.id})"
+async def report_finish(message: types.Message, state: FSMContext, bot):
+    data = await state.get_data()
+    rep_type = data.get("report_type", "other")
     
-    report_msg = f"🆘 <b>НОВИЙ БАГ-РЕПОРТ!</b>\n━━━━━━━━━━━━━━━\n{user_info}\n\n<b>Текст:</b>\n{bug_text}\n\n#bug"
+    # Співставлення типів з емодзі та тегами
+    types_meta = {
+        "bug": ("🐜 БАГ-РЕПОРТ", "#bug"),
+        "idea": ("💡 НОВА ІДЕЯ", "#idea"),
+        "complaint": ("⚖️ СКАРГА", "#complaint"),
+        "other": ("❓ ЗВЕРНЕННЯ", "#other")
+    }
+    
+    title, tag = types_meta.get(rep_type)
+    bug_text = message.text or message.caption or "[Текст відсутній]"
+    user_info = (
+        f"👤 <b>Від:</b> {html.quote(message.from_user.full_name)}\n"
+        f"🆔 <b>ID:</b> <code>{message.from_user.id}</code>\n"
+        f"🔗 <b>Username:</b> @{message.from_user.username or 'немає'}"
+    )
+    
+    report_msg = (
+        f"🆘 <b>{title}</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{user_info}\n\n"
+        f"📝 <b>Повідомлення:</b>\n{html.quote(bug_text)}\n\n"
+        f"{tag}"
+    )
     
     try:
-        await bot.send_message(chat_id=DEV_ID, text=report_msg, parse_mode="HTML")
+        # Відправляємо фото, якщо воно є, разом з текстом, або просто текст
         if message.photo:
-            await bot.send_photo(chat_id=DEV_ID, photo=message.photo[-1].file_id, caption="Фото до баг-репорту")
+            await bot.send_photo(
+                chat_id=DEV_ID, 
+                photo=message.photo[-1].file_id, 
+                caption=report_msg, 
+                parse_mode="HTML"
+            )
+        else:
+            await bot.send_message(chat_id=DEV_ID, text=report_msg, parse_mode="HTML")
             
-        await message.answer("✅ Дякуємо! Твій звіт надіслано розробникам. Ми скоро все полагодимо!", reply_markup=get_settings_kb())
+        await message.answer(
+            "✅ <b>Надіслано!</b>\nДякуємо за допомогу у розвитку Planet Mofu.",
+            parse_mode="HTML",
+            reply_markup=get_settings_kb()
+        )
     except Exception as e:
-        await message.answer(f"❌ Помилка при надсиланні репорту: {e}")
+        await message.answer(f"❌ Помилка при надсиланні: {e}")
     
     await state.clear()
 

@@ -4,6 +4,7 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from datetime import datetime, timedelta
 from utils.helpers import format_time, grant_exp_and_lvl
+from handlers.hold.inventory.navigator import render_inventory_page
 from core.reincarnation.death import handle_death 
 
 router = Router()
@@ -55,26 +56,6 @@ async def cmd_feed(event: types.Message | types.CallbackQuery, db_pool):
         current_weight = row['weight']
         current_lvl = row['lvl']
         
-        max_safe_weight = 50 + (current_lvl * 10)
-        new_weight = current_weight + gain
-        
-        pop_chance = 0
-        if new_weight > max_safe_weight:
-            pop_chance = (new_weight - max_safe_weight) * 0.1
-            
-        if random.random() < pop_chance:
-            benefit = await handle_death(uid, db_pool, death_reason="Луснула від переїдання 🍉")
-            
-            death_text = (
-                f"💥 <b>БА-БАХ!</b>\n\n"
-                f"Шлунок {row['name']} не витримав такої кількості їжі і вибухнув!\n"
-                f"✨ Але дух капібари переродився! Новий множник: <b>x{benefit.get('new_mult', 1.0)}</b>"
-            )
-            
-            if is_callback:
-                await event.answer("💥 БА-БАХ!", show_alert=True)
-            return await message.answer(death_text, parse_mode="HTML")
-
         await conn.execute(UPDATE_FEED_SQL, uid, gain)
         await grant_exp_and_lvl(uid, exp_gain=0, weight_gain=0, bot=event.bot, db_pool=db_pool)
 
@@ -87,8 +68,7 @@ async def cmd_feed(event: types.Message | types.CallbackQuery, db_pool):
     )
 
     if is_callback:
-        await event.answer("🍎 Ням-ням!")
-        await message.edit_text(success_text, parse_mode="HTML")
+        await event.answer(success_text, parse_mode="HTML")
     else:
         await message.answer(success_text, parse_mode="HTML")
 

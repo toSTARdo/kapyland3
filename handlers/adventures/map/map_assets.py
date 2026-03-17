@@ -5,7 +5,8 @@ PLANTS_LOOT = {
     "herbs": [
         {"id": "mint", "name": "🌿 М'ята", "chance": 40},
         {"id": "thyme", "name": "🌱 Чебрець", "chance": 30},
-        {"id": "rosemary", "name": "🌿 Розмарин", "chance": 10}
+        {"id": "rosemary", "name": "🌿 Розмарин", "chance": 10},
+        {"id": "blueberry", "name": "🫐 Чорниця", "chance": 30},
     ],
     "flowers": [
         {"id": "chamomile", "name": "🌼 Ромашка", "chance": 35},
@@ -16,17 +17,21 @@ PLANTS_LOOT = {
 }
 
 MUSHROOMS_LOOT = [
-    {"id": "fly_agaric", "name": "🍄 Мухомор", "chance": 10},
+    {"id": "fly_agaric", "name": "🍄 Мухомор", "chance": 9},
     {"id": "mushroom", "name": "🍄‍🟫 Гриб", "chance": 90},
+    {"id": "truffel", "name": "🟤 Трюфель", "chance": 1}
 ]
 
 COORD_QUESTS = {
     "15,129": "carpathian_pearl",
 }
 
+MIN_LVL_FOR_UROBOROSTREAM = 7
+MIN_LVL_FOR_STARFJORDS = 20
 MAP_HEIGHT = len(FULL_MAP)
 MAP_WIDTH = len(FULL_MAP[0])
 WATER_TILES = {"~", "༄", "꩜"}
+WATER_TILES_DANGER = {"~":0.1, "༄":0.5, "꩜":1}
 FOREST_TILES = {"𖠰", "𖣂"}
 FOG_ICON = "░"
 

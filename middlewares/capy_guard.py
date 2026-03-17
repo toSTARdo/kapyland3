@@ -52,7 +52,7 @@ class CapyGuardMiddleware(BaseMiddleware):
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow("""
-                SELECT state, stats_track, inventory, stamina, achievements, unlocked_titles,
+                SELECT state, stats_track, inventory, stamina, max_stamina, achievements, unlocked_titles,
                        wins, total_fights, lvl, weight, atk, def, agi, luck, zen, hunger
                 FROM capybaras WHERE owner_id = $1
             """, user_id)
@@ -66,6 +66,7 @@ class CapyGuardMiddleware(BaseMiddleware):
 
             meta = {
                 "stamina": row["stamina"],
+                "MAX_STAMINA": row["max_stamina"],
                 "last_regen": state.get("last_regen"),
                 "status": state.get("status", "active"),
                 "wake_up": state.get("wake_up"),
@@ -90,7 +91,7 @@ class CapyGuardMiddleware(BaseMiddleware):
 
             now = datetime.datetime.now(datetime.timezone.utc)
             stamina = meta.get("stamina", 100)
-            MAX_STAMINA = 100
+            MAX_STAMINA = meta.get("MAX_STAMINA", 100)
             last_regen_str = meta.get("last_regen")
             
             needs_update = False

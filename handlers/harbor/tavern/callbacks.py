@@ -119,7 +119,7 @@ async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT equipment, inventory, cooldowns 
+            SELECT equipment, inventory, cooldowns, stamina 
             FROM capybaras 
             WHERE owner_id = $1
         """, uid)
@@ -127,6 +127,9 @@ async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
         if not row:
             return await callback.answer("Помилка: Капібару не знайдено!", show_alert=True)
 
+        stamina = row['stamina']
+        if stamina < 5:
+            return await callback.answer("Тобі бракує сил! Відпочинь і тоді махай тараном", show_alert=True)
         equip = row['equipment'] if isinstance(row['equipment'], dict) else json.loads(row['equipment'])
         inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
         cools = row['cooldowns'] if isinstance(row['cooldowns'], dict) else json.loads(row['cooldowns'])

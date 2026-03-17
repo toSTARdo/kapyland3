@@ -8,6 +8,19 @@ def calculate_lvl_data(current_exp, added_exp):
     new_lvl = max(1, int(math.sqrt(new_exp / 2)))
     return new_exp, new_lvl
 
+def next_lvl_exp(current_lvl):
+    return 2*((current_lvl+1)**2)
+
+def get_circle_bar(current, total, length=10):
+    if total <= 0: return "<code>○○○○○○○○○○</code>"
+        
+    filled = int(length * current / total)
+    filled = max(0, min(length, filled)) # Захист від помилок
+        
+    # Використовуємо ● для заповненого і ○ для порожнього
+    bar = "●" * filled + "○" * (length - filled)
+    return f"<code>{bar}</code>"
+
 def calculate_winrate(wins, total_fights):
     return round(wins/total_fights, 1) * 100
 
@@ -77,7 +90,7 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow('''
-            SELECT exp, lvl, zen, weight, stamina, inventory 
+            SELECT exp, lvl, zen, weight, stamina, max_stamina,inventory 
             FROM capybaras 
             WHERE owner_id = $1
         ''', tg_id)
@@ -90,6 +103,7 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
         current_zen = row['zen'] or 0
         current_weight = row['weight'] or 20.0
         current_stamina = row['stamina'] if row['stamina'] is not None else 100
+        MAX_STAMINA = row["max_stamina"]
 
         inventory = row['inventory']
         if isinstance(inventory, str):
@@ -104,7 +118,7 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
         new_weight = round(max(1.0, current_weight + weight_gain), 1)
 
         if lvl_diff > 0:
-            new_stamina = 100
+            new_stamina = MAX_STAMINA
             
             loot = inventory.setdefault("loot", {})
             loot["lottery_ticket"] = loot.get("lottery_ticket", 0) + lvl_diff
@@ -227,3 +241,39 @@ def int_to_roman(n: int) -> str:
             n -= val[i]
         i += 1
     return f" {roman_num}"
+
+from aiogram import types
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+def get_main_menu_chunk(builder: InlineKeyboardBuilder, page: int = 0, callback_prefix: str = "open_main_menu"):
+    all_btns = [
+        ("🐾", "open_profile_main"), ("🎒", "inv_page:food:0"), ("🎟️", "lottery_menu"),
+        ("🗺️", "open_map"), ("🎣", "fish"), ("📜", "start_story_main"),
+        ("🍻", "social"), ("⛵", "ship_main"), ("🎪", "open_bazaar"),
+        ("🔨", "open_forge"), ("⚗️", "open_alchemy"), ("⚙️", "open_settings")
+    ]
+    
+    per_chunk = 6
+    chunks = [all_btns[i:i + per_chunk] for i in range(0, len(all_btns), per_chunk)]
+    page = page % len(chunks)
+    
+    nav_row = []
+    # Стрілка вліво
+    nav_row.append(types.InlineKeyboardButton(text="❮", callback_data=f"{callback_prefix}:p{(page-1)%len(chunks)}"))
+    
+    for icon, cb in chunks[page]:
+        # ВАЖЛИВО: Додаємо стан сторінки до кожного колбеку
+        # Якщо в кнопці вже є ':', додаємо через ':', якщо ні — створюємо структуру
+        state_cb = f"{cb}:p{page}" if ":" in cb else f"{cb}:p{page}"
+        
+        # Спеціальна обробка для складних інвентарних посилань (якщо треба)
+        if "inv_page" in cb:
+            # Наприклад: inv_page:food:0 перетвориться на inv_page:food:0:p1
+            state_cb = f"{cb}:p{page}"
+
+        nav_row.append(types.InlineKeyboardButton(text=icon, callback_data=state_cb))
+    
+    # Стрілка вправо
+    nav_row.append(types.InlineKeyboardButton(text="❯", callback_data=f"{callback_prefix}:p{(page+1)%len(chunks)}"))
+    
+    builder.row(*nav_row)

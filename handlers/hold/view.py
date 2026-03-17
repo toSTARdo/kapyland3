@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 router = Router()
 
-@router.message(or_f(F.text.contains("🎒 Трюм"), Command("hold")))
+@router.message(or_f(F.text.contains("🚪 Трюм"), Command("hold")))
 @router.callback_query(F.data == "open_inventory_main")
 async def show_inventory_start(event: types.Message | types.CallbackQuery):
     is_callback = isinstance(event, types.CallbackQuery)

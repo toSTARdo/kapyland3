@@ -5,6 +5,8 @@ from aiogram import types, F, Router
 from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import ARTIFACTS, DISPLAY_NAMES, IMAGES_URLS
+from utils.helpers import get_main_menu_chunk
+from handlers.harbor.village.forge import apply_pagination
 
 router = Router()
 
@@ -32,19 +34,45 @@ def get_item_name(item_key):
             if item["name"] == item_key: return item["name"]
     return item_key
 
-@router.callback_query(F.data == "open_bazaar")
-async def open_bazaar(callback: types.CallbackQuery):
+@router.callback_query(F.data.startswith("open_bazaar"))
+async def open_bazaar(callback: types.CallbackQuery, db_pool):
+    # 1. Витягуємо сторінку (дефолт 0)
+    menu_page = 0
+    if ":p" in callback.data:
+        menu_page = int(callback.data.split(":p")[1])
+
+    # 2. Отримуємо налаштування одним запитом
+    async with db_pool.acquire() as conn:
+        row_val = await conn.fetchval("SELECT quicklinks FROM users WHERE tg_id = $1", callback.from_user.id)
+    
+    quicklinks_enabled = row_val if row_val is not None else True
+
+    # 3. Будуємо інтерфейс
     builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(text="🍱 Купити", callback_data="bazaar_shop"),
-                types.InlineKeyboardButton(text="💰 Продати", callback_data="bazaar_sell_list"))
+    builder.row(
+        types.InlineKeyboardButton(text="🍱 Купити", callback_data="bazaar_shop"),
+        types.InlineKeyboardButton(text="💰 Продати", callback_data="bazaar_sell_list")
+    )
     builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_village"))
     
-    await callback.message.edit_media(
-        media=InputMediaPhoto(media=IMAGES_URLS["bazaar"], 
-        caption="🏺 <b>Базар Пух-пух</b>\n━━━━━━━━━━━━━━━━━━━━\nОбмінюй фрукти на артефакти або здавай свій вилов за соковиті кавуни!", 
-        parse_mode="HTML"),
-        reply_markup=builder.as_markup()
-    )
+    if quicklinks_enabled:
+        get_main_menu_chunk(builder, page=menu_page, callback_prefix="open_bazaar")
+    
+    # 4. Оновлюємо медіа або тільки кнопки
+    try:
+        await callback.message.edit_media(
+            media=InputMediaPhoto(
+                media=IMAGES_URLS["bazaar"], 
+                caption="🏺 <b>Базар Пух-пух</b>\n━━━━━━━━━━━━━━━━━━━━\nОбмінюй фрукти на артефакти або здавай свій вилов за соковиті кавуни!", 
+                parse_mode="HTML"
+            ),
+            reply_markup=builder.as_markup()
+        )
+    except Exception:
+        # Виконується, якщо фото те саме (наприклад, при гортанні чанка)
+        await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+    
+    await callback.answer()
 
 @router.callback_query(F.data == "bazaar_shop")
 async def bazaar_shop(callback: types.CallbackQuery, db_pool):
@@ -68,34 +96,79 @@ async def bazaar_shop(callback: types.CallbackQuery, db_pool):
     builder.adjust(1)
     await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
     
-@router.callback_query(F.data == "bazaar_sell_list")
+@router.callback_query(F.data.startswith("bazaar_sell_list"))
 async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
+    # Парсимо дані: bazaar_sell_list:{стор_товарів}:p{стор_чанка}
+    parts = callback.data.split(":")
+    
+    # 1. Сторінка товарів базару (твоя функція)
+    bazaar_page = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+    
+    # 2. Сторінка швидких посилань
+    chunk_page = 0
+    for p in parts:
+        if p.startswith("p") and p[1:].isdigit():
+            chunk_page = int(p[1:])
+
     state = await get_weekly_bazaar_stock(db_pool)
     sell_prices = state.get("sell_prices", {})
     
     async with db_pool.acquire() as conn:
-        inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", callback.from_user.id)
-        inv = inv_raw if isinstance(inv_raw, dict) else json.loads(inv_raw)
+        data = await conn.fetchrow(
+            "SELECT c.inventory, u.quicklinks FROM capybaras c "
+            "JOIN users u ON c.owner_id = u.tg_id WHERE c.owner_id = $1", 
+            callback.from_user.id
+        )
+        
+    inv = data['inventory'] if isinstance(data['inventory'], dict) else json.loads(data['inventory'])
+    show_quicklinks = data['quicklinks'] if data['quicklinks'] is not None else True
 
     builder = InlineKeyboardBuilder()
-    text = "💰 <b>Скупка ресурсів</b>\n<i>Базар сьогодні купує:</i>\n\n"
     
-    found_any = False
+    # Формуємо список доступних для продажу предметів для твоєї функції
+    sellable_items = []
     for cat in ["materials", "food"]:
         for item, count in inv.get(cat, {}).items():
             if item in sell_prices and count > 0:
                 offer = sell_prices[item]
-                price_text = f"{offer['val']} {FOOD_ICONS[offer['curr']]}"
-                text += f"📦 {get_item_name(item)}: {count} шт. → <b>{price_text}</b>\n"
-                builder.button(text=f"Здати {get_item_name(item)}", callback_data=f"b_sell:{item}")
-                found_any = True
+                name = get_item_name(item)
+                price = f"{offer['val']}{FOOD_ICONS.get(offer['curr'], '🍉')}"
+                # Формат: (callback_suffix, button_text)
+                sellable_items.append((f"{item}:p{chunk_page}", f"📦 {name} ({count}) → {price}"))
 
-    if not found_any:
-        text += "<i>У тебе немає нічого, що зацікавило б торгівців...</i>"
-    
-    builder.button(text="⬅️ Назад", callback_data="open_bazaar")
-    builder.adjust(1)
+    # ВИКОРИСТОВУЄМО ТВОЮ ФУНКЦІЮ
+    # Вона додасть кнопки товарів та стрілки навігації (якщо треба)
+    current_b_page = apply_pagination(
+        builder=builder,
+        all_items=sellable_items,
+        page=bazaar_page,
+        per_page=5,
+        callback_prefix="b_sell", # Для кнопок "Здати"
+        nav_prefix=f"bazaar_sell_list" # Для стрілок вліво/вправо самого списку
+    )
+
+    # Додаємо параметри до кнопок навігації списку, щоб не губити p{chunk_page}
+    # (Маленький фікс для кнопок, які згенерував apply_pagination)
+    for row in builder.export():
+        for btn in row:
+            if btn.callback_data.startswith("bazaar_sell_list:") and ":p" not in btn.callback_data:
+                btn.callback_data += f":p{chunk_page}"
+
+    # Системні кнопки
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data=f"open_bazaar:p{chunk_page}"))
+
+    # ДОДАЄМО QUICKLINKS (Окремо від пагінації списку)
+    if show_quicklinks:
+        # Префікс для гортання кнопок знизу
+        # Формат: bazaar_sell_list:{поточна_стор_базару}
+        get_main_menu_chunk(builder, page=chunk_page, callback_prefix=f"bazaar_sell_list:{current_b_page}")
+
+    text = "💰 <b>Скупка ресурсів</b>\n<i>Базар сьогодні купує:</i>\n\n"
+    if not sellable_items:
+        text += "<i>У тебе порожньо...</i>"
+
     await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
 
 async def get_weekly_bazaar_stock(db_pool):
     async with db_pool.acquire() as conn:
@@ -144,7 +217,7 @@ async def get_weekly_bazaar_stock(db_pool):
                 
                 weekly_sell[res_key] = {"curr": target_curr, "val": target_val}
 
-            next_monday = (now + timedelta(days=(7 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
+            next_monday = (now + timedelta(days=(3 - now.weekday()))).replace(hour=0, minute=0, second=0, microsecond=0)
             
             state = {
                 "items": new_stock, 

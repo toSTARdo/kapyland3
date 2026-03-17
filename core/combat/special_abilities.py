@@ -22,17 +22,15 @@ def weapon_ability(base_prob):
             if not hasattr(att, '_ability_state'):
                 att._ability_state = {}
             
-            w_data = att.weapon_data
             w_name = att.weapon.get("name", "Лапки")
-            
             if w_name not in att._ability_state:
                 att._ability_state[w_name] = 0
 
+            from config import WEAPON
             weapon_cfg = WEAPON.get(w_name, {})
-            special_texts = weapon_cfg.get("special_text", [])
-            
-            rarity = weapon_cfg.get("rarity", w_data.get("rarity", "common"))
+            rarity = weapon_cfg.get("rarity", "common")
             pattern = weapon_cfg.get("pattern", "sequential")
+            special_texts = weapon_cfg.get("special_text", [])
             is_aoe = weapon_cfg.get("is_aoe", False)
 
             lvl_bonus = att.weapon.get("lvl", 0) * 0.05
@@ -51,20 +49,28 @@ def weapon_ability(base_prob):
             total_dmg, logs = 0, []
 
             if pattern == "sequential":
-                idx = att._ability_state[w_name] % len(available)
-                active_indices = [idx]
-                att._ability_state[w_name] += 1
+                start_idx = att._ability_state[w_name]
+                active_indices = []
+                for j in range(len(available)):
+                    idx = (start_idx + j) % len(available)
+                    active_indices.append(idx)
+                
+                att._ability_state[w_name] = (start_idx + 1) % len(available)
                 
             elif pattern == "chaotic":
-                idx = random.randrange(len(available))
-                active_indices = [idx]
+                active_indices = [random.randrange(len(available))]
                 
             elif pattern == "ultimate":
                 active_indices = list(range(len(available)))
+            else:
+                active_indices = [0]
 
             for i in active_indices:
+                if i >= len(available): continue
+                
                 action = available[i]
-                txt = special_texts[i] if i < len(special_texts) else "✨ Спрацював ефект зброї!"
+                txt = special_texts[i] if i < len(special_texts) else "✨ Ефект зброї!"
+                
                 current_targets = targets if is_aoe else [random.choice(targets)]
                 for t in current_targets:
                     res_val = action(att, t)
@@ -93,7 +99,7 @@ ABILITY_DATA = {
     "cannon_splash": (0.15, [lambda a, d: 1, lambda a, d: mod_val(d, 'agi', -1)]),
 
     # EPIC (0.2)
-    "life_steal": (0.2, [lambda a, d: heal(a, 1), lambda a, d: mod_val(d, 'atk', -0.5), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: 1]),
+    "life_steal": (0.1, [lambda a, d: heal(a, 1), lambda a, d: mod_val(d, 'atk', -0.5), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: 1]),
     "confuse_hit": (0.2, [lambda a, d: 1, lambda a, d: mod_val(d, 'luck', -2), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(d, 'def_', -1)]),
     "freeze_debuff": (0.2, [lambda a, d: mod_val(d, 'agi', -2), lambda a, d: mod_val(d, 'def_', -0.5), lambda a, d: mod_val(a, 'def_', 0.5), lambda a, d: mod_val(d, 'atk', -1)]),
     "fear_debuff": (0.2, [lambda a, d: mod_val(d, 'atk', -2), lambda a, d: mod_val(d, 'luck', -1), lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(d, 'agi', -1)]),

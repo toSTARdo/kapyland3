@@ -37,15 +37,15 @@ STAMINA_COSTS = {
 }
 
     #FIGHT_CONSTS:
-BASE_HIT_CHANCE = 0.5
+BASE_HIT_CHANCE = 0.41
 BASE_HEARTS = 3
 UNITS_PER_HEART = 2
 BASE_HITPOINTS = BASE_HEARTS * UNITS_PER_HEART
 BASE_BLOCK_CHANCE = 0.05
 STAT_WEIGHTS = {
     # FIGHT
-    "atk_to_hit": 0.01, # max ATK 90%: 60 base + 20 stats + 10 weapon = 90% hit chance
-    "def_to_block": 0.005, # max DEF 30%: 5 base + 10 stats + 15 armor = 30% block chance
+    "atk_to_hit": 0.005, # max ATK 90%: 60 base + 20 stats + 10 weapon = 90% hit chance
+    "def_to_block": 0.015, # max DEF 30%: 5 base + 10 stats + 15 armor = 30% block chance
     "agi_to_dodge": 0.02, # max AGI 40%: 20 stats= 40% dodge chance
     "luck_to_crit": 0.01, # max LCK 20%: 20 stats= 20% sp. effect chance
     
@@ -91,41 +91,63 @@ ARMOR = GAME_ITEMS.get("ARMOR", {})
 KANJI_DICT = GAME_ITEMS.get("FLAGS", {})
 
 DISPLAY_NAMES = {
-            # Ресурси з риболовлі
-            "carp": "🐟 Океанічний карась",
-            "perch": "🐠 Уробороокеанський Окунь",
-            "pufferfish": "🐡 Риба-пупупу",
-            "octopus": "🐙 Восьмирук",
-            "crab": "🦀 Бокохід",
-            "jellyfish": "🪼 Медуза",
-            "swordfish": "🗡️🐟 Риба-меч",
-            "shark": "🦈 Маленька акула",
-            
-            # Трави
-            "mint": "🌿 М'ята",
-            "thyme": "🌱 Чебрець",
-            "rosemary": "🌿 Розмарин",
-            
-            # Квіти
-            "chamomile": "🌼 Ромашка",
-            "lavender": "🪻 Лаванда",
-            "tulip": "🌷 Тюльпан",
-            "lotus": "🪷 Лотос",
-            
-            # Гриби 
-            "fly_agaric": "🍄 Мухомор",
-            "mushroom": "🍄‍🟫 Гриб",
-            
-            # Базові матеріали
-            "wood": "🪵 Деревина",
+        # Ресурси з риболовлі (Базові)
+        "carp": "🐟 Океанічний карась",
+        "perch": "🐠 Уробороокеанський Окунь",
+        "pufferfish": "🐡 Риба-пупупу",
+        "octopus": "🐙 Восьмирук",
+        "crab": "🦀 Бокохід",
+        "jellyfish": "🪼 Медуза",
+        "swordfish": "🗡️🐟 Риба-меч",
+        "shark": "🦈 Маленька акула",
+        
+        # Біом 1: Архіпелаг Джуа
+        "coconut": "🥥 Кокос",
+        "squid": "🐙 Вардосквірд",
+        
+        # Біом 2: Уроборострім
+        "shell": "🐚 Мушля-Шхуна",
+        "mantis_shrimp": "🦐 Креветка-боксер",
+        "lizard": "🐊 Крокодилоподібний ящур",
+        
+        # Біом 3: Зорефйорди Ехвазу
+        "ice_crystal": "🧊 Древній лід",
+        "kraken": "🦑 Зоряний кракен",
+        "whale": "🐳 Кит",
 
-            # Їжа
-            "tangerines": "🍊 Мандарин",
-            "watermelon_slices": "🍉 Кавунова скибка",
-            "kiwi": "🥝 Ківі",
-            "mango": "🥭 Манго",
-            "melon": "🍈 Диня",
-        }
+        # Трави та Квіти
+        "mint": "🌿 М'ята",
+        "thyme": "🌱 Чебрець",
+        "rosemary": "🌿 Розмарин",
+        "chamomile": "🌼 Ромашка",
+        "lavender": "🪻 Лаванда",
+        "tulip": "🌷 Тюльпан",
+        "lotus": "🪷 Лотос",
+        "blueberry": "🫐 Чорниця",
+        
+        # Гриби 
+        "fly_agaric": "🍄 Мухомор",
+        "mushroom": "🍄‍🟫 Гриб",
+        "truffel": "🟤 Трюфель",
+        
+        # Базові матеріали
+        "wood": "🪵 Деревина",
+        "paper": "📰 Газета",
+        "can": "🥫 Бляшанка",
+        "bone": "🦴 Кістка",
+        "jar": "🫙 Слоїк",
+
+        # Їжа
+        "tangerines": "🍊 Мандарин",
+        "watermelon_slices": "🍉 Кавунова скибка",
+        "kiwi": "🥝 Ківі",
+        "mango": "🥭 Манго",
+        "melon": "🍈 Диня",
+
+        #Інше
+        "teleport_totem": "🗿 Тотем телепортації",
+        "time_potion": "🧪 Часове зілля"
+    }
 
 #ICONS:
 TYPE_ICONS = {"weapon": "🗡️", "armor": "🔰", "artifact": "🧿", "fenix": "🐦‍🔥", "unicorn": "🦄", "dragon": "🐉"}
@@ -316,20 +338,35 @@ BOSSES_COORDS = {
     20: {"x": 75,  "y": 3,   "name": "Верховний Бос (Верхній Центр)"}
 }
 
-MOODS = {
-    "chill": "₍ᐢ-(ｪ)-ᐢ₎",
-    "curious": "₍ᐢ•(τ)•ᐢ₎",
-    "general": "₍ᐢ•(ｪ)•ᐢ₎",
-    "shy": "₍ᐢ˵•(ｪ)•˵ᐢ₎",
-    "smug": "₍ᐢ•(ܫ)•ᐢ₎",
-    "shocked": "₍ᐢ⊙(ェ)⊙ᐢ₎",
-    "crying": "₍ᐢ╥(ェ)╥ᐢ₎",
-    "cool": "₍ᐢ⎚(ェ)⎚ᐢ₎",
-    "confused": "₍ᐢ꩜(τ)꩜ᐢ₎",
-    "thumb_up": "ദ്ദി₍ᐢ•(ܫ)•ᐢ₎",
-    "dead": "₍ᐢ×(τ)×ᐢ₎",
-    "happy": "₍ᐢ✧(×)✧ᐢ₎",
-    "love": "₍ᐢ♡(τ)♡ᐢ₎"
+MOOD_SETS = {
+    "capybara": {
+        "chill": "₍ᐢ-(ｪ)-ᐢ₎", "curious": "₍ᐢ•(τ)•ᐢ₎", "general": "₍ᐢ•(ｪ)•ᐢ₎",
+        "shy": "₍ᐢ˵•(ｪ)•˵ᐢ₎", "smug": "₍ᐢ•(ܫ)•ᐢ₎", "shocked": "₍ᐢ⊙(ェ)⊙ᐢ₎",
+        "crying": "₍ᐢ╥(ェ)╥ᐢ₎", "cool": "₍ᐢ⎚(ェ)⎚ᐢ₎", "confused": "₍ᐢ꩜(τ)꩜ᐢ₎",
+        "thumb_up": "ദി₍ᐢ•(ܫ)•ᐢ₎", "dead": "₍ᐢ×(τ)×ᐢ₎", "happy": "₍ᐢ✧(×)✧ᐢ₎",
+        "love": "₍ᐢ♡(τ)♡ᐢ₎"
+    },
+    "bat": {
+        "chill": "⎛| - ⩊ - |⎞", "curious": "⎛| • ⩊ • |⎞", "general": "⎛| • ⩊ • |⎞",
+        "shy": "⎛| ˵• ⩊ •˵ |⎞", "smug": "⎛| ¬ ⩊ ¬ |⎞", "shocked": "⎛| ⊙ ⩊ ⊙ |⎞",
+        "crying": "⎛| ╥ ⩊ ╥ |⎞", "cool": "⎛| ⎚ ⩊ ⎚ |⎞", "confused": "⎛| ꩜ ⩊ ꩜ |⎞",
+        "thumb_up": "ദി⎛| • ⩊ • |⎞", "dead": "⎛| × ⩊ × |⎞", "happy": "⎛| ✧ ⩊ ✧ |⎞",
+        "love": "⎛| ♡ ⩊ ♡ |⎞"
+    },
+    "cat": {
+        "chill": "≽^- ⩊ -^≼", "curious": "≽^• ⩊ •^≼", "general": "≽^• ⩊ •^≼",
+        "shy": "≽^˵• ⩊ •˵^≼", "smug": "≽^• ܫ •^≼", "shocked": "≽^⊙ ⩊ ⊙^≼",
+        "crying": "≽^╥ ⩊ ╥^≼", "cool": "≽^⎚ ⩊ ⎚^≼", "confused": "≽^꩜ ⩊ ꩜^≼",
+        "thumb_up": "ദി≽^• ⩊ •^≼", "dead": "≽^× ⩊ ×^≼", "happy": "≽^✧ ⩊ ✧^≼",
+        "love": "≽^♡ ⩊ ♡^≼"
+    },
+    "raccoon": {
+        "neutral":  "⟨^=•ｪ•=^⟩","chill": "⟨^=-ｪ-=^⟩", "curious": "⟨^=•τ•=^⟩",
+        "shy": "⟨^˵•ｪ•˵^⟩", "smug": "⟨^=•ܫ•=^⟩", "shocked": "⟨^=⊙ｪ⊙=^⟩",
+        "crying": "⟨^=╥ｪ╥=^⟩","cool": "⟨^=⎚ｪ⎚=^⟩", "confused": "⟨^=꩜τ꩜=^⟩", 
+        "thumb_up": "ദി⟨^=•ܫ•=^⟩", "dead": "⟨^=×τ×=^⟩", "happy": "⟨^=✧ܫ✧=^⟩", 
+        "love": "⟨^=♡τ♡=^⟩"
+    }
 }
 
 LOTTERY_BANNERS = [
@@ -349,6 +386,13 @@ IMAGES_URLS = {
     "meditation": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_meditation.jpg",
     "tavern": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_tavern.png",
     "fishing": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_fishing.jpg"
+}
+
+PROFILE_IMGS = {
+    "capybara": "https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_char_capybara.jpg",
+    "cat":"https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_char_cat1.jpg",
+    "raccoon":"https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_char_racoon.jpg",
+    "bat":"https://raw.githubusercontent.com/toSTARdo/kapyland3/main/assets/capyimg_char_bat.jpg",
 }
 
 ACHIEVEMENTS = {
@@ -436,7 +480,7 @@ ACHIEVEMENTS = {
         "reward_title": "Сантьяго",
         "reward_chest": 5
     },
-    "weapon_master": {
+    '''"weapon_master": {
         "name": "🔱 Майстер збруї",
         "desc": "Покращити зброю до +5 рівня.",
         "condition": lambda u: any(
@@ -445,7 +489,7 @@ ACHIEVEMENTS = {
             ),
         "reward_title": "Колекціонер",
         "reward_chest": 10
-    },
+    },'''
 
     # --- АЛХІМІЯ ---
     "mad_chemist": {
@@ -505,6 +549,13 @@ NPC_REGISTRY = {
             "armor_full": {"name": "Хутро", "lvl": 0},
             "hp_bonus": 0
         },
+        "otter_vandal": {
+            "kapy_name": "Видра мародер", "color": "🦦", "weight": 5.0,
+            "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
+            "weapon_full": {"name": "Гармата", "lvl": 0},
+            "armor_full": {"name": "Хутро", "lvl": 0},
+            "hp_bonus": 0
+        },
         "mimic": {
             "kapy_name": "Мімік", "color": "🗃",
             "stats": {"attack": 4, "defense": 2, "agility": 5, "luck": 2},
@@ -526,167 +577,213 @@ NPC_REGISTRY = {
             "armor_full": {"name": "Хітин", "lvl": 0},
             "hp_bonus": 2
         },
+        "star_ninja_hitode": {
+            "kapy_name": "Зірка-Ніндзя", 
+            "color": "⭐", 
+            "weight": 6.0,
+            "stats": {
+                "attack": 10,   
+                "defense": 5,
+                "agility": 20, # МАКСИМУМ
+                "luck": 15 
+            },
+            "weapon_full": {"name": "Швидка зірка", "lvl": 3},
+            "armor_full": {"name": "Регенерація ядра", "lvl": 1},
+            "hp_bonus": 0
+        },
+        "bastion_shell": {
+            "kapy_name": "Мушля-Бастіон", 
+            "color": "🐚", 
+            "weight": 40.0,
+            "stats": {
+                "attack": 4,   
+                "defense": 20, # МАКСИМУМ
+                "agility": 1,
+                "luck": 5 
+            },
+            "weapon_full": {"name": "Затискання", "lvl": 1},
+            "armor_full": {"name": "Шипований панцир", "lvl": 5},
+            "hp_bonus": 4
+        },
+        "sea_dragon_azure": {
+            "kapy_name": "Морський Дракончик «Лазурит»", 
+            "color": "🐲", 
+            "weight": 15.0,
+            "stats": {
+                "attack": 14,   
+                "defense": 4,
+                "agility": 12,
+                "luck": 18 
+            },
+            "weapon_full": {"name": "Водяний пульс", "lvl": 3},
+            "armor_full": {"name": "Луска дракона", "lvl": 2},
+            "hp_bonus": 2
+        },
         # --- ЕТАП 1: JUA ARCHIPELAGO (ID 1-7) ---
+        # Початкові боси, статки в межах 5-12
         "boss_pelican": {
             "kapy_name": "Пелікан Стед «Ківш»", "color": "🦢",
             "stats": {"attack": 8, "defense": 5, "agility": 5, "luck": 5},
             "weapon_full": {"name": "Весло", "lvl": 1},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 10, "is_boss": True
+            "hp_bonus": 4, "is_boss": True
         },
         "boss_raccoon_trash": {
             "kapy_name": "Єнот Ріккі «Сміттяр»", "color": "🦝",
-            "stats": {"attack": 10, "defense": 8, "agility": 10, "luck": 25},
+            "stats": {"attack": 10, "defense": 8, "agility": 8, "luck": 15}, 
             "weapon_full": {"name": "Йоржик", "lvl": 2},
             "armor_full": {"name": "Діряве відро", "lvl": 1},
-            "hp_bonus": 15, "is_boss": True
+            "hp_bonus": 6, "is_boss": True
         },
         "boss_rat_king": {
             "kapy_name": "Щур Шмиг «Чума»", "color": "🐀",
-            "stats": {"attack": 12, "defense": 5, "agility": 20, "luck": 5},
+            "stats": {"attack": 12, "defense": 5, "agility": 18, "luck": 5},
             "weapon_full": {"name": "Вампірський клинок", "lvl": 1},
             "armor_full": {"name": "Мівіна", "lvl": 1},
-            "hp_bonus": 20, "is_boss": True
+            "hp_bonus": 8, "is_boss": True
         },
         "boss_lynx": {
             "kapy_name": "Рись «Рвивітер»", "color": "🐆",
-            "stats": {"attack": 14, "defense": 6, "agility": 22, "luck": 10},
+            "stats": {"attack": 14, "defense": 6, "agility": 20, "luck": 10},
             "weapon_full": {"name": "Совині кігті", "lvl": 2},
             "armor_full": {"name": "Хутро", "lvl": 2},
-            "hp_bonus": 25, "is_boss": True
+            "hp_bonus": 10, "is_boss": True
         },
         "boss_monkey_king": {
             "kapy_name": "Мавпа Укун «Банан»", "color": "🐒",
             "stats": {"attack": 15, "defense": 10, "agility": 18, "luck": 15},
             "weapon_full": {"name": "Чайний посох", "lvl": 2},
             "armor_full": {"name": "Хутро", "lvl": 3},
-            "hp_bonus": 30, "is_boss": True
+            "hp_bonus": 12, "is_boss": True
         },
         "boss_lion_henry": {
             "kapy_name": "Лев Генрі «Невдача»", "color": "🦁",
-            "stats": {"attack": 18, "defense": 8, "agility": 8, "luck": -5},
+            "stats": {"attack": 18, "defense": 8, "agility": 8, "luck": -10}, # Luck пофікшено (був -5)
             "weapon_full": {"name": "Розсікач драконів", "lvl": 2}, 
             "armor_full": {"name": "Діряве відро", "lvl": 3},
-            "hp_bonus": 40, "is_boss": True
+            "hp_bonus": 14, "is_boss": True
         },
         "boss_alvida": {
             "kapy_name": "Леді Альвіда «Кокос»", "color": "👒",
             "stats": {"attack": 20, "defense": 12, "agility": 10, "luck": 15},
             "weapon_full": {"name": "Молот Мільйонер", "lvl": 3},
             "armor_full": {"name": "Рятувальний круг", "lvl": 3},
-            "hp_bonus": 50, "is_boss": True
+            "hp_bonus": 16, "is_boss": True
         },
 
         # --- ЕТАП 2: UROBOROSTREAM (ID 8-14) ---
+        # Середні боси, статки 15-20, висока спритність
         "boss_snake_lee": {
             "kapy_name": "Вуж Лі «Холодна кров»", "color": "🐍",
-            "stats": {"attack": 16, "defense": 10, "agility": 25, "luck": 12},
+            "stats": {"attack": 16, "defense": 10, "agility": 20, "luck": 12},
             "weapon_full": {"name": "Швабра", "lvl": 4},
             "armor_full": {"name": "Плащ-невидимка", "lvl": 2},
-            "hp_bonus": 45, "is_boss": True
+            "hp_bonus": 18, "is_boss": True
         },
         "boss_otter_river": {
             "kapy_name": "Видра Ваня «Весло»", "color": "🦦",
-            "stats": {"attack": 18, "defense": 12, "agility": 28, "luck": 15},
+            "stats": {"attack": 18, "defense": 12, "agility": 20, "luck": 15},
             "weapon_full": {"name": "Весло", "lvl": 5},
             "armor_full": {"name": "Рятувальний круг", "lvl": 4},
-            "hp_bonus": 55, "is_boss": True
-        },
-        "boss_frog_shinobi": {
-            "kapy_name": "Жаба Джирая «Смертоква»", "color": "🐸",
-            "stats": {"attack": 20, "defense": 10, "agility": 30, "luck": 20},
-            "weapon_full": {"name": "Тенза Зангетсу", "lvl": 4}, 
-            "armor_full": {"name": "Плащ-невидимка", "lvl": 3},
-            "hp_bonus": 50, "is_boss": True
-        },
-        "boss_catfish_gun": {
-            "kapy_name": "Сом Ґан «Безжабрий»", "color": "🐟",
-            "stats": {"attack": 22, "defense": 15, "agility": 12, "luck": 10},
-            "weapon_full": {"name": "Гармата", "lvl": 4},
-            "armor_full": {"name": "Стара бочка", "lvl": 4},
-            "hp_bonus": 65, "is_boss": True
-        },
-        "boss_owl_wise": {
-            "kapy_name": "Сова Софія «Нічна зміна»", "color": "🦉",
-            "stats": {"attack": 20, "defense": 12, "agility": 24, "luck": 25},
-            "weapon_full": {"name": "Совині кігті", "lvl": 5},
-            "armor_full": {"name": "Куртка Коптильника", "lvl": 3},
-            "hp_bonus": 60, "is_boss": True
-        },
-        "boss_fat_cat": {
-            "kapy_name": "Кіт Батон «Хлібчик»", "color": "🐈",
-            "stats": {"attack": 18, "defense": 18, "agility": 5, "luck": 15},
-            "weapon_full": {"name": "Намазка Пікнік", "lvl": 5},
-            "armor_full": {"name": "Стара бочка", "lvl": 5},
-            "hp_bonus": 100, "is_boss": True
-        },
-        "boss_turtle_ancient": {
-            "kapy_name": "Черепаха Тортілла «Панцир»", "color": "🐢",
-            "stats": {"attack": 12, "defense": 20, "agility": 1, "luck": 20},
-            "weapon_full": {"name": "Підзорна труба", "lvl": 3},
-            "armor_full": {"name": "Панцир черепахи", "lvl": 5},
-            "hp_bonus": 120, "is_boss": True
-        },
-
-        # --- ЕТАП 3: STARFJORDS OF WINTER EHWAZ (ID 15-20) ---
-        "boss_hakihaki": {
-            "kapy_name": "Хакіхакі «Однокрилий»", "color": "🦅",
-            "stats": {"attack": 24, "defense": 16, "agility": 22, "luck": 15},
-            "weapon_full": {"name": "Хмарорізи", "lvl": 4},
-            "armor_full": {"name": "Череп ягуара", "lvl": 4},
-            "hp_bonus": 80, "is_boss": True
-        },
-        "boss_husky_kuzan": {
-            "kapy_name": "Хаскі Кузан «Хиба»", "color": "🐺",
-            "stats": {"attack": 22, "defense": 18, "agility": 25, "luck": 25},
-            "weapon_full": {"name": "Гіга сніжинкосюрикен", "lvl": 5},
-            "armor_full": {"name": "Щит Іґґдрасіля", "lvl": 4},
-            "hp_bonus": 90, "is_boss": True
-        },
-        "boss_bear_north": {
-            "kapy_name": "Ведмідь Бернард «Айсберг»", "color": "🐻‍❄️",
-            "stats": {"attack": 25, "defense": 18, "agility": 12, "luck": 15},
-            "weapon_full": {"name": "Сокира Беткапі", "lvl": 5},
-            "armor_full": {"name": "Мамонтовий шарф", "lvl": 4},
-            "hp_bonus": 110, "is_boss": True
+            "hp_bonus": 20, "is_boss": True
         },
         "boss_walrus_captain": {
             "kapy_name": "Морж Морган «Ікло»", "color": "🦭",
-            "stats": {"attack": 22, "defense": 20, "agility": 10, "luck": 20},
+            "stats": {"attack": 20, "defense": 20, "agility": 10, "luck": 20},
             "weapon_full": {"name": "Таран", "lvl": 5},
             "armor_full": {"name": "Стара бочка", "lvl": 5},
-            "hp_bonus": 130, "is_boss": True
+            "hp_bonus": 36, "is_boss": True
         },
         "boss_whale_moby": {
             "kapy_name": "Кит Мобі Кап «Біла Скеля»", "color": "🐋",
-            "stats": {"attack": 25, "defense": 20, "agility": 2, "luck": 20},
+            "stats": {"attack": 20, "defense": 20, "agility": 2, "luck": 20},
             "weapon_full": {"name": "Таран", "lvl": 5},
             "armor_full": {"name": "Скриня Дейві Джонсона", "lvl": 5},
-            "hp_bonus": 180, "is_boss": True
+            "hp_bonus": 38, "is_boss": True
+        },
+        "boss_frog_shinobi": {
+            "kapy_name": "Жаба Джирая «Смертоква»", "color": "🐸",
+            "stats": {"attack": 20, "defense": 10, "agility": 20, "luck": 20},
+            "weapon_full": {"name": "Тенза Зангетсу", "lvl": 4}, 
+            "armor_full": {"name": "Плащ-невидимка", "lvl": 3},
+            "hp_bonus": 22, "is_boss": True # Підняв HP
+        },
+        "boss_catfish_gun": {
+            "kapy_name": "Сом Ґан «Безжабрий»", "color": "🐟",
+            "stats": {"attack": 20, "defense": 15, "agility": 12, "luck": 10},
+            "weapon_full": {"name": "Гармата", "lvl": 4},
+            "armor_full": {"name": "Стара бочка", "lvl": 4},
+            "hp_bonus": 24, "is_boss": True
+        },
+        "boss_fat_cat": {
+            "kapy_name": "Кіт Батон «Веселий»", "color": "🐈",
+            "stats": {"attack": 18, "defense": 18, "agility": 5, "luck": 15},
+            "weapon_full": {"name": "Намазка Пікнік", "lvl": 5},
+            "armor_full": {"name": "Стара бочка", "lvl": 5},
+            "hp_bonus": 28, "is_boss": True # Справжній танк
+        },
+        "boss_turtle_ancient": {
+            "kapy_name": "Черепаха Тортілла «Скала»", "color": "🐢",
+            "stats": {"attack": 12, "defense": 20, "agility": 1, "luck": 20},
+            "weapon_full": {"name": "Підзорна труба", "lvl": 3},
+            "armor_full": {"name": "Панцир черепахи", "lvl": 5},
+            "hp_bonus": 32, "is_boss": True
+        },
+
+        # --- ЕТАП 3: STARFJORDS (ID 15-20) ---
+        # Елітні боси, майже всі статки 18-20
+        "boss_hakihaki": {
+            "kapy_name": "Хакіхакі «Однокрилий»", "color": "🦅",
+            "stats": {"attack": 20, "defense": 16, "agility": 20, "luck": 15},
+            "weapon_full": {"name": "Хмарорізи", "lvl": 4},
+            "armor_full": {"name": "Череп ягуара", "lvl": 4},
+            "hp_bonus": 30, "is_boss": True
+        },
+        "boss_husky_kuzan": {
+            "kapy_name": "Хаскі Кузан «Хиба»", "color": "🐺",
+            "stats": {"attack": 20, "defense": 18, "agility": 20, "luck": 20},
+            "weapon_full": {"name": "Гіга сніжинкосюрикен", "lvl": 5},
+            "armor_full": {"name": "Щит Іґґдрасіля", "lvl": 4},
+            "hp_bonus": 32, "is_boss": True
+        },
+        "boss_bear_north": {
+            "kapy_name": "Ведмідь Бернард «Колумб»", "color": "🐻‍❄️",
+            "stats": {"attack": 20, "defense": 18, "agility": 12, "luck": 15},
+            "weapon_full": {"name": "Сокира Беткапі", "lvl": 5},
+            "armor_full": {"name": "Мамонтовий шарф", "lvl": 4},
+            "hp_bonus": 34, "is_boss": True
+        },
+        "boss_owl_wise": {
+            "kapy_name": "Сова Софія «Ніжна»", "color": "🦉",
+            "stats": {"attack": 20, "defense": 12, "agility": 20, "luck": 20},
+            "weapon_full": {"name": "Совині кігті", "lvl": 5},
+            "armor_full": {"name": "Куртка Коптильника", "lvl": 3},
+            "hp_bonus": 26, "is_boss": True
         },
         "boss_penguin_rich": {
-            "kapy_name": "Пінгвін Пін «Монополіст»", "color": "🐧",
-            "stats": {"attack": 25, "defense": 18, "agility": 28, "luck": 30},
+            "kapy_name": "Пінгвін Пін «h#2G1!oS%^?»", "color": "🐧",
+            "stats": {"attack": 20, "defense": 18, "agility": 20, "luck": 20},
             "weapon_full": {"name": "Молот Мільйонер", "lvl": 5},
             "armor_full": {"name": "Мітка гетьмана", "lvl": 5},
-            "hp_bonus": 140, "is_boss": True
+            "hp_bonus": 40, "is_boss": True
         },
-        # SECRET BOSSES
+
+        # --- SECRET BOSSES ---
         "secret_shark": {
             "kapy_name": "Акула Селахія", "color": "🦈",
-            "stats": {"attack": 35, "defense": 12, "agility": 12, "luck": 15},
+            "stats": {"attack": 20, "defense": 15, "agility": 15, "luck": 15},
             "weapon_full": {"name": "Зуби акули", "lvl": 0},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 50, "is_boss": True, "is_secret": True
-        },
+            "hp_bonus": 8, "is_boss": True, "is_secret": True
+        }
     }
 
 BOSS_ID_MAP = {
     # --- JUA ARCHIPELAGO (Стартова зона: ID 1-7) ---
-    1: "boss_pelican",       # Введення в механіку
-    2: "boss_raccoon_trash", # Перший тест на удачу (Luck)
-    3: "boss_rat_king",      # Перевірка на спритність (Agility)
-    4: "boss_lynx",          # Швидкі атаки
+    1: "boss_pelican",  
+    2: "boss_lynx",
+    3: "boss_raccoon_trash", # Перший тест на удачу (Luck)
+    4: "boss_rat_king",      # Перевірка на спритність (Agility)
     5: "boss_monkey_king",   # Збалансований боєць
     6: "boss_lion_henry",    # Сильний удар, але косий
     7: "boss_alvida",        # Фінальний бос архіпелагу
@@ -729,10 +826,222 @@ BOSS_REWARDS = {
     "boss_turtle_ancient":{"weight": 65.0, "exp": 1100},
 
     # --- STARFJORDS OF WINTER EHWAZ (ID 15-20) ---
-    "boss_hakihaki":      {"weight": 80.0,  "exp": 1500},
-    "boss_husky_kuzan":   {"weight": 100.0, "exp": 2200},
+    "boss_husky_kuzan":   {"weight": 100.0, "exp": 1500},
+    "boss_hakihaki":      {"weight": 100.0,  "exp": 2200},
     "boss_bear_north":    {"weight": 130.0, "exp": 3500},
     "boss_walrus_captain":{"weight": 170.0, "exp": 5000},
     "boss_whale_moby":    {"weight": 220.0, "exp": 8000},
     "boss_penguin_rich":  {"weight": 350.0, "exp": 15000}
+}
+
+AZTEC_TOTEM_NAMES = [
+    "Акамапічтлі", "Ауіцотль", "Ашайакатль", "Атль", "Амошлі", "Ауіатеотль", 
+    "Чимальпопока", "Сітлалі", "Коатль", "Куаутемок", "Сітлальміна", "Коа Sh", 
+    "Ітцкоатль", "Іланкуеітль", "Уіціліуітль", "Макуільшочітль", "Монтесума", 
+    "Нецауалькойотль", "Олін", "Папантцін", "Тезозомок", "Тізок", "Тлакаелель", 
+    "Тлалок", "Тлатоані", "Тоші", "Шочітль", "Яоотль", "Зіланен", "Акашлі", 
+    "Амітль", "Атлатонін", "Чимальма", "Чікомекоатль", "Сітлалік", "Коаш", 
+    "Еекатль", "Уіцілін", "Ітцлі", "Іцтлаколіукі", "Ітцпапалотль", "Куаутлі", 
+    "Маліналі", "Мецтлі", "Мішкоатль", "Нанауатцін", "Нецауальпілі", "Оцелотль", 
+    "Кетцалькоатль", "Теопічі", "Тепейолотль", "Тлальтекутлі", "Тонатіу", 
+    "Тоці", "Шолотль", "Яоцін", "Зіпакна", "Акатль", "Чальчіутлікуе", "Чімаль", 
+    "Койолшокі", "Ейекатль", "Ітцкаллі", "Іштлільшочітль", "Кецаль", "Монтесума", 
+    "Опочтлі", "Патлані", "Текатліпока", "Теніч", "Тлакопан", "Тланіш", 
+    "Тланіштлі", "Тлацотль", "Шочіпілі", "Яотль", "Золлі", "Атоток", "Чималлі", 
+    "Коатлікуе", "Куаукоатль", "Іланкуе", "Ітцко", "Меклі", "Міктлан", 
+    "Олінтеотль", "Пайалі", "Попока", "Тейо", "Теноч", "Тлаїш", "Тлаллок", 
+    "Тланел", "Точтлі", "Шіпе", "Шіукоатль", "Шочікецаль", "Йоалі", "Йольтль", "Зеуа"
+]
+
+SOCIAL_TUTS = {
+    "challenge": (
+        "⚔️ ДУЕЛЬ\n"
+        "────────────────────\n"
+        "Кинь виклик іншому пірату! Переможець отримує золото та славу.\n\n"
+        "Стати в Таверні — це твій шанс довести, що ти найкрутіша капібара на морі!"
+    ),
+    "date_request": (
+        "💞 ПОБАЧЕННЯ\n"
+        "────────────────────\n"
+        "Відправ запит на спільний відпочинок. Це зміцнює стосунки між капібарами.\n\n"
+        "Хто знає, можливо це початок великої любові?"
+    ),
+    "gift_to": (
+        "🎁 ПОДАРУНОК\n"
+        "────────────────────\n"
+        "Хочеш завести друзів? Відправ предмет зі свого трюму іншому гравцю.\n\n"
+        "Щедрість — риса справжніх капітанів!"
+    ),
+    "steal_from": (
+        "🧤 КРАДІЖКА\n"
+        "────────────────────\n"
+        "Спробуй поцупити трохи золота або ресурсів. Але будь обережним!\n\n"
+        "Якщо тебе впіймають, твоя репутація та гаманець постраждають."
+    ),
+    "ram": (
+        "🪵 ТАРАН\n"
+        "────────────────────\n"
+        "Використовуй міць своєї капібари, щоб протаранити суперника!\n\n"
+        "Це особлива дія, яка може приголомшити опонента перед боєм."
+    ),
+    "inspect": (
+        "🔍 ІНСПЕКЦІЯ\n"
+        "────────────────────\n"
+        "Роздивись спорядження та статки іншого гравця.\n\n"
+        "Знай ворога в обличчя: перевір його атаку та захист перед нападом!"
+    )
+}
+
+STEPS_DATA = {
+    1: (
+        "🐾 1: ЖИТТЯ\n"
+        "───────────────\n"
+        "❤️ ХП — це твоє здоров'я. \n"
+        "🍏 Ситість та 🧼 Гігієна — твій стан. \n\n"
+        "Слідкуй, щоб вони не падали до нуля!",
+        2
+    ),
+    2: (
+        "❤️ 2: ЗДОРОВ'Я\n"
+        "──────────────\n"
+        "Якщо Ситість або Гігієна стануть 0, ти почнеш втрачати ❤️ ХП щогодини.\n\n"
+        "Коли здоров'я закінчиться — герой загине!",
+        3
+    ),
+    3: (
+        "⚡️ 3: ЕНЕРГІЯ\n"
+        "───────────────\n"
+        "Кожна дія витрачає Енергію:\n"
+        "• 🗺 Рух по карті: 1 ⚡️\n"
+        "• ⚔️ Бій або Крадіжка: 5 ⚡️\n"
+        "• 👹 Боси: 10-15 ⚡️",
+        4
+    ),
+    4: (
+        "💤 4: ВІДНОВЛЕННЯ\n"
+        "───────────────\n"
+        "Щоб відновити ⚡️ Енергію:\n"
+        "• Використовуй кнопку 💤 Сон\n"
+        "• Або просто почекай деякий час\n\n"
+        "Відпочивай вчасно!",
+        5
+    ),
+    5: (
+        "🗡 5: ЕКІПІРУВАННЯ\n"
+        "───────────────\n"
+        "Твоя сила залежить від предметів:\n"
+        "🗡 Зброя дає Атаку.\n"
+        "🛡 Щит дає Захист.\n\n"
+        "Змінити спорядження можна в 'Характеристиках'.",
+        6
+    ),
+    6: (
+        "📊 6: ШАНСИ В БОЮ\n"
+        "──────────────\n"
+        "У 'Характеристиках' видно твої шанси на:\n"
+        "• 💥 Крит та 💨 Ухилення\n"
+        "• 🛡 Блок щитом\n"
+        "• ✨ Магічні ефекти",
+        7
+    ),
+    7: (
+        "❇️ 7: КАПІ-ДЗЕН\n"
+        "──────────────\n"
+        "Отримуй ❇️ Дзен-очки за:\n"
+        "• Нові рівні 🌟\n"
+        "• Дослідження туману на мапі 🗺\n\n"
+        "Це валюта твого прогресу!",
+        8
+    ),
+    8: (
+        "🪷 8: МЕДИТАЦІЯ\n"
+        "───────────────\n"
+        "Витрачай ❇️ Дзен у Медитації на:\n"
+        "• ATK/DEF — Сила та Захист\n"
+        "• AGI/LUCK — Швидкість та Удача\n\n"
+        "Це твій шлях до сили!",
+        0
+    )
+}
+
+INVENTORY_TUTS = {
+    "food": (
+        "🍎 ПРОВІЗІЯ\n"
+        "────────────────────\n"
+        "Тут твоя їжа. Натискай на фрукт, щоб з'їсти його.\n\n"
+        "Це відновлює Ситість (🍏). Якщо вона на нулі — ти втрачатимеш ХП!"
+    ),
+    "potions": (
+        "🧪 ЗІЛЛЯ\n"
+        "────────────────────\n"
+        "Тут твої магічні відвари. Вони дають тимчасові бонуси до статів або миттєве лікування.\n\n"
+        "Використовуй їх перед важким боєм!"
+    ),
+    "items": (
+        "⚔️ РЕЧІ ТА АМУНІЦІЯ\n"
+        "────────────────────\n"
+        "Твоя зброя, щити та артефакти.\n\n"
+        "Натисни на назву, щоб побачити статки. ✅ — предмет екіпірований. Використовуй 'Більше' для масового продажу мотлоху."
+    ),
+    "loot": (
+        "🧳 ЛУТ ТА СКРИНІ\n"
+        "────────────────────\n"
+        "Тут лежать квитки в Казино (🎟️), ключі та скрині.\n\n"
+        "Якщо маєш скриню та ключ — тисни 'Відкрити', щоб отримати випадкову нагороду!"
+    ),
+    "maps": (
+        "🗺 КАРТИ ТА КООРДИНАТИ\n"
+        "────────────────────\n"
+        "Тут списки знайдених карт скарбів та лігов босів.\n\n"
+        "Запам'ятовуй координати та вирушай туди через меню подорожей, щоб знайти скарб!"
+    ),
+    "materials": (
+        "🌱 РЕСУРСИ\n"
+        "────────────────────\n"
+        "Трави, руда та інгредієнти для крафту.\n\n"
+        "Вони потрібні для створення зілль у кузні або покращення твого спорядження."
+    )
+}
+
+RACES = {
+    "capybara": {
+        "name": "Капібара",
+        "emoji": "🦫",
+        "desc": "Майстер дзену. Велика витривалість та багато здоров'я. Ідеально для тих, хто любить чілити та стабільно рости.",
+        "stats_text": "❤️ HP: 8 | 🛡️ DEF: 10",
+        "ability_name": "🪷 Дзен-спокій",
+        "ability_desc": "Шанс 25% після отримання шкоди активувати стан дзену на 2 раунди, що дає +15% до блоку.",
+        "bonus_hp": 8,
+        "bonus_stats": {"attack": 0, "defense": 10, "agility": 0, "luck": 0}
+    },
+    "racoon": {
+        "name": "Єнот",
+        "emoji": "🦝",
+        "desc": "Хитрий мародер. Сила дозволить виживати у будь-яких умовах. Любить блискучі речі.",
+        "stats_text": "❤️ HP: 6 | ⚔️ ATK: 10",
+        "ability_name": "🎰 Азарт погоні",
+        "ability_desc": "Якщо HP менше ніж у ворога, показник вдачі (LUCK) подвоюється (x2).",
+        "bonus_hp": 6,
+        "bonus_stats": {"attack": 10, "defense": 0, "agility": 0, "luck": 0}
+    },
+    "cat": {
+        "name": "Кіт",
+        "emoji": "🐈",
+        "desc": "Спритний мисливець. Висока вдача. Б'є рідко, але від його лапок важко втекти.",
+        "stats_text": "❤️ HP: 6 | 🍀 LUCK: 10",
+        "ability_name": "⚡ Котячі рефлекси",
+        "ability_desc": "Після успішного ухилення наступний удар отримує +20% до шансу критичної шкоди.",
+        "bonus_hp": 6,
+        "bonus_stats": {"attack": 0, "defense": 0, "agility": 0, "luck": 10}
+    },
+    "bat": {
+        "name": "Кажан",
+        "emoji": "🦇",
+        "desc": "Нічний жах. Дуже висока швидкість, але тендітне тіло. Справжній 'скляний канон' для ризикових піратів.",
+        "stats_text": "❤️ HP: 4 | 💨 AGI: 10",
+        "ability_name": "🔊 Сонар",
+        "ability_desc": "Постійно ігнорує 50% шансу на блок у супротивника.",
+        "bonus_hp": 4,
+        "bonus_stats": {"attack": 0, "defense": 0, "agility": 10, "luck": 0}
+    }
 }

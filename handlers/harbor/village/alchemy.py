@@ -1,9 +1,12 @@
 import json
 import asyncio
+import random
 from aiogram import types, F, Router
 from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import load_game_data, DISPLAY_NAMES, IMAGES_URLS
+from utils.helpers import get_main_menu_chunk
+from handlers.harbor.village.forge import apply_pagination
 
 router = Router()
 
@@ -16,43 +19,84 @@ def find_item_in_inventory(inv, item_key):
             return category, cat_dict[item_key]
     return None, 0
 
-@router.callback_query(F.data == "open_alchemy")
+@router.callback_query(F.data.startswith("open_alchemy"))
 async def process_open_alchemy(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
+    
+    # 1. Parse page from callback data
+    # Standard: "open_alchemy", Navigation: "open_alchemy:1"
+    current_page = 0
+    if ":" in callback.data:
+        try:
+            current_page = int(callback.data.split(":")[1])
+        except ValueError:
+            pass
+
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", user_id)
-        if not row: return
-        
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-
-        builder = InlineKeyboardBuilder()
-        for r_id, r_data in RECIPES.items():
-            can_brew = True
-            for ing, req_count in r_data.get('ingredients', {}).items():
-                _, owned = find_item_in_inventory(inv, ing)
-                if owned < req_count:
-                    can_brew = False
-                    break
-            
-            prefix = "🟢" if can_brew else "🔴"
-            builder.button(
-                text=f"{prefix} {r_data.get('emoji', '🧪')} {r_data.get('name')}",
-                callback_data=f"brew:{r_id}"
-            )
-
-        builder.row(types.InlineKeyboardButton(text="📜 Всі рецепти", callback_data="all_recipes"))
-        builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_village"))
-        builder.adjust(1)
-
-        text = (
-            "🧪 <b>Лавка Лінивця Омо</b>\n\n"
-            "🦥 <i>«П-р-и-в-і-т... Щ-о...\nс-ь-о-г-о-д-н-і в-а-р-и-т-и-м-е-м-о?»</i>"
+        user_info = await conn.fetchrow(
+            """
+            SELECT c.inventory, u.quicklinks 
+            FROM capybaras c 
+            JOIN users u ON c.owner_id = u.tg_id 
+            WHERE c.owner_id = $1
+            """, user_id
         )
         
+        if not user_info: return
+        
+        inv = json.loads(user_info['inventory']) if isinstance(user_info['inventory'], str) else user_info['inventory']
+        show_quicklinks = user_info['quicklinks'] if user_info['quicklinks'] is not None else True
+
+    # 2. Prepare the list of all recipe items for pagination
+    recipe_items = []
+    for r_id, r_data in RECIPES.items():
+        can_brew = True
+        for ing, req_count in r_data.get('ingredients', {}).items():
+            _, owned = find_item_in_inventory(inv, ing)
+            if owned < req_count:
+                can_brew = False
+                break
+        
+        prefix = "🟢" if can_brew else "🔴"
+        btn_text = f"{prefix} {r_data.get('emoji', '🧪')} {r_data.get('name')}"
+        # We store (suffix, text) as expected by your apply_pagination function
+        recipe_items.append((r_id, btn_text))
+
+    builder = InlineKeyboardBuilder()
+
+    # 3. Apply pagination (Show 5 recipes per page for example)
+    # Note: We use "brew" as callback_prefix for clicks, 
+    # and "open_alchemy" as nav_prefix for switching pages.
+    apply_pagination(
+        builder=builder,
+        all_items=recipe_items,
+        page=current_page,
+        per_page=5, 
+        callback_prefix="brew",
+        nav_prefix="open_alchemy"
+    )
+
+    # 4. Standard menu buttons
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_village"))
+    
+    # 5. Quicklinks (Note: your get_main_menu_chunk uses ":p" suffix, keep it separate)
+    if show_quicklinks:
+        get_main_menu_chunk(builder, page=0, callback_prefix="open_alchemy")
+
+    text = (
+        "🧪 <b>Лавка Лінивця Омо</b>\n\n"
+        "🦥 <i>«П-р-и-в-і-т... Щ-о...\nс-ь-о-г-о-д-н-і в-а-р-и-т-и-м-е-м-о?»</i>"
+    )
+    
+    try:
         await callback.message.edit_media(
             media=InputMediaPhoto(media=IMAGES_URLS["alchemy"], caption=text, parse_mode="HTML"),
             reply_markup=builder.as_markup()
         )
+    except Exception:
+        await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+    
+    await callback.answer()
 
 @router.callback_query(F.data.startswith("brew:"))
 async def preview_recipe(callback: types.CallbackQuery, db_pool):
@@ -124,61 +168,144 @@ async def process_drink_potion(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     recipe = RECIPES.get(potion_id)
     
-    if not recipe: return
+    if not recipe: 
+        return await callback.answer("❌ Рецепт не знайдено!", show_alert=True)
     
     async with db_pool.acquire() as conn:
+        # Отримуємо повні дані персонажа
         row = await conn.fetchrow("""
-            SELECT inventory, stamina, atk, def, agi, luck, zen
+            SELECT inventory, stamina, max_stamina, max_hp, atk, def, agi, luck, zen, race, state
             FROM capybaras WHERE owner_id = $1
         """, user_id)
         
         if not row: return
 
+        # Парсимо JSON поля
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        stamina, max_stamina, zen = row['stamina'], 100, row['zen']
+        state = json.loads(row['state']) if isinstance(row['state'], str) else (row['state'] or {})
         
+        stamina = row['stamina']
+        max_stamina = row["max_stamina"]
+        zen = row['zen']
+        
+        # Перевірка наявності зілля в інвентарі
         potions = inv.get("potions", {})
         if potions.get(potion_id, 0) <= 0:
             return await callback.answer("❌ Пляшка порожня!", show_alert=True)
         
-        alert_text = "Смак дивний."
+        alert_text = "Смак дивний..."
         update_fields = {}
+        effect = recipe.get("effect")
 
-        if "plus_stamina" in recipe:
-            stamina = min(stamina + recipe["plus_stamina"], max_stamina)
+        current_hp = row['max_hp']
+        # --- ЛОГІКА ЕФЕКТІВ ---
+        if effect == "plus_max_hp":
+            new_hp = current_hp + 1
+            update_fields["max_hp"] = new_hp
+            alert_text = f"🧬 Древня життєва сила! Ваше здоров'я назавжди збільшено: {current_hp*2} ➔ {new_hp*2} ❤️HP"
+
+        # 1. Ефект збільшення МАКСИМАЛЬНОЇ енергії (Тропічний Пунш)
+        elif effect == "increase_stamina":
+            # Встановлюємо ліміт (наприклад, не більше 300)
+            STAMINA_CAP = 300
+            if max_stamina < STAMINA_CAP:
+                new_max = min(max_stamina + 20, STAMINA_CAP)
+                update_fields["max_stamina"] = new_max
+                max_stamina = new_max # Оновлюємо локальну змінну для розрахунку поточної енергії
+                alert_text = f"🍹 Тропічний драйв! Макс. ліміт енергії тепер {new_max}⚡"
+            else:
+                alert_text = "🍹 Ви вже на піку енергійності! Макс. ліміт не змінено."
+
+            # Навіть якщо ліміт не зріс, пунш все одно відновлює поточну стаміну
+            plus = recipe.get("plus_stamina", 0)
+            if plus > 0:
+                stamina = min(stamina + plus, max_stamina)
+                update_fields["stamina"] = stamina
+                alert_text += f"\n🔋 Відновлено: +{plus} енергії."
+
+        # 2. Звичайне відновлення стаміни (Чай, Мед тощо)
+        elif "plus_stamina" in recipe:
+            plus = recipe["plus_stamina"]
+            stamina = min(stamina + plus, max_stamina)
             update_fields["stamina"] = stamina
-            alert_text = f"⚡ Енергію відновлено на +{recipe['plus_stamina']}!"
+            alert_text = f"⚡ Енергію відновлено на +{plus}!"
 
-        elif recipe.get("effect") == "stats_reset":
+        # 3. Скидання характеристик
+        elif effect == "stats_reset":
             recovered = (
-                max(0, row['atk'] - 1) + 
-                max(0, row['def'] - 0) + 
-                max(0, row['agi'] - 1) + 
-                max(0, row['luck'] - 0)
+                max(0, row['atk']) + 
+                max(0, row['def']) + 
+                max(0, row['agi']) + 
+                max(0, row['luck'])
             )
-            update_fields["atk"] = 1
-            update_fields["def"] = 0
-            update_fields["agi"] = 1
-            update_fields["luck"] = 0
-            update_fields["zen"] = zen + recovered
-            alert_text = f"🌀 Характеристики скинуто! Повернуто {recovered} очок."
+            update_fields.update({
+                "atk": 0, "def": 0, "agi": 0, "luck": 0, 
+                "zen": zen + recovered
+            })
+            alert_text = f"🌀 Характеристики скинуто! Повернуто {recovered} очок Zen."
 
+        # 4. Ефект Метаморфози (Зміна раси)
+        elif effect == "metamorphosis":
+            race_config = {
+                "capybara": {"atk": 0, "agi": 0, "def": 10, "luck": 0, "name": "Капібара"},
+                "raccoon":  {"atk": 10, "agi": 0, "def": 0, "luck": 0, "name": "Єнот"},
+                "cat":      {"atk": 0, "agi": 0, "def": 0, "luck": 10, "name": "Кіт"},
+                "bat":      {"atk": 0, "agi": 10, "def": 0, "luck": 0, "name": "Кажан"}
+            }
+            
+            current_race = row['race']
+            available_races = [r for r in race_config.keys() if r != current_race]
+            new_race = random.choice(available_races)
+            stats_cfg = race_config[new_race]
+
+            # Повертаємо поточні вкладені очки (мінус база 10)
+            recovered = (
+                max(0, row['atk']) + 
+                max(0, row['def']) + 
+                max(0, row['agi']) + 
+                max(0, row['luck']) - 10
+            )
+
+            update_fields.update({
+                "race": new_race,
+                "atk": stats_cfg["atk"],
+                "def": stats_cfg["def"],
+                "agi": stats_cfg["agi"],
+                "luck": stats_cfg["luck"],
+                "zen": zen + recovered
+            })
+            alert_text = f"🎭 Метаморфоза: Ви тепер {stats_cfg['name']}!\n🌀 {recovered} очок Zen повернуто."
+
+        # 5. Ефект Sting (Адреналін)
+        elif effect == "sting":
+            state["has_sting_effect"] = True
+            update_fields["state"] = json.dumps(state, ensure_ascii=False)
+            alert_text = "🐝 Жало спрацювало! +20% до шансу адреналіну в наступному бою."
+
+        # --- ОНОВЛЕННЯ ІНВЕНТАРЮ ---
         potions[potion_id] -= 1
-        if potions[potion_id] <= 0: del potions[potion_id]
+        if potions[potion_id] <= 0:
+            del potions[potion_id]
+        
         inv["potions"] = potions
         update_fields["inventory"] = json.dumps(inv, ensure_ascii=False)
 
+        # --- ВИКОНАННЯ UPDATE В БД ---
         if update_fields:
             keys = list(update_fields.keys())
             values = list(update_fields.values())
-            set_clause = ", ".join([f"{key} = ${i+1}" for i, key in enumerate(keys)])
+            # Створюємо рядок "key1 = $1, key2 = $2..."
+            set_clause = ", ".join([f'"{key}" = ${i+1}' for i, key in enumerate(keys)])
             query = f"UPDATE capybaras SET {set_clause} WHERE owner_id = ${len(keys)+1}"
+            
             await conn.execute(query, *values, user_id)
 
+    # Відправляємо фідбек
     await callback.answer(alert_text, show_alert=True)
     
+    # Оновлюємо сторінку інвентарю
     try:
         from handlers.hold.inventory.navigator import render_inventory_page 
-        await render_inventory_page(callback.message, user_id, page="potions", is_callback=True)
-    except:
+        await render_inventory_page(callback.message, user_id, db_pool, page="potions", is_callback=True)
+    except Exception:
         await callback.message.delete()

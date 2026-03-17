@@ -2,23 +2,38 @@ import json
 import asyncio
 import random
 import datetime as dt
+import uuid
 from aiogram import types, F, Router
 from .map_assets import *
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
 from .map_keyboard import get_map_keyboard, get_viewer_keyboard
 from handlers.adventures.quests.quests import start_branching_quest
 from core.combat.battles import run_battle_logic
-from config import BOSS_ID_MAP
+from config import BOSS_ID_MAP, AZTEC_TOTEM_NAMES
+from utils.helpers import get_main_menu_chunk, ensure_dict
+from aiogram.fsm.state import State, StatesGroup
+
+class MapStates(StatesGroup):
+    waiting_for_coords = State()
 
 router = Router()
 
-@router.callback_query(F.data == "open_map")
+@router.callback_query(F.data.startswith("open_map"))
 async def render_map(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
+    
+    menu_page = 0
+    if ":p" in callback.data:
+        try: menu_page = int(callback.data.split(":p")[1])
+        except: menu_page = 0
+
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT stamina, navigation, state, inventory, cooldowns 
-            FROM capybaras WHERE owner_id = $1
+            SELECT c.stamina, c.navigation, c.state, c.inventory, c.cooldowns, u.quicklinks 
+            FROM capybaras c 
+            JOIN users u ON c.owner_id = u.tg_id
+            WHERE c.owner_id = $1
         """, uid)
         
         if not row: return
@@ -28,6 +43,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         inv = json.loads(row['inventory'])
         cooldowns = json.loads(row['cooldowns']) if row['cooldowns'] else {}
         stamina = row['stamina']
+        show_quicklinks = row['quicklinks'] if row['quicklinks'] is not None else True
 
         last_refresh = cooldowns.get("flowers_refresh")
         can_refresh = not last_refresh or dt.datetime.fromisoformat(last_refresh) < dt.datetime.now() - dt.timedelta(days=1)
@@ -74,16 +90,31 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         )
         
         biome = get_biome_name(py, MAP_HEIGHT)
-        text = (f"📍 <b>Карта ({px}, {py})</b> | {get_stamina_icons(stamina)}\n"
+        text = (f"📍 <b>Карта ({px}, {py})</b> | {get_stamina_icons(stamina)} | 🌍 {round((len(discovered)/22500)*100, 2)}% ({len(discovered)%300}/300)\n"
                 f"🧭 Біом: {biome['emoji']} {biome['name']}\n🔋 Енергія: {stamina}/100\n\n{map_display}")
         
         is_on_tree = f"{px},{py}" in nav.get("trees", {})
         
-        await callback.message.edit_text(
-            text, 
-            reply_markup=get_map_keyboard(px, py, mode, is_on_tree, inv, nav),
-            parse_mode="HTML"
-        )
+        kb = get_map_keyboard(px, py, mode, is_on_tree, inv, nav)
+        builder = InlineKeyboardBuilder.from_markup(kb)
+        
+        if show_quicklinks:
+            get_main_menu_chunk(builder, page=menu_page, callback_prefix="open_map")
+
+        if callback.message.photo or callback.message.video:
+            try: await callback.message.delete()
+            except: pass
+            await callback.message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        else:
+            try:
+                await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            except Exception:
+                await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+        
+        await callback.answer()
+
+def has_jellyfish_lamp(inv_equipment):
+    return any(item.get("name") == "Медузна Лампа" for item in inv_equipment.values())
 
 @router.callback_query(F.data.startswith("mv:"))
 async def handle_move(callback: types.CallbackQuery, db_pool):
@@ -99,13 +130,15 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         return await callback.answer("Там лише безодня... ⛔", show_alert=True)
 
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT stamina, zen, navigation, inventory, state FROM capybaras WHERE owner_id = $1", uid)
+        row = await conn.fetchrow("SELECT stamina, zen, navigation, inventory, state, lvl FROM capybaras WHERE owner_id = $1", uid)
         
         stamina = row['stamina']
+        capy_lvl = row['lvl']
         if stamina < 1: return await callback.answer("Ти занадто втомився... ⚡", show_alert=True)
 
         nav = json.loads(row['navigation'])
         inv = json.loads(row['inventory'])
+        equipment = inv.get("equipment", {})
         state = json.loads(row['state'])
         zen = row['zen']
 
@@ -113,9 +146,35 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         event_roll = random.random()
         coord_key = f"{nx},{ny}"
         loot_msg = ""
-        
-        if target_tile == "꩜":
-            if event_roll < 0.01:
+
+        danger_mod = WATER_TILES_DANGER.get(target_tile, 0.1)
+        biome = get_biome_name(ny)
+        if biome["id"] == 2 and capy_lvl < MIN_LVL_FOR_UROBOROSTREAM:
+            return await callback.answer(
+                f"🌊 ПОПЕРЕДЖЕННЯ: {biome['name']} занадто небезпечний!\n"
+                f"Твій рівень: {capy_lvl}. Потрібен: {MIN_LVL_FOR_UROBOROSTREAM} ⚠️", 
+                show_alert=True
+            )
+        if biome["id"] == 3 and capy_lvl < MIN_LVL_FOR_STARFJORDS:
+            return await callback.answer(
+                f"❄️ ПОПЕРЕДЖЕННЯ: {biome['name']} занадто небезпечний!\n"
+                f"Твій рівень: {capy_lvl}. Потрібен: {MIN_LVL_FOR_STARFJORDS} ⚠️", 
+                show_alert=True
+            )
+
+        if target_tile in WATER_TILES and biome["id"] == 1:
+            if event_roll < 0.025:
+                await callback.answer("🌊 Щось наближається здалека... Це мародери! На човен напали!", show_alert=True)
+                
+                nav.update({"x": nx, "y": ny}) 
+                await conn.execute("UPDATE capybaras SET navigation=$1, stamina=stamina-1 WHERE owner_id=$2", 
+                                   json.dumps(nav), uid)
+                
+                return await run_battle_logic(callback, db_pool, bot_type="otter_vandal")
+
+
+        if target_tile in WATER_TILES and biome["id"] == 2:
+            if event_roll < 0.001 * danger_mod:
                 await callback.answer("💀 ВОДА ЗАПОВНЮЄ ЛЕГЕНІ... ТИ ВТОПИВСЯ!", show_alert=True)
                 
                 death_data = await handle_death(uid, db_pool, death_reason="Затягнута у безодню 🌊")
@@ -128,14 +187,16 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
                 
                 return 
 
-            elif event_roll < 0.31:
+            elif event_roll < 0.31 * danger_mod:
                 await callback.answer("🌊 ВИР ЗАТЯГУЄ ТЕБЕ НА ГЛИБИНУ!", show_alert=True)
                 
                 nav.update({"x": nx, "y": ny}) 
                 await conn.execute("UPDATE capybaras SET navigation=$1, stamina=stamina-1 WHERE owner_id=$2", 
                                    json.dumps(nav), uid)
                 
-                return await run_battle_logic(callback, db_pool, bot_type="mantis_shrimp")
+
+                npc_pool = ["sea_dragon_azure", "mantis_shrimp", "bastion_shell", "star_ninja_hitode"]
+                return await run_battle_logic(callback, db_pool, bot_type=random.choice(npc_pool))
 
         flowers = nav.get("flowers", {})
         if coord_key in flowers:
@@ -161,10 +222,20 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
         old_total = len(nav.get("discovered", []))
 
+        view_radius_x = 2
+        view_radius_y = 1
+        
+        if has_jellyfish_lamp(equipment):
+            view_radius_x += 1
+            view_radius_y += 1
+
         disc_set = set(nav.get("discovered", []))
-        for dy in range(-1, 2):
-            for dx in range(-2, 3):
-                disc_set.add(f"{nx+dx},{ny+dy}")
+        
+        for dy in range(-view_radius_y, view_radius_y + 1):
+            for dx in range(-view_radius_x, view_radius_x + 1):
+                tx, ty = nx + dx, ny + dy
+                if 0 <= tx < MAP_WIDTH and 0 <= ty < MAP_HEIGHT:
+                    disc_set.add(f"{tx},{ty}")
 
         new_total = len(disc_set)
 
@@ -214,7 +285,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         map_display = render_pov(nx, ny, disc_set, new_mode, inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), nav.get("totems", []))
         biome = get_biome_name(ny)
 
-        text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)} | 🌍 {(new_total/22500)*100}% ({new_total%300}/300)\n"
+        text = (f"📍 <b>({nx}, {ny})</b> | {get_stamina_icons(stamina-1)} | 🌍 {round((new_total/22500)*100, 2)}% ({new_total%300}/300)\n"
                 f"🧭 Біом: {biome['emoji']} {biome['name']} | ✨ Дзен: {zen}\n\n"
                 f"{map_display}")
         
@@ -229,10 +300,13 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
 @router.callback_query(F.data.startswith("view:"))
 async def handle_world_viewer(callback: types.CallbackQuery, db_pool):
-    _, vx, vy = callback.data.split(":")
-    vx, vy = int(vx), int(vy)
-    uid = callback.from_user.id
+    params = callback.data.split(":")
+    vx, vy = int(params[1]), int(params[2])
+    # Ширина вікна (window width), за замовчуванням 20
+    w = int(params[3]) if len(params) > 3 else 20
+    h = w // 2 # Зберігаємо пропорцію 2:1 для текстових символів
     
+    uid = callback.from_user.id
     vx = max(0, min(MAP_WIDTH - 1, vx))
     vy = max(0, min(MAP_HEIGHT - 1, vy))
     
@@ -243,11 +317,11 @@ async def handle_world_viewer(callback: types.CallbackQuery, db_pool):
         nav = row['navigation'] if isinstance(row['navigation'], dict) else json.loads(row['navigation'])
         discovered = nav.get("discovered", [])
         
-        display = render_world_viewer(vx, vy, discovered)
+        display = render_world_viewer(vx, vy, discovered, w, h)
                 
         await callback.message.edit_text(
-            text=f"{display}\n<i>💡 Переміщення в огляді не витрачає енергію. Ви бачите лише розвідані ділянки.</i>",
-            reply_markup=get_viewer_keyboard(vx, vy),
+            text=f"{display}\n<i>🔭 Масштаб: {w}x{h}. Переміщення не витрачає енергію.</i>",
+            reply_markup=get_viewer_keyboard(vx, vy, w),
             parse_mode="HTML"
         )
 
@@ -305,10 +379,13 @@ async def handle_place_totem(callback: types.CallbackQuery, db_pool):
         loot["teleport_totem"] -= 1
         if loot["teleport_totem"] <= 0: del loot["teleport_totem"]
         
+        existing_names = [t['name'] for t in totems]
+        available_names = [n for n in AZTEC_TOTEM_NAMES if n not in existing_names]
+        chosen_name = random.choice(available_names if available_names else AZTEC_TOTEM_NAMES)
         new_totem = {
             "id": int(dt.datetime.now().timestamp()),
             "x": nav['x'], "y": nav['y'],
-            "name": f"Тотем {len(totems) + 1}"
+            "name": f"{chosen_name}"
         }
         totems.append(new_totem)
         
@@ -408,3 +485,245 @@ async def handle_pickup_totem(callback: types.CallbackQuery, db_pool):
         mode = "ship" if row.get("state") and json.loads(row["state"]).get("mode") == "ship" else "capy"
         
         await render_map(callback, db_pool)
+
+@router.callback_query(F.data.startswith("bury_treasure:"))
+async def handle_bury_treasure(callback: types.CallbackQuery, db_pool):
+    # data: bury_treasure:px:py
+    _, x, y = callback.data.split(":")
+    px, py = int(x), int(y)
+    uid = callback.from_user.id
+    coord_key = f"{px},{py}"
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT inventory, stamina, navigation FROM capybaras WHERE owner_id = $1
+        """, uid)
+        
+        if not row: return
+        
+        inv = ensure_dict(row['inventory'])
+        stamina = row['stamina']
+        nav = ensure_dict(row['navigation'])
+        loot = inv.get("loot", {})
+        
+        # 1. Валідація
+        if stamina < 20:
+            return await callback.answer("⚡ Мало енергії! Закопування вимагає 20 одиниць.", show_alert=True)
+        
+        # Перевіряємо вміст глобальної тимчасової скрині
+        chest_content = inv.get("temporary_chest", [])
+        if not chest_content:
+            return await callback.answer("📭 Ви ще нічого не поклали у скриню через інвентар!", show_alert=True)
+            
+        if loot.get("handmade_map", 0) <= 0:
+            return await callback.answer("📜 Потрібна Саморобна мапа!", show_alert=True)
+
+        # 2. Логіка трансформації
+        chest_id = str(uuid.uuid4())[:8]
+        
+        # Витрачаємо мапу
+        loot["handmade_map"] -= 1
+        if loot["handmade_map"] <= 0: del loot["handmade_map"]
+        
+        # Створюємо запис у постійних мапах скарбів
+        if "treasure_maps" not in loot:
+            loot["treasure_maps"] = []
+            
+        new_treasure_entry = {
+            "id": chest_id,
+            "type": "my_treasure", # Тип для фільтрації при розкопуванні
+            "pos": coord_key,
+            "content": chest_content,
+            "created_at": datetime.datetime.now().isoformat(),
+            "origin": "player_buried"
+        }
+        
+        loot["treasure_maps"].append(new_treasure_entry)
+        
+        # Очищаємо тимчасову скриню, бо вона вже під землею
+        inv["temporary_chest"] = []
+        inv["loot"] = loot
+
+        # 3. Збереження
+        await conn.execute("""
+            UPDATE capybaras 
+            SET inventory = $1, stamina = stamina - 20 
+            WHERE owner_id = $2
+        """, json.dumps(inv, ensure_ascii=False), uid)
+
+        await callback.answer(f"🏴‍☠️ Скарб #{chest_id} закопано на ({coord_key})!", show_alert=True)
+        
+        # Оновлюємо карту (щоб з'явилася кнопка "Викопати")
+        await render_map(callback, db_pool)
+
+@router.callback_query(F.data.startswith("dig_treasure:"))
+async def handle_dig_treasure(callback: types.CallbackQuery, db_pool):
+    _, x, y = callback.data.split(":")
+    px, py = int(x), int(y)
+    uid = callback.from_user.id
+    coord_key = f"{px},{py}"
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT inventory, stamina, navigation FROM capybaras WHERE owner_id = $1
+        """, uid)
+        
+        if not row: return
+        
+        inv = ensure_dict(row['inventory'])
+        stamina = row['stamina']
+        loot = inv.get("loot", {})
+        t_maps = loot.get("treasure_maps", [])
+
+        # 1. Валідація енергії
+        if stamina < 15:
+            return await callback.answer("😫 Ви занадто втомилися, щоб копати (треба 15 ⚡)!", show_alert=True)
+
+        # 2. Пошук скарбу (Шукаємо ТІЛЬКИ тип "my_treasure" на цих координатах)
+        treasure_index = next(
+            (i for i, m in enumerate(t_maps) 
+             if m.get("pos") == coord_key and m.get("type") == "my_treasure"), 
+            None
+        )
+        
+        if treasure_index is None:
+            return await callback.answer("❌ Тут немає вашого закопаного скарбу!", show_alert=True)
+
+        # 3. Вилучення скарбу
+        treasure = t_maps.pop(treasure_index)
+        contents = treasure.get("content", [])
+
+        items_recovered = 0
+        for entry in contents:
+            item_data = entry.get("item", {})
+            itype = item_data.get("type")
+            iid = item_data.get("id")
+
+            # Розподіл по категоріях
+            if itype == "food":
+                inv["food"][iid] = inv.get("food", {}).get(iid, 0) + 1
+            elif itype == "potion":
+                inv["potions"][iid] = inv.get("potions", {}).get(iid, 0) + 1
+            elif itype == "loot":
+                inv["loot"][iid] = inv.get("loot", {}).get(iid, 0) + 1
+            elif itype == "material":
+                inv["materials"][iid] = inv.get("materials", {}).get(iid, 0) + 1
+            elif itype == "equipment":
+                # Створюємо унікальний ключ для спорядження
+                unique_id = f"{iid}_{uuid.uuid4().hex[:6]}"
+                if "equipment" not in inv: inv["equipment"] = {}
+                inv["equipment"][unique_id] = item_data
+            
+            items_recovered += 1
+
+        # Оновлюємо посилання
+        loot["treasure_maps"] = t_maps
+        inv["loot"] = loot
+
+        # 4. Збереження результатів
+        await conn.execute("""
+            UPDATE capybaras 
+            SET inventory = $1, stamina = stamina - 15 
+            WHERE owner_id = $2
+        """, json.dumps(inv, ensure_ascii=False), uid)
+
+        await callback.answer(f"⛏ Ви відкопали схованку! Повернуто предметів: {items_recovered}", show_alert=True)
+        
+        # Перемальовуємо карту (кнопка "Викопати" зникне)
+        await render_map(callback, db_pool)
+
+# --- RANDOM TOTEM HANDLER ---
+@router.callback_query(F.data == "use_random_totem")
+async def handle_random_totem(callback: types.CallbackQuery, db_pool):
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT navigation, inventory FROM capybaras WHERE owner_id = $1", uid)
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        nav = json.loads(row['navigation']) if isinstance(row['navigation'], str) else row['navigation']
+        
+        # Просто перевіряємо наявність (не віднімаємо)
+        if inv.get("loot", {}).get("random_totem", 0) <= 0:
+            return await callback.answer("❌ У вас немає рандомного тотему!", show_alert=True)
+            
+        # Генерація нових координат (0-150)
+        nx, ny = random.randint(0, 150), random.randint(0, 150)
+        nav['x'], nav['y'] = nx, ny
+        
+        await conn.execute("""
+            UPDATE capybaras SET navigation = $1 WHERE owner_id = $2
+        """, json.dumps(nav), uid)
+        
+        await callback.answer("🎲 Магія тотему перенесла вас!")
+        await refresh_map_view(callback, nav, inv, nx, ny)
+
+# --- CONTROL TOTEM HANDLER ---
+@router.callback_query(F.data == "use_control_totem")
+async def start_control_teleport(callback: types.CallbackQuery, state: FSMContext, db_pool):
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        
+        if inv.get("loot", {}).get("control_totem", 0) <= 0:
+            return await callback.answer("❌ У вас немає контрольного тотему!", show_alert=True)
+            
+    await state.set_state(MapStates.waiting_for_coords)
+    # Відправляємо нове повідомлення, щоб юзер міг ввести цифри
+    await callback.message.answer("🎯 <b>Введіть координати для стрибка</b>\nФормат: <code>X Y</code> (0-150)", parse_mode="HTML")
+    await callback.answer()
+
+# --- FSM RECEIVER ---
+@router.message(MapStates.waiting_for_coords)
+async def process_control_coords(message: types.Message, state: FSMContext, db_pool):
+    uid = message.from_user.id
+    try:
+        parts = message.text.split()
+        nx, ny = int(parts[0]), int(parts[1])
+        if not (0 <= nx <= 150 and 0 <= ny <= 150):
+            return await message.answer("📏 Координати мають бути від 0 до 150!")
+    except (ValueError, IndexError):
+        return await message.answer("⚠️ Невірний формат. Напиши, наприклад: <code>75 120</code>", parse_mode="HTML")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT navigation, inventory FROM capybaras WHERE owner_id = $1", uid)
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        nav = json.loads(row['navigation']) if isinstance(row['navigation'], str) else row['navigation']
+        
+        # Перевірка на всяк випадок (без витрат)
+        if inv.get("loot", {}).get("control_totem", 0) <= 0:
+            await state.clear()
+            return await message.answer("❌ Тотем не знайдено в інвентарі!")
+
+        nav['x'], nav['y'] = nx, ny
+        await conn.execute("UPDATE capybaras SET navigation = $1 WHERE owner_id = $2", json.dumps(nav), uid)
+        
+    await state.clear()
+    
+    # Оскільки це повідомлення від юзера (message), ми не можемо зробити edit_text для старого повідомлення карти легко
+    # Тому рендеримо нову карту новим повідомленням:
+    totems = nav.get("totems", [])
+    map_display = render_pov(nx, ny, nav.get("discovered", []), "capy", inv.get("loot", {}).get("treasure_maps", []), nav.get("flowers", {}), nav.get("trees", {}), totems)
+    
+    await message.answer(
+        f"🌀 <b>Телепортація успішна!</b>\n📍 Ви прибули в ({nx}, {ny})\n\n{map_display}",
+        reply_markup=get_map_keyboard(nx, ny, "capy", f"{nx},{ny}" in nav.get("trees", {}), inv, nav),
+        parse_mode="HTML"
+    )
+
+async def refresh_map_view(callback, nav, inv, nx, ny):
+    totems = nav.get("totems", [])
+    map_display = render_pov(
+        nx, ny, nav.get("discovered", []), "capy", 
+        inv.get("loot", {}).get("treasure_maps", []), 
+        nav.get("flowers", {}), nav.get("trees", {}), totems
+    )
+    
+    text = f"🌀 <b>Ви змінили місце розташування!</b>\n📍 Поточні координати: ({nx}, {ny})\n\n{map_display}"
+    
+    await callback.message.edit_text(
+        text,
+        reply_markup=get_map_keyboard(nx, ny, "capy", f"{nx},{ny}" in nav.get("trees", {}), inv, nav),
+        parse_mode="HTML"
+    )

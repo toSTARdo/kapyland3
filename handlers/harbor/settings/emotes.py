@@ -20,8 +20,8 @@ def get_finish_keyboard():
 @router.callback_query(F.data == "setup_victory_gif")
 async def start_gif_setting(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(SettingsStates.waiting_for_victory_gif)
-    await callback.message.edit_text(
-        "🎬 <b>Налаштування переможних реакцій</b>\n\n"
+    await callback.message.edit_caption(
+        caption="🎬 <b>Налаштування переможних реакцій</b>\n\n"
         "Надсилай сюди GIF, стікери або фото (до 5 штук).\n"
         "Вони будуть з'являтися випадковим чином після твоїх перемог.",
         reply_markup=get_finish_keyboard(),

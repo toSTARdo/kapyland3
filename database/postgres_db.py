@@ -19,13 +19,17 @@ async def create_pool():
             min_size=1,
             max_size=10,
             command_timeout=60,
+            # --- ДОДАЙ ЦІ ДВА РЯДКИ ---
+            statement_cache_size=0,         # Вимикає кешування на рівні пулу
+            max_cached_statement_lifetime=0 # Забороняє зберігати плани запитів
+            # --------------------------
         )
         logger.info("✅ Postgres Connection Pool established.")
         return pool
     except Exception as e:
         logger.error(f"❌ Failed to create Postgres pool: {e}")
         raise e
-
+        
 async def init_pg(pool):
     async with pool.acquire() as conn:
         logger.info("🛠️ Starting database schema initialization...")
@@ -84,7 +88,7 @@ async def init_pg(pool):
                 zen INTEGER DEFAULT 0,
                 navigation JSONB DEFAULT '{"x": 77, "y": 144, "discovered": [], "trees": {}, "flowers": {}}'::jsonb,
                 inventory JSONB DEFAULT '{"food": {}, "materials": {}, "loot": {}, "potions": {}, "maps": {}}'::jsonb,
-                equipment JSONB DEFAULT '{"weapon": {"name": "Лапки", "lvl": 0}, "armor": "Хутро", "artifact": null}'::jsonb,
+                equipment JSONB DEFAULT '{"weapon": {"name": "Лапки", "lvl": 0}, "armor": {"name": "Хутро", "lvl": 0}, "artifact": null}'::jsonb,
                 achievements TEXT[] DEFAULT '{}',
                 victory_media JSONB DEFAULT '[]'::jsonb,
                 unlocked_titles TEXT[] DEFAULT '{ "Новачок" }',
@@ -126,6 +130,14 @@ async def init_pg(pool):
                 born_at TIMESTAMP,
                 died_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        ''')
+
+        #ACTIVE CHATS
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS active_chats (
+            chat_id BIGINT PRIMARY KEY,
+            last_seen TIMESTAMP DEFAULT NOW()
+        );
         ''')
         
         logger.info("✅ Database schema is ready. Capybaras can now spawn.")

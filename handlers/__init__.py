@@ -28,11 +28,13 @@ from core.combat.battles import router as battles_router
 from .profile.sleep import router as sleep_router
 from .hold.inventory.loot import router as loot_router
 from .hold.inventory.food import router as food_router
-
+from keyboards.user_kb import router as keyboards_router
+from jobs.chats_list_check import service_router as chat_router
 
 def get_handlers_router() -> Router:
     router = Router()
     router.include_router(onboarding_router)
+    router.include_router(inventory_router)
     router.include_router(profile_router)
     router.include_router(hold_router)
     router.include_router(harbor_router)
@@ -42,7 +44,6 @@ def get_handlers_router() -> Router:
     router.include_router(fight_stats_router)
     router.include_router(meditation_router)
     router.include_router(lottery_router)
-    router.include_router(inventory_router)
     router.include_router(map_router)
     router.include_router(fishing_router)
     router.include_router(quests_router)
@@ -60,4 +61,6 @@ def get_handlers_router() -> Router:
     router.include_router(sleep_router)
     router.include_router(loot_router)
     router.include_router(food_router)
+    router.include_router(keyboards_router)
+    router.include_router(chat_router)
     return router

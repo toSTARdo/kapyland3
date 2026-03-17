@@ -22,14 +22,14 @@ async def ship_watermelon_vault(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
         ship = await conn.fetchrow("""
-            SELECT s.id, s.name, s.gold as watermelons 
+            SELECT s.id, s.name, COALESCE((s.cargo->>'watermelons')::int, 0) as watermelons 
             FROM ships s JOIN capybaras c ON s.id = c.ship_id 
             WHERE c.owner_id = $1
         """, uid)
         
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", uid)
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-        user_melons = meta.get("inventory", {}).get("food", {}).get("watermelon_slices", 0)
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
+        inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        user_melons = inventory.get("food", {}).get("watermelon_slices", 0)
 
     text = (
         f"🍉 <b>Склад кавунів «{ship['name']}»</b>\n"
@@ -45,7 +45,7 @@ async def ship_watermelon_vault(callback: types.CallbackQuery, db_pool):
     
     builder.button(text="🔙 Назад", callback_data="ship_main")
     builder.adjust(1)
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("ship_deposit:"))
 async def execute_melon_deposit(callback: types.CallbackQuery, db_pool):
@@ -53,16 +53,17 @@ async def execute_melon_deposit(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
         res = await conn.execute(f"""
-            UPDATE capybaras SET meta = jsonb_set(meta, '{{inventory, food, watermelon_slices}}', 
-            ((meta->'inventory'->'food'->>'watermelon_slices')::int - {amount})::text::jsonb)
-            WHERE owner_id = $1 AND (meta->'inventory'->'food'->>'watermelon_slices')::int >= $2
+            UPDATE capybaras SET inventory = jsonb_set(inventory, '{{food, watermelon_slices}}', 
+            ((inventory->'food'->>'watermelon_slices')::int - {amount})::text::jsonb)
+            WHERE owner_id = $1 AND (inventory->'food'->>'watermelon_slices')::int >= $2
         """, uid, amount)
 
         if res == "UPDATE 0":
             return await callback.answer("❌ Недостатньо кавунів!")
 
         await conn.execute("""
-            UPDATE ships SET gold = gold + $1 
+            UPDATE ships SET cargo = jsonb_set(cargo, '{watermelons}', 
+            (COALESCE((cargo->>'watermelons')::int, 0) + $1)::text::jsonb)
             WHERE id = (SELECT ship_id FROM capybaras WHERE owner_id = $2)
         """, amount, uid)
 
@@ -94,21 +95,21 @@ async def ship_engine_room(callback: types.CallbackQuery, db_pool):
     
     builder = InlineKeyboardBuilder()
     if not engine:
-        builder.button(text="🔧 Встановити T-двигун", callback_data="ship_install_engine")
+        builder.button(text="🔧 Встановити двигун", callback_data="ship_install_engine")
     else:
         builder.button(text="🔋 Ремонт", callback_data="ship_repair_engine")
         
     builder.button(text="🔙 Назад", callback_data="ship_main")
     builder.adjust(1)
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data == "ship_install_engine")
 async def install_t_item(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", uid)
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-        inv_items = meta.get("inventory", {}).get("equipment", [])
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
+        inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        inv_items = inventory.get("equipment", [])
         engine_to_install = next((i for i in inv_items if i.get("type") == "T-engine"), None)
 
         if not engine_to_install:
@@ -120,7 +121,7 @@ async def install_t_item(callback: types.CallbackQuery, db_pool):
             WHERE id = (SELECT ship_id FROM capybaras WHERE owner_id = $2)
         """, json.dumps(engine_to_install, ensure_ascii=False), uid)
         
-        await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(meta, ensure_ascii=False), uid)
+        await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inventory, ensure_ascii=False), uid)
 
     await callback.answer("⚙️ T-двигун встановлено!", show_alert=True)
     await ship_engine_room(callback, db_pool)
@@ -135,22 +136,33 @@ async def show_ship_crew(callback: types.CallbackQuery, db_pool):
             WHERE c.ship_id = $1 ORDER BY c.lvl DESC
         """, ship_id)
         
-    text = "👥 <b>Екіпаж:</b>\n━━━━━━━━━━━━━━━\n" + "\n".join([f"{i+1}. {m['username']} (Lvl {m['lvl']})" for i, m in enumerate(crew)])
+    text = "🐾 <b>Екіпаж:</b>\n━━━━━━━━━━━━━━━\n" + "\n".join([f"{i+1}. {m['username']} (Lvl {m['lvl']})" for i, m in enumerate(crew)])
     builder = InlineKeyboardBuilder().button(text="🔙 Назад", callback_data="ship_main")
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data == "ship_create_init")
 async def ship_create_start(callback: types.CallbackQuery, state: FSMContext, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT meta FROM capybaras WHERE owner_id = $1", uid)
+        # 1. Перевіряємо, чи завершена сюжетна арка 'ship_arc'
+        arc_status = await conn.fetchval("""
+            SELECT is_completed FROM story_progress 
+            WHERE user_id = $1 AND quest_id = 'ship_arc'
+        """, uid)
+
+        if not arc_status:
+            return await callback.answer(
+                "📜 Тобі ще зарано будувати власний корабель! "
+                "Спочатку заверши сюжетну лінію у порту Кап-таун.", 
+                show_alert=True
+            )
+
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
         
         if not row:
             return await callback.answer("❌ Капібару не знайдено!", show_alert=True)
 
-        meta = json.loads(row['meta']) if isinstance(row['meta'], str) else row['meta']
-        
-        inventory = meta.get("inventory", {})
+        inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         materials = inventory.get("materials", {})
         wood_count = materials.get("wood", 0)
 
@@ -160,10 +172,11 @@ async def ship_create_start(callback: types.CallbackQuery, state: FSMContext, db
                 show_alert=True
             )
         
+    # Якщо всі перевірки пройдено — запускаємо процес створення
     await state.set_state(ShipCreation.waiting_for_name)
-    await callback.message.edit_text(
-        "🔨 <b>Верф готова до роботи!</b>\n\n"
-        "У тебе достатньо дерева для каркасу. Напиши назву свого майбутнього корабля:",
+    await callback.message.edit_caption(
+        caption="🔨 <b>Верф готова до роботи!</b>\n\n"
+        "Напиши назву свого майбутнього корабля:",
         reply_markup=InlineKeyboardBuilder()
             .button(text="❌ Скасувати", callback_data="ship_main")
             .as_markup(),
@@ -199,22 +212,23 @@ async def ship_final_confirm(callback: types.CallbackQuery, state: FSMContext, d
         try:
             res = await conn.execute("""
                 UPDATE capybaras 
-                SET meta = jsonb_set(
-                    meta, 
-                    '{inventory, materials, wood}', 
-                    ((meta->'inventory'->'materials'->>'wood')::int - 10)::text::jsonb
+                SET inventory = jsonb_set(
+                    inventory, 
+                    '{materials, wood}', 
+                    ((inventory->'materials'->>'wood')::int - 10)::text::jsonb
                 )
                 WHERE owner_id = $1 
-                AND (meta->'inventory'->'materials'->>'wood')::int >= 10
+                AND (inventory->'materials'->>'wood')::int >= 10
             """, uid)
 
             if res == "UPDATE 0":
                 return await callback.answer("❌ Недостатньо дерева! Потрібно 10 🪵", show_alert=True)
 
+            ship_meta = {"flag": kanji, "captain_id": uid}
             ship_id = await conn.fetchval("""
-                INSERT INTO ships (name, captain_id, lvl, gold, meta) 
-                VALUES ($1, $2, 1, 0, $3) RETURNING id
-            """, ship_name, uid, json.dumps({"flag": kanji}, ensure_ascii=False))
+                INSERT INTO ships (name, lvl, gold, meta) 
+                VALUES ($1, 1, 0, $2) RETURNING id
+            """, ship_name, json.dumps(ship_meta, ensure_ascii=False))
 
             await conn.execute("UPDATE capybaras SET ship_id = $1 WHERE owner_id = $2", ship_id, uid)
             
@@ -243,7 +257,7 @@ async def ship_invite_list(callback: types.CallbackQuery, db_pool):
             ORDER BY c.lvl DESC LIMIT 10
         """, uid)
         
-        ship = await conn.fetchrow("SELECT id, name FROM ships WHERE captain_id = $1", uid)
+        ship = await conn.fetchrow("SELECT id, name FROM ships WHERE (meta->>'captain_id')::bigint = $1", uid)
         
     if not ship:
         return await callback.answer("❌ Тільки капітан може шукати екіпаж!", show_alert=True)
@@ -263,7 +277,7 @@ async def ship_invite_list(callback: types.CallbackQuery, db_pool):
 
     builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="ship_main"))
     
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("ship_send_invite:"))
 async def send_invite_to_player(callback: types.CallbackQuery, db_pool):
@@ -271,7 +285,7 @@ async def send_invite_to_player(callback: types.CallbackQuery, db_pool):
     captain_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        ship = await conn.fetchrow("SELECT id, name FROM ships WHERE captain_id = $1", captain_id)
+        ship = await conn.fetchrow("SELECT id, name FROM ships WHERE (meta->>'captain_id')::bigint = $1", captain_id)
         
     invite_kb = InlineKeyboardBuilder()
     invite_kb.button(text="✅ Прийняти", callback_data=f"ship_accept:{ship['id']}")
@@ -301,7 +315,7 @@ async def process_ship_invite(message: types.Message, state: FSMContext, db_pool
     captain_id = message.from_user.id
     
     async with db_pool.acquire() as conn:
-        captain_ship = await conn.fetchrow("SELECT id, name FROM ships WHERE captain_id = $1", captain_id)
+        captain_ship = await conn.fetchrow("SELECT id, name FROM ships WHERE (meta->>'captain_id')::bigint = $1", captain_id)
         if not captain_ship:
             return await message.answer("❌ Тільки капітан може запрошувати людей.")
 
@@ -349,8 +363,8 @@ async def confirm_leave(callback: types.CallbackQuery):
     builder.button(text="🔙 Скасувати", callback_data="ship_main")
     builder.adjust(1)
     
-    await callback.message.edit_text(
-        "⚠️ <b>Ти впевнений?</b>\nПри виході з екіпажу ти втратиш доступ до трюму та машинного відділення.",
+    await callback.message.edit_caption(
+        caption="⚠️ <b>Ти впевнений?</b>\nПри виході з екіпажу ти втратиш доступ до трюму та машинного відділення.",
         reply_markup=builder.as_markup(),
         parse_mode="HTML"
     )
@@ -359,19 +373,19 @@ async def confirm_leave(callback: types.CallbackQuery):
 async def execute_leave(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
-        is_captain = await conn.fetchval("SELECT id FROM ships WHERE captain_id = $1", uid)
+        is_captain = await conn.fetchval("SELECT id FROM ships WHERE (meta->>'captain_id')::bigint = $1", uid)
         if is_captain:
             return await callback.answer("❌ Капітан не може покинути свій корабель! Ти можеш тільки розпустити його в налаштуваннях.", show_alert=True)
 
         await conn.execute("UPDATE capybaras SET ship_id = NULL WHERE owner_id = $1", uid)
         
-    await callback.message.edit_text("🌊 Ти зійшов на берег. Тепер ти знову вільний плавець.")
+    await callback.message.edit_caption(caption="🌊 Ти зійшов на берег. Тепер ти знову вільний плавець.")
 
 @router.callback_query(F.data == "ship_settings")
 async def ship_settings_menu(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
-        ship = await conn.fetchrow("SELECT name FROM ships WHERE captain_id = $1", uid)
+        ship = await conn.fetchrow("SELECT name FROM ships WHERE (meta->>'captain_id')::bigint = $1", uid)
         
     if not ship:
         return await callback.answer("❌ Ти не капітан!", show_alert=True)
@@ -388,7 +402,7 @@ async def ship_settings_menu(callback: types.CallbackQuery, db_pool):
     builder.button(text="🔙 Назад", callback_data="ship_main")
     builder.adjust(1)
     
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data == "ship_disband_confirm")
 async def confirm_disband(callback: types.CallbackQuery):
@@ -397,8 +411,8 @@ async def confirm_disband(callback: types.CallbackQuery):
     builder.button(text="🔙 Скасувати", callback_data="ship_settings")
     builder.adjust(1)
     
-    await callback.message.edit_text(
-        "⚠️ <b>УВАГА!</b>\n\nТи збираєшся розпустити свій корабель. "
+    await callback.message.edit_caption(
+        caption="⚠️ <b>УВАГА!</b>\n\nТи збираєшся розпустити свій корабель. "
         "Усі матроси залишаться без борту, а золото в трюмі буде втрачено назавжди!\n\n"
         "Ти впевнений?",
         reply_markup=builder.as_markup(),
@@ -409,15 +423,15 @@ async def confirm_disband(callback: types.CallbackQuery):
 async def execute_disband(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
-        ship = await conn.fetchrow("SELECT id FROM ships WHERE captain_id = $1", uid)
+        ship = await conn.fetchrow("SELECT id FROM ships WHERE (meta->>'captain_id')::bigint = $1", uid)
         if not ship:
             return await callback.answer("❌ Корабель не знайдено.")
 
         await conn.execute("UPDATE capybaras SET ship_id = NULL WHERE ship_id = $1", ship['id'])
         await conn.execute("DELETE FROM ships WHERE id = $1", ship['id'])
         
-    await callback.message.edit_text(
-        "🌊 <b>Корабель пішов на дно...</b>\n\n"
+    await callback.message.edit_caption(
+        caption="🌊 <b>Корабель пішов на дно...</b>\n\n"
         "Екіпаж розпущено, а ти знову вільний капітан без судна.",
         parse_mode="HTML"
     )
@@ -425,7 +439,7 @@ async def execute_disband(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data == "ship_rename_init")
 async def rename_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(ShipActions.waiting_for_new_name)
-    await callback.message.edit_text("📝 Введи нову назву для свого корабля:")
+    await callback.message.edit_caption(caption="📝 Введи нову назву для свого корабля:")
 
 @router.message(ShipActions.waiting_for_new_name)
 async def rename_process(message: types.Message, state: FSMContext, db_pool):
@@ -435,7 +449,7 @@ async def rename_process(message: types.Message, state: FSMContext, db_pool):
 
     uid = message.from_user.id
     async with db_pool.acquire() as conn:
-        await conn.execute("UPDATE ships SET name = $1 WHERE captain_id = $2", new_name, uid)
+        await conn.execute("UPDATE ships SET name = $1 WHERE (meta->>'captain_id')::bigint = $2", new_name, uid)
         
     await message.answer(f"✅ Тепер твій корабель називається <b>«{new_name}»</b>!", parse_mode="HTML")
     await state.clear()

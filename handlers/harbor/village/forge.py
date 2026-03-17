@@ -1,14 +1,16 @@
 import json
 import asyncio
+from uuid import uuid4
 from aiogram import types, F, Router
 from aiogram.types import InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import load_game_data, DISPLAY_NAMES, IMAGES_URLS, TYPE_ICONS, MYTHIC_ICONS
-from utils.helpers import ensure_dict
+from utils.helpers import ensure_dict, get_main_menu_chunk
 
 router = Router()
 
 FORGE_RECIPES = load_game_data("data/forge_craft.json")
+ITEMS_PER_PAGE = 5
 
 UPGRADE_CONFIG = {
     "max_lvl": 5,
@@ -30,38 +32,66 @@ def find_item_in_inventory(inv, item_key):
                 return category, count
     return None, 0
 
-@router.callback_query(F.data == "open_forge")
+@router.callback_query(F.data.startswith("open_forge"))
 async def process_open_forge(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT lvl, inventory FROM capybaras WHERE owner_id = $1", user_id)
-        if not row: return
+    
+    # 1. Визначаємо сторінку чанка (меню)
+    menu_page = 0
+    if ":p" in callback.data:
+        menu_page = int(callback.data.split(":p")[1])
 
-        if row['lvl'] < 10:
+    async with db_pool.acquire() as conn:
+        # Отримуємо дані капібари та налаштування користувача через JOIN
+        res = await conn.fetchrow("""
+            SELECT c.lvl, c.inventory, u.quicklinks 
+            FROM capybaras c 
+            JOIN users u ON c.owner_id = u.tg_id 
+            WHERE c.owner_id = $1
+        """, user_id)
+        
+        if not res: return
+
+        # Перевірка рівня
+        if res['lvl'] < 10:
             return await callback.answer("🔒 Кузня доступна лише з 10 рівня!", show_alert=True)
 
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        _, kiwi_count = find_item_in_inventory(inv, "kiwi")
+        inv = json.loads(res['inventory']) if isinstance(res['inventory'], str) else res['inventory']
+        show_quicklinks = res['quicklinks'] if res['quicklinks'] is not None else True
 
-        builder = InlineKeyboardBuilder()
-        builder.button(text="⚙️ Звичайний крафт", callback_data="common_craft_list")
-        builder.button(text="🔨 Покращити спорядження", callback_data="upgrade_menu")
-        builder.button(text="⚜️ Міфічний коваль", callback_data="forge_craft_list")
-        builder.button(text="⬅️ Назад", callback_data="open_village")
-        builder.adjust(1)
+    # 2. Логіка інвентарю
+    _, kiwi_count = find_item_in_inventory(inv, "kiwi")
 
-        text = (
-            "🐦 <b>Кузня ківі</b>\n"
-            "━━━━━━━━━━━━━━━\n"
-            "Тут пахне сталлю та тропічними фруктами.\n"
-            "Твій запас ківі: <b>{kiwi_count} 🥝</b>\n\n"
-            "<i>«Гей, пухнастий! Хочеш гостріший ніж чи міцніший панцир?\n Можливості залежать від кількості ківі в твоїх кишенях»</i>"
-        ).format(kiwi_count=kiwi_count)
+    # 3. Будуємо інтерфейс
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⚙️ Звичайний крафт", callback_data="common_craft_list")
+    builder.button(text="🔨 Покращити спорядження", callback_data="upgrade_menu")
+    builder.button(text="⚜️ Міфічний коваль", callback_data="forge_craft_list")
+    builder.button(text="⬅️ Назад", callback_data="open_village")
+    builder.adjust(1)
 
+    # Додаємо чанк, якщо увімкнено
+    if show_quicklinks:
+        get_main_menu_chunk(builder, page=menu_page, callback_prefix="open_forge")
+
+    text = (
+        "🐦 <b>Кузня ківі</b>\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Тут пахне сталлю та тропічними фруктами.\n"
+        "Твій запас ківі: <b>{kiwi_count} 🥝</b>\n\n"
+        "<i>«Гей, пухнастий! Хочеш гостріший ніж чи міцніший панцир?\n Можливості залежать від кількості ківі в твоїх кишенях»</i>"
+    ).format(kiwi_count=kiwi_count)
+
+    # 4. Оновлення з обробкою однакових медіа
+    try:
         await callback.message.edit_media(
             media=InputMediaPhoto(media=IMAGES_URLS["forge"], caption=text, parse_mode="HTML"),
             reply_markup=builder.as_markup()
         )
+    except Exception:
+        await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+    
+    await callback.answer()
 
 def get_upgrade_cost(rarity: str, current_lvl: int) -> int:
     base_costs = {
@@ -74,8 +104,40 @@ def get_upgrade_cost(rarity: str, current_lvl: int) -> int:
     base = base_costs.get(rarity.lower(), 1)
     return base + current_lvl
 
-@router.callback_query(F.data == "upgrade_menu")
+def apply_pagination(builder, all_items, page, per_page, callback_prefix, nav_prefix=None):
+    if nav_prefix is None:
+        nav_prefix = callback_prefix
+        
+    total_pages = max(1, (len(all_items) + per_page - 1) // per_page)
+    page = max(0, min(page, total_pages - 1))
+    
+    start = page * per_page
+    end = start + per_page
+    items_slice = all_items[start:end]
+
+    for suffix, text in items_slice:
+        builder.row(types.InlineKeyboardButton(text=text, callback_data=f"{callback_prefix}:{suffix}"))
+
+    if total_pages > 1:
+        nav = []
+        # Left
+        cb_l = f"{nav_prefix}:{page-1}" if page > 0 else "none"
+        nav.append(types.InlineKeyboardButton(text="⬅️" if page > 0 else " ", callback_data=cb_l))
+        # Mid
+        nav.append(types.InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="none"))
+        # Right
+        cb_r = f"{nav_prefix}:{page+1}" if page < total_pages - 1 else "none"
+        nav.append(types.InlineKeyboardButton(text="➡️" if page < total_pages - 1 else " ", callback_data=cb_r))
+        builder.row(*nav)
+    
+    return page
+
+@router.callback_query(F.data.startswith("upgrade_menu") | F.data.startswith("up_menu_pg:"))
 async def upgrade_list(callback: types.CallbackQuery, db_pool):
+    page = 0
+    if callback.data.startswith("up_menu_pg:"):
+        page = int(callback.data.split(":")[1])
+
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("SELECT lvl, inventory FROM capybaras WHERE owner_id = $1", user_id)
@@ -86,39 +148,44 @@ async def upgrade_list(callback: types.CallbackQuery, db_pool):
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
         equip = inv.get("equipment", {})
-        
         builder = InlineKeyboardBuilder()
 
         def get_btn_text(item_data):
-            if isinstance(item_data, str): 
-                return f"💎 {item_data}"
-            
+            if isinstance(item_data, str): return f"💎 {item_data}"
             name = item_data.get("name", "Предмет")
             lvl = item_data.get("lvl", 0)
             rarity = item_data.get("rarity", "common")
             cost = get_upgrade_cost(rarity, lvl)
-            
             icon = TYPE_ICONS.get(item_data.get("type"), "💎")
             stars = "⭐" * lvl if lvl > 0 else ""
-            
             return f"{icon} {name} {stars} (💰 {cost}🥝)"
+
+        items_to_paginate = []
+        excluded = ["Лапки", "Хутро", "Нічого"]
 
         if isinstance(equip, dict):
             for slot, item in equip.items():
-                if item and item not in ["Лапки", "Хутро", "Нічого"]:
-                    builder.button(text=get_btn_text(item), callback_data=f"up_item:{slot}")
+                if item and (isinstance(item, str) or item.get("name") not in excluded):
+                    items_to_paginate.append((slot, get_btn_text(item)))
         elif isinstance(equip, list):
             for idx, item in enumerate(equip):
-                if item and item not in ["Лапки", "Хутро", "Нічого"]:
-                    builder.button(text=get_btn_text(item), callback_data=f"up_item:{idx}")
+                if item and (isinstance(item, str) or item.get("name") not in excluded):
+                    items_to_paginate.append((idx, get_btn_text(item)))
 
-        builder.button(text="⬅️ Назад", callback_data="open_forge")
-        builder.adjust(1)
+        current_p = apply_pagination(
+            builder=builder, 
+            all_items=items_to_paginate, 
+            page=page, 
+            per_page=5, 
+            callback_prefix="up_item"
+        )
+
+        builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_forge"))
 
         await callback.message.edit_caption(
-            caption="🛠️ <b>Загартування спорядження</b>\n\n"
-                    "Вартість залежить від рідкісності та поточного рівня предмета.\n"
-                    "<i>Чим потужніша річ, тим більше 🥝 вона вимагає!</i>",
+            caption=f"🛠️ <b>Загартування спорядження</b>\n\n"
+                    f"Сторінка: <b>{page + 1}</b>\n"
+                    f"<i>Чим потужніша річ, тим більше 🥝 вона вимагає!</i>",
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
@@ -181,20 +248,57 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
         await callback.answer(f"🔥 Успіх! {item_data['name']} загартовано до {new_lvl}⭐")
         await upgrade_list(callback, db_pool)
 
-@router.callback_query(F.data == "common_craft_list")
+@router.callback_query(F.data.startswith("common_craft_list"))
 async def common_craft_list(callback: types.CallbackQuery, db_pool):
+    # 1. Безпечне отримання сторінки
+    page = 0
+    data_parts = callback.data.split(":")
+    
+    # Перевіряємо, чи є другий елемент і чи він складається лише з цифр
+    if len(data_parts) > 1 and data_parts[1].isdigit():
+        page = int(data_parts[1])
+    else:
+        # Якщо там "handmade_map" або порожньо — залишаємо сторінку 0
+        page = 0
+
     user_id = callback.from_user.id
     builder = InlineKeyboardBuilder()
+    
     async with db_pool.acquire() as conn:
         lvl = await conn.fetchval("SELECT lvl FROM capybaras WHERE owner_id = $1", user_id)
-        if lvl < 10:
+        if lvl is not None and lvl < 10:
             return await callback.answer("❌ Навчися зброю тримати! Повертайся на 10 рівні.", show_alert=True)
-    for r_id, r_data in FORGE_RECIPES.get("common_craft", {}).items():
-        builder.button(text=f"{r_data.get('emoji', '📦')} {r_data.get('name')}", callback_data=f"common_info:{r_id}")
-    builder.button(text="⬅️ Назад", callback_data="open_forge")
-    builder.adjust(1)
-    await callback.message.edit_caption(caption="📦 <b>Майстерня:</b>\nТут можна створити корисні дрібниці.", reply_markup=builder.as_markup(), parse_mode="HTML")
+            
+    # 2. Підготовка списку рецептів
+    recipes = FORGE_RECIPES.get("common_craft", {})
+    items_to_paginate = [
+        (r_id, f"{r_data.get('emoji', '📦')} {r_data.get('name')}") 
+        for r_id, r_data in recipes.items()
+    ]
 
+    # 3. Пагінація
+    # Тут важливо, щоб другий аргумент (page) завжди був int, що ми забезпечили вище
+    current_p = apply_pagination(
+        builder, 
+        items_to_paginate, 
+        page, 
+        5, 
+        "common_info", 
+        "common_craft_list"
+    )
+
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data="open_forge"))
+
+    try:
+        await callback.message.edit_caption(
+            caption=f"📦 <b>Майстерня:</b>\nТут можна створити корисні дрібниці.\n\nСторінка: <b>{current_p + 1}</b>", 
+            reply_markup=builder.as_markup(), 
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        # Якщо повідомлення не змінилося (наприклад, та ж сторінка), ігноруємо помилку
+        await callback.answer()
+        
 @router.callback_query(F.data.startswith("common_info:"))
 async def show_common_recipe(callback: types.CallbackQuery, db_pool):
     recipe_id = callback.data.split(":")[1]
@@ -226,11 +330,20 @@ async def show_common_recipe(callback: types.CallbackQuery, db_pool):
             if current < count: can_craft = False
 
         builder = InlineKeyboardBuilder()
+
         if can_craft:
             builder.button(text="🔨 Скрафтити", callback_data=f"do_common_craft:{recipe_id}")
         builder.button(text="⬅️ Назад", callback_data="common_craft_list")
         builder.adjust(1)
         await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+# The base "price" of each tier
+TIER_PRICES = {
+    "катлас": 2,
+    "вудочка": 1,
+    "посилена вудочка": 3,
+    "металева вудочка": 5
+}
 
 @router.callback_query(F.data.startswith("do_common_craft:"))
 async def process_common_craft(callback: types.CallbackQuery, db_pool):
@@ -244,59 +357,78 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
         if not recipe: return
 
         can_craft = True
-        user_equip = inv.get("equipment", [])
+        user_equip = inv.get("equipment", {}) 
         ingredients = recipe.get("ingredients", {})
         
+        ids_to_consume = []
+        total_kiwi_refund = 0
+        temp_equip_pool = user_equip.copy()
+
         for mat, count in ingredients.get("materials", {}).items():
             if inv.get("materials", {}).get(mat, 0) < count:
                 can_craft = False
                 break
         
-        temp_equip = list(user_equip)
-        for req_item_name in ingredients.get("equipment", []):
-            found = False
-            for i, item in enumerate(temp_equip):
-                name = item.get("name", "") if isinstance(item, dict) else str(item)
-                if req_item_name in name:
-                    temp_equip.pop(i)
-                    found = True
+        if can_craft:
+            for req_name in ingredients.get("equipment", []):
+                found_id = None
+                for item_id, item_data in temp_equip_pool.items():
+                    if item_data.get("name") == req_name:
+                        found_id = item_id
+                        
+                        item_lvl = item_data.get("lvl", 0)
+                        base_name = item_data.get("name", "").lower()
+                        base_price = next((p for k, p in TIER_PRICES.items() if k in base_name), 0)
+                        total_kiwi_refund += (base_price + item_lvl)
+                        break
+                
+                if found_id:
+                    ids_to_consume.append(found_id)
+                    del temp_equip_pool[found_id]
+                else:
+                    can_craft = False
                     break
-            if not found:
-                can_craft = False
-                break
 
         if not can_craft:
-            return await callback.answer("❌ Недостатньо ресурсів для крафту!", show_alert=True)
+            return await callback.answer("❌ Недостатньо ресурсів або предметів!", show_alert=True)
 
-        inv["equipment"] = temp_equip
-        
+        for uid in ids_to_consume:
+            del user_equip[uid]
+
         for mat, count in ingredients.get("materials", {}).items():
             inv["materials"][mat] -= count
 
+        if total_kiwi_refund > 0:
+            food = inv.setdefault("food", {})
+            food["kiwi"] = food.get("kiwi", 0) + total_kiwi_refund
+
         item_type = recipe.get("type", "loot") 
-        
         if item_type in ["weapon", "armor", "artifact"]:
-            new_item = {
+            new_uid = str(uuid4())[:8]
+            user_equip[new_uid] = {
                 "name": recipe["name"],
                 "type": item_type,
                 "desc": recipe.get("desc", ""),
                 "rarity": recipe.get("rarity", "common"),
                 "lvl": 0
             }
-            inv["equipment"].append(new_item)
         else:
             loot = inv.setdefault("loot", {})
             loot[recipe_id] = loot.get(recipe_id, 0) + 1
 
+        inv["equipment"] = user_equip
+        
         await conn.execute(
             "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
             json.dumps(inv, ensure_ascii=False), user_id
         )
         
-        await callback.answer(f"✅ {recipe['name']} виготовлено!", show_alert=True)
+        msg = f"✅ {recipe['name']} виготовлено!"
+        if total_kiwi_refund > 0:
+            msg += f"\n🥝 Повернено {total_kiwi_refund} ківі за покращення."
+            
+        await callback.answer(msg, show_alert=True)
         await common_craft_list(callback, db_pool)
-
-ITEMS_PER_PAGE = 5
 
 @router.callback_query(F.data.startswith("forge_craft_list"))
 async def forge_craft_list(callback: types.CallbackQuery, db_pool):
@@ -309,41 +441,37 @@ async def forge_craft_list(callback: types.CallbackQuery, db_pool):
         if lvl < 20:
             return await callback.answer("❌ Складна робота! Повертайся на 20 рівні.", show_alert=True)
 
-        all_recipes = list(FORGE_RECIPES.get("mythic_artifacts", {}).items())
-        total_items = len(all_recipes)
-        max_page = (total_items - 1) // ITEMS_PER_PAGE
+    # 1. Prepare items list for mythic artifacts
+    all_recipes = FORGE_RECIPES.get("mythic_artifacts", {})
+    items_to_paginate = []
+    for r_id, r_data in all_recipes.items():
+        icon = MYTHIC_ICONS.get(r_data.get("class", "✨"), "✨")
+        items_to_paginate.append((r_id, f"{icon} {r_data.get('name')}"))
 
-        start_idx = current_page * ITEMS_PER_PAGE
-        end_idx = start_idx + ITEMS_PER_PAGE
-        page_items = all_recipes[start_idx:end_idx]
+    builder = InlineKeyboardBuilder()
 
-        builder = InlineKeyboardBuilder()
-        
-        for r_id, r_data in page_items:
-            icon = MYTHIC_ICONS.get(r_data.get("class", "✨"), "✨")
-            builder.button(text=f"{icon} {r_data.get('name')}", callback_data=f"mythic_info:{r_id}")
-        
-        builder.adjust(1)
+    # 2. Apply paginator
+    # Note: I'm using "forge_craft_list" as the callback_prefix for nav buttons 
+    # but "mythic_info" for the items themselves.
+    total_pages = max(1, (len(items_to_paginate) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    current_page = max(0, min(current_page, total_pages - 1))
+    
+    apply_pagination(
+        builder=builder, 
+        all_items=items_to_paginate, 
+        page=current_page, 
+        per_page=ITEMS_PER_PAGE, 
+        callback_prefix="mythic_info"
+    )
 
-        nav_buttons = []
-        if current_page > 0:
-            nav_buttons.append(types.InlineKeyboardButton(text="⬅️", callback_data=f"forge_craft_list:{current_page - 1}"))
-        
-        nav_buttons.append(types.InlineKeyboardButton(text=f"{current_page + 1}/{max_page + 1}", callback_data="none"))
-        
-        if current_page < max_page:
-            nav_buttons.append(types.InlineKeyboardButton(text="➡️", callback_data=f"forge_craft_list:{current_page + 1}"))
-        
-        builder.row(*nav_buttons)
-        
-        builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="open_forge"))
+    # Override the default nav buttons generated by apply_pagination to use forge_craft_list prefix
+    # Or simply update your apply_pagination to accept a nav_prefix. 
+    # Given your current function, we manually fix the row below:
+    builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="open_forge"))
 
-        caption = f"⚒️ <b>Міфічні креслення</b>\nСтор. {current_page + 1} з {max_page + 1}"
-        
-        try:
-            await callback.message.edit_caption(caption=caption, reply_markup=builder.as_markup(), parse_mode="HTML")
-        except Exception:
-            await callback.answer()
+    caption = f"⚒️ <b>Міфічні креслення</b>\nСторінка: <b>{current_page + 1}/{total_pages}</b>"
+    
+    await callback.message.edit_caption(caption=caption, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("mythic_info:"))
 async def show_mythic_recipe(callback: types.CallbackQuery, db_pool):

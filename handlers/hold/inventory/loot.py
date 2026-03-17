@@ -4,15 +4,32 @@ import random
 import datetime
 from aiogram import Router, types, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from uuid import uuid4
 
 from core.combat.battles import run_battle_logic
 from config import ARTIFACTS, BOSSES_COORDS
 
 router = Router()
 
-@router.callback_query(F.data == "open_chest")
+materials_names = {
+    "mint": "🌿 М'ята",
+    "thyme": "🌱 Чебрець",
+    "rosemary": "🌿 Розмарин",
+    "chamomile": "🌼 Ромашка",
+    "lavender": "🪻 Лаванда",
+    "tulip": "🌷 Тюльпан",
+    "lotus": "🪷 Лотос",
+    "blueberry": "🫐 Чорниця"
+}
+
+@router.callback_query(F.data.startswith("open_chest:"))
 async def handle_open_chest(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
+    
+    try:
+        _, chest_type, method = callback.data.split(":")
+    except ValueError:
+        return await callback.answer("❌ Помилка читання замка!", show_alert=True)
     
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
@@ -29,126 +46,169 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
 
         loot = inv.get("loot", {})
         food = inv.get("food", {})
+        display = inv.setdefault("display", {})
+        materials = inv.setdefault("materials", {})
         
-        chests = loot.get("chest", 0)
+        target_chest_key = "chest" if chest_type == "chest" else "mega_chest"
+        chests_owned = loot.get(target_chest_key, 0)
         keys = loot.get("key", 0)
         lockpickers = loot.get("lockpicker", 0)
 
-        if chests < 1:
-            return await callback.answer("❌ У тебе немає скрині!", show_alert=True)
+        if chests_owned < 1:
+            chest_name = "Скрині" if chest_type == "normal" else "Мега-скрині"
+            return await callback.answer(f"❌ У тебе немає {chest_name}!", show_alert=True)
         
-        method = None
-        if keys >= 1:
-            method = "key"
-        elif lockpickers >= 1:
-            method = "lockpicker"
-        else:
-            return await callback.answer("❌ Тобі потрібен ключ або відмичка!", show_alert=True)
+        if method == "key" and keys < 1:
+            return await callback.answer("❌ У тебе немає ключа!", show_alert=True)
+        if method == "lockpicker" and lockpickers < 1:
+            return await callback.answer("❌ У тебе немає відмички!", show_alert=True)
 
         if method == "lockpicker":
             dice = random.random()
+            fail_chance = 0.8 if chest_type == "normal" else 0.88
+            jam_chance = 0.55 if chest_type == "normal" else 0.65
             
-            if dice > 0.8:
+            if dice > fail_chance:
                 loot["lockpicker"] -= 1
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv), uid)
                 builder = InlineKeyboardBuilder()
-                if chests > 0 and (keys > 0 or loot["lockpicker"] > 0):
-                    builder.button(text="🔄 Спробувати ще раз", callback_data="open_chest")
-                builder.button(text="🔙 Назад", callback_data="open_adventure_main")
+                if chests_owned > 0 and (keys > 0 or loot["lockpicker"] > 0):
+                    builder.button(text="🔄 Спробувати ще раз", callback_data=f"open_chest:{chest_type}:lockpicker")
+                    if keys > 0:
+                        builder.button(text="🔑 Відкрити ключем", callback_data=f"open_chest:{chest_type}:key")
+                builder.button(text="🔙 Назад", callback_data="inv_page:loot:0")
                 builder.adjust(1)
                 return await callback.message.edit_text(
-                    "🔧 <b>ХРУСЬ!</b>\n━━━━━━━━━━━━━━━\nВідмичка зламалася. Замок виявився міцнішим.",
+                    "🔧 <b>ХРУСЬ!</b>\n━━━━━━━━━━━━━━━\nВідмичка зламалася.",
                     reply_markup=builder.as_markup(), parse_mode="HTML"
                 )
-            elif dice > 0.55:
-                return await callback.answer("⚠️ Замок заклинило! Спробуй ще раз.", show_alert=True)
+            elif dice > jam_chance:
+                return await callback.answer("⚠️ Замок заклинило!", show_alert=True)
 
-        loot["chest"] -= 1
+        loot[target_chest_key] -= 1
         if method == "key":
             loot["key"] -= 1
 
-        if random.random() < 0.02:
+        mimic_chance = 0.02 if chest_type == "chest" else 0.05
+        if random.random() < mimic_chance:
             await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv), uid)
-            await callback.message.edit_text("💥 <b>ОТ БЛЯХА!</b>\n━━━━━━━━━━━━━━━\nЦе був Мімік!")
-            return asyncio.create_task(run_battle_logic(callback, bot_type="mimic"))
+            await callback.message.edit_text("💥 ОТ БЛЯХА!\n━━━━━━━━━━━━━━━\nЦе був Мімік!")
+            bot_type = "mimic" if chest_type == "normal" else "mega_mimic" 
+            return asyncio.create_task(run_battle_logic(callback, db_pool, bot_type=bot_type))
 
         rewards = []
         
-        food_pool = [
-            {"key": "tangerines", "name": "🍊 Мандарин", "chance": 50, "amt": (3, 7)},
-            {"key": "watermelon_slices", "name": "🍉 Скибочка кавуна", "chance": 30, "amt": (2, 4)},
-            {"key": "mango", "name": "🥭 Манго", "chance": 15, "amt": (1, 2)},
-            {"key": "kiwi", "name": "🥝 Ківі", "chance": 5, "amt": (1, 1)}
-        ]
-        
-        for _ in range(2):
+        if chest_type == "chest":
+            food_pool = [
+                {"key": "tangerines", "name": "🍊 Мандарин", "chance": 50, "amt": (3, 7)},
+                {"key": "watermelon_slices", "name": "🍉 Скибочка кавуна", "chance": 30, "amt": (2, 4)},
+                {"key": "melon", "name": "🍈 Диня", "chance": 5, "amt": (1, 2)},
+                {"key": "mango", "name": "🥭 Манго", "chance": 15, "amt": (1, 2)},
+                {"key": "kiwi", "name": "🥝 Ківі", "chance": 4, "amt": (1, 2)},
+                # Added the missing mushrooms to the pool:
+                {"key": "fly_agaric", "name": "🍄 Мухомор", "chance": 5, "amt": (1, 3)},
+                {"key": "mushroom", "name": "🍄‍🟫 Гриб", "chance": 20, "amt": (2, 5)},
+                {"key": "truffel", "name": "🟤 Трюфель", "chance": 1, "amt": (1, 1)}
+            ]
+
             f = random.choices(food_pool, weights=[i['chance'] for i in food_pool])[0]
             count = random.randint(*f['amt'])
             food[f['key']] = food.get(f['key'], 0) + count
             rewards.append(f"{f['name']} x{count}")
 
-        if random.random() < 0.4:
-            t_count = random.randint(1, 3)
+            if random.random() < 0.3:
+                m_key = random.choice(list(materials_names.keys()))
+                m_amt = random.randint(1, 3)
+                materials[m_key] = materials.get(m_key, 0) + m_amt
+                rewards.append(f"{materials_names[m_key]} x{m_amt}")
+
+            if random.random() < 0.4:
+                t_count = random.randint(1, 3)
+                loot["lottery_ticket"] = loot.get("lottery_ticket", 0) + t_count
+                rewards.append(f"🎟️ Квиток x{t_count}")
+
+            if random.random() < 0.15:
+                rarity = random.choices(["Epic", "Legendary"], weights=[1, 1])[0]
+                pool = ARTIFACTS.get(rarity, [{"name": "Іржавий ніж", "type": "weapon"}])
+                item = random.choice(pool)
+                item_id = str(uuid4())[:8]
+                eq_dict = inv.setdefault("equipment", {})
+                eq_dict[item_id] = {
+                    "name": item["name"], "rarity": rarity, "type": item["type"],
+                    "lvl": 0, "count": 1, "desc": "Знайдено у скрині."
+                }
+                rewards.append(f"✨ {item['name']} ({rarity})")
+
+        elif chest_type == "mega_chest":
+            rewards.append("🌟 <b>МЕГА-ДРОП:</b>")
+
+            food_pool = [
+                {"key": "tangerines", "name": "🍊 Мандарин", "chance": 50, "amt": (9, 21)},
+                {"key": "watermelon_slices", "name": "🍉 Скибочка кавуна", "chance": 30, "amt": (6, 20)},
+                {"key": "melon", "name": "🍈 Диня", "chance": 15, "amt": (3, 6)},
+                {"key": "mango", "name": "🥭 Манго", "chance": 20, "amt": (3, 6)},
+                {"key": "kiwi", "name": "🥝 Ківі", "chance": 8, "amt": (1, 4)},
+                {"key": "fly_agaric", "name": "🍄 Мухомор", "chance": 15, "amt": (1, 3)},
+                {"key": "mushroom", "name": "🍄‍🟫 Гриб", "chance": 20, "amt": (2, 5)},
+                {"key": "truffel", "name": "🟤 Трюфель", "chance": 3, "amt": (1, 1)}
+            ]
+            f = random.choices(food_pool, weights=[i['chance'] for i in food_pool])[0]
+            count = random.randint(*f['amt'])
+            food[f['key']] = food.get(f['key'], 0) + count
+            rewards.append(f"{f['name']} x{count}")
+
+            t_count = random.randint(10, 25)
             loot["lottery_ticket"] = loot.get("lottery_ticket", 0) + t_count
-            rewards.append(f"🎟️ Квиток x{t_count}")
+            rewards.append(f"🎟️ Золоті квитки x{t_count}")
 
-        treasure_maps = loot.setdefault("treasure_maps", [])
-        if random.random() < 0.2:
-            map_id = random.randint(100, 999)
-            treasure_maps.append({
-                "type": "treasure", 
-                "id": map_id, 
-                "pos": f"{random.randint(0,149)},{random.randint(0,149)}"
-            })
-            rewards.append(f"🗺️ Карта #{map_id}")
+            m_kinds = random.randint(2, 4)
+            selected_mats = random.sample(list(materials_names.keys()), m_kinds)
+            for m_key in selected_mats:
+                m_amt = random.randint(2, 6)
+                materials[m_key] = materials.get(m_key, 0) + m_amt
+                rewards.append(f"{materials_names[m_key]} x{m_amt}")
 
-        if random.random() < 0.05:
+            for _ in range(random.randint(1, 3)):
+                rarity = random.choices(["Legendary", "Mythic"], weights=[95, 5])[0]
+                pool = ARTIFACTS.get(rarity, [{"name": "Сяючий камінь", "type": "gem"}])
+                item = random.choice(pool)
+                item_id = str(uuid4())[:8]
+                eq_dict = inv.setdefault("equipment", {})
+                eq_dict[item_id] = {
+                    "name": item["name"], "rarity": rarity, "type": item["type"],
+                    "lvl": 1, "count": 1, "desc": "Мега-Скриня!"
+                }
+                rewards.append(f"🔥 {item['name']} ({rarity})")
+
+            treasure_maps = loot.setdefault("treasure_maps", [])
             defeated = stats.get("bosses_defeated", 0)
             next_boss = defeated + 1
-            
             if next_boss <= 20 and not any(m.get("boss_num") == next_boss for m in treasure_maps):
                 coords = BOSSES_COORDS.get(next_boss)
                 if coords:
                     treasure_maps.append({
-                        "type": "boss_den", 
-                        "boss_num": next_boss, 
+                        "type": "boss_den", "boss_num": next_boss, 
                         "pos": f"{coords['x']},{coords['y']}",
                         "discovered": datetime.datetime.now().isoformat()
                     })
                     rewards.append(f"💀 Карта лігва №{next_boss}")
 
-        if random.random() < 0.15:
-            rarity = random.choices(["Epic", "Legendary"], weights=[1, 1])[0]
-            pool = ARTIFACTS.get(rarity, [{"name": "Іржавий ніж"}])
-            item = random.choice(pool)
-            
-            storage = inv.setdefault("equipment", [])
-            storage.append({
-                "name": item["name"], 
-                "rarity": rarity, 
-                "stats": item.get("stats", {})
-            })
-            rewards.append(f"✨ {rarity}: {item['name']}")
-
         await conn.execute("""
-            UPDATE capybaras 
-            SET inventory = $1, state = $2, stats_track = $3 
-            WHERE owner_id = $4
+            UPDATE capybaras SET inventory = $1, state = $2, stats_track = $3 WHERE owner_id = $4
         """, json.dumps(inv), json.dumps(state), json.dumps(stats), uid)
 
         builder = InlineKeyboardBuilder()
-        if loot["chest"] > 0:
+        if loot.get(target_chest_key, 0) > 0:
             if loot.get("key", 0) > 0:
-                builder.button(text=f"🔑 Ще одну ({loot['key']})", callback_data="open_chest")
-            elif loot.get("lockpicker", 0) > 0:
-                builder.button(text=f"🪛 Відмичкою ({loot['lockpicker']})", callback_data="open_chest")
+                builder.button(text=f"🔑 Ще одну ({loot['key']})", callback_data=f"open_chest:{chest_type}:key")
+            if loot.get("lockpicker", 0) > 0:
+                builder.button(text=f"🪛 Відмичкою ({loot['lockpicker']})", callback_data=f"open_chest:{chest_type}:lockpicker")
         
         builder.button(text="🔙 Назад", callback_data="inv_page:loot:0")
         builder.adjust(1)
 
-        loot_list = "\n".join([f"• {r}" for r in rewards])
         await callback.message.edit_text(
-            f"🔓 <b>КЛАЦ! Скриню відкрито!</b>\n━━━━━━━━━━━━━━━\n{loot_list}\n\n📦 Лишилося скринь: {loot['chest']}",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML"
+            f"{'🗃' if chest_type == 'chest' else '🕋'} <b>КЛАЦ! Відкрито!</b>\n━━━━━━━━━━━━━━━\n" + 
+            "\n".join([f"• {r}" for r in rewards]) + f"\n\n📦 Лишилося: {loot[target_chest_key]}",
+            reply_markup=builder.as_markup(), parse_mode="HTML"
         )

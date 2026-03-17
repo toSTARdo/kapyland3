@@ -136,9 +136,10 @@ async def sleep_db_operation(tg_id: int, db_pool):
 
 async def wakeup_db_operation(tg_id: int, db_pool):
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT state, stamina FROM capybaras WHERE owner_id = $1", tg_id)
+        row = await conn.fetchrow("SELECT state, stamina, max_stamina FROM capybaras WHERE owner_id = $1", tg_id)
         if not row: return "error", 0
         
+        MAX_STAMINA = row["max_stamina"]
         state = json.loads(row['state']) if isinstance(row['state'], str) else (row['state'] or {})
         if state.get("status") != "sleep":
             return "error", 0
@@ -152,10 +153,10 @@ async def wakeup_db_operation(tg_id: int, db_pool):
         current_stamina = row["stamina"] or 0
 
         if duration_minutes >= 120:
-            new_stamina, status_result = 100, "overslept"
+            new_stamina, status_result = MAX_STAMINA, "overslept"
         else:
             gained = int(duration_minutes * (100 / 120))
-            new_stamina, status_result = min(100, current_stamina + gained), "success"
+            new_stamina, status_result = min(MAX_STAMINA, current_stamina + gained), "success"
 
         actual_gain = new_stamina - current_stamina
         state.update({"status": "active"})

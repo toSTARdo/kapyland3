@@ -4,6 +4,31 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory: dict, navigation: dict):
     builder = InlineKeyboardBuilder()
+
+    loot = inventory.get("loot", {})
+    # 1. Логіка скарбів: Закопати або Викопати
+    my_treasure_maps = loot.get("treasure_maps", [])
+    
+    # Шукаємо саме той об'єкт, де збігаються координати ТА тип "my_treasure"
+    is_my_treasure_here = any(
+        t.get("pos") == f"{px},{py}" and t.get("type") == "my_treasure" 
+        for t in my_treasure_maps
+    )
+
+    if is_my_treasure_here:
+        # Якщо в цій точці є ВЛАСНИЙ закопаний скарб
+        builder.row(types.InlineKeyboardButton(
+            text="⛏ Викопати скарб з схованки", 
+            callback_data=f"dig_treasure:{px}:{py}")
+        )
+    else:
+        # Показуємо кнопку закопування, тільки якщо тут немає власного скарбу
+        # і у гравця є порожня мапа в інвентарі
+        if loot.get("handmade_map", 0) > 0:
+            builder.row(types.InlineKeyboardButton(
+                text="🪏 Закопати скарб", 
+                callback_data=f"bury_treasure:{px}:{py}")
+            )
     
     totems_in_loot = inventory.get("loot", {}).get("teleport_totem", 0)
     placed_totems = navigation.get("totems", [])
@@ -37,9 +62,22 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory:
         for t in placed_totems:
             if not (t['x'] == px and t['y'] == py):
                 builder.row(types.InlineKeyboardButton(
-                    text=f"🌀 До {t['id']} ({t['x']}, {t['y']})", 
+                    text=f"🌀 До тотему {t['name']} ({t['x']}, {t['y']})", 
                     callback_data=f"tp_to:{t['id']}")
                 )
+
+    if loot.get("random_totem", 0) > 0:
+        builder.row(types.InlineKeyboardButton(
+            text="🎲 Рандомний телепорт", 
+            callback_data="use_random_totem")
+        )
+
+    # Контрольний тотем: дозволяє обрати координати (відкриває меню вводу)
+    if loot.get("control_totem", 0) > 0:
+        builder.row(types.InlineKeyboardButton(
+            text="🎯 Точний телепорт", 
+            callback_data="use_control_totem")
+        )
 
     builder.row(types.InlineKeyboardButton(text="⬆️", callback_data=f"mv:up:{px}:{py}:{mode}"))
     builder.row(
@@ -53,21 +91,35 @@ def get_map_keyboard(px: int, py: int, mode: str, trees_at_pos: bool, inventory:
     
     return builder.as_markup()
 
-def get_viewer_keyboard(vx: int, vy: int):
+def get_viewer_keyboard(vx: int, vy: int, w: int = 20):
     builder = InlineKeyboardBuilder()
     
-    builder.row(types.InlineKeyboardButton(text="⏫", callback_data=f"view:{vx}:{vy-10}"))
-    builder.row(
-        types.InlineKeyboardButton(text="⏪", callback_data=f"view:{vx-10}:{vy}"),
-        types.InlineKeyboardButton(text="🔄 Центр", callback_data="open_map"), # Return to player
-        types.InlineKeyboardButton(text="⏩", callback_data=f"view:{vx+10}:{vy}")
-    )
-    builder.row(types.InlineKeyboardButton(text="⏬", callback_data=f"view:{vx}:{vy+10}"))
+    # Крок переміщення залежить від зуму (чим ближче, тим менший крок)
+    step = max(2, w // 4) 
     
-    builder.row(types.InlineKeyboardButton(text="🔙 Закрити огляд", callback_data="open_map"))
+    # Навігація
+    builder.row(types.InlineKeyboardButton(text="⏫", callback_data=f"view:{vx}:{vy-step}:{w}"))
+    builder.row(
+        types.InlineKeyboardButton(text="⏪", callback_data=f"view:{vx-step}:{vy}:{w}"),
+        types.InlineKeyboardButton(text="🔄 Центр", callback_data="open_map"),
+        types.InlineKeyboardButton(text="⏩", callback_data=f"view:{vx+step}:{vy}:{w}")
+    )
+    builder.row(types.InlineKeyboardButton(text="⏬", callback_data=f"view:{vx}:{vy+step}:{w}"))
+    
+    # Кнопки Зум + / -
+    # Обмежуємо зум від 10 (максимум близько) до 40 (максимум далеко)
+    zoom_in = max(10, w - 6)
+    zoom_out = min(40, w + 6)
+    
+    builder.row(
+        types.InlineKeyboardButton(text="🔍 Збільшити (+)", callback_data=f"view:{vx}:{vy}:{zoom_in}"),
+        types.InlineKeyboardButton(text="🔎 Зменшити (-)", callback_data=f"view:{vx}:{vy}:{zoom_out}")
+    )
+    
+    builder.row(types.InlineKeyboardButton(text="🔙 Закрити", callback_data="open_map"))
     
     return builder.as_markup()
-
+    
 def get_group_redirect_kb(bot_username: str):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(

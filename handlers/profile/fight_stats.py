@@ -44,6 +44,21 @@ def get_fight_stats_text(data):
     block_chance = round(100 * (BASE_BLOCK_CHANCE + STAT_WEIGHTS['def_to_block'] * data['def']), 0)
     dodge_chance = round(100 * (STAT_WEIGHTS['agi_to_dodge'] * data['agi']), 0)
     crit_bonus = round(100 * (STAT_WEIGHTS['luck_to_crit'] * data['luck']), 0)
+    inv = data.get("inventory")
+    if isinstance(inv, str):
+        try: inv = json.loads(inv)
+        except: inv = {}
+    elif inv is None:
+        inv = {}
+
+    eq_dict = inv.get("equipment", {})
+    if isinstance(eq_dict, str):
+        try: eq_dict = json.loads(eq_dict)
+        except: eq_dict = {}
+
+    # 3. Перевірка на "Котяче життя"
+    has_cat_life = any(item.get("name") == "Котяче життя" for item in eq_dict.values() if isinstance(item, dict))
+    additional_hp = 1 if has_cat_life else 0
     
     return (
         f"<b>⚔️ БОЙОВІ ХАРАКТЕРИСТИКИ</b>\n"
@@ -60,7 +75,7 @@ def get_fight_stats_text(data):
         f"🛡️ DEF: <b>{block_chance}%</b>\n"
         f"💨 AGI: <b>{dodge_chance}%</b>  |  "
         f"🍀 LCK: <b>+{crit_bonus}%</b>\n"
-        f"♥️ HP: <b>{data['hp'] * 2}</b>"
+        f"♥️ HP: <b>{(data['max_hp'] + additional_hp) * 2}</b>"
     )
 
 @router.callback_query(F.data == "show_fight_stats")

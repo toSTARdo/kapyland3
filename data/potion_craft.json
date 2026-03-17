@@ -16,16 +16,50 @@
   "catharsis": {
     "name": "Грибна бодяга",
     "emoji": "🍄‍🟫🌿🌀",
-    "ingredients": {"mushroom": 1, "rosemary": 1},
+    "ingredients": {"mushroom": 3, "rosemary": 2},
     "effect": "stats_reset",
     "description": "Cумнівний відвар, що змушує капібару переосмислити своє життя. Дозволяє перерозподілити всі очки характеристик."
   },
   "jellyfish_stinger": {
     "name": "Медузний екстракт",
     "emoji": "🪼🪼💥",
-    "ingredients": {"jellyfish": 3},
+    "ingredients": {"jellyfish": 5},
     "effect": "sting",
-    "description": "Липка субстанція, що пече навіть через флакон. Дає +1 атаки в наступному бою при змащенні зброї."
+    "description": "Липка субстанція, що пече навіть через флакон. Дає +20% до шансу активації адреналіну."
+  },
+  "tea": {
+    "name": "Чай",
+    "emoji": "🍵🍃",
+    "ingredients": {"mint": 3},
+    "plus_stamina": 20,
+    "effect": "relax",
+    "description": "Дозволяє розслабитися в метушливі моменти життя."
+  },
+  "honey": {
+    "name": "Мед",
+    "emoji": "🍯",
+    "ingredients": {"chamomile": 1, "lavender": 1},
+    "plus_stamina": 20,
+    "description": "Приманка для ведмедів."
+  },
+  "tropic_punch": {
+    "name": "Тропічний Пунш",
+    "emoji": "🍹🏝️",
+    "ingredients": {"coconut": 1, "mango": 2, "kiwi": 2, "mint": 1},
+    "effect": "increase_stamina",
+    "description": "Освіжаючий напій з Архіпелагу Джуа. Миттєво повертає жагу до пригод та дає +20⚡ до максимального ліміту енергії."
+  },
+  "crown_of_metamorphosis": {
+    "name": "Вінець перевтілення",
+    "emoji": "💐",
+    "ingredients": {
+      "lotus": 2,
+      "lavender": 10,
+      "fly_agaric": 5,
+      "truffel": 1
+    },
+    "effect": "metamorphosis",
+    "description": "Артефакт неймовірної сили, сплетений з пелюсток містичного лотоса та просякнутий соком мухомора. Дарує здатність змінювати расу, відкриваючи нові горизонти."
   },
   "ancient_vitality_brew": {
     "name": "Еліксир довголіття",
@@ -36,7 +70,7 @@
       "fly_agaric": 3,
       "rosemary": 5
     },
-    "plus_max_hp": 2,
+    "effect": "plus_max_hp",
     "description": "Древнє комбо плавників акул, лотосів та мухоморів. Назавжди зміцнює серце капібари (+❤️)."
   }
 }

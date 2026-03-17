@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 GET_FULL_PROFILE_SQL = """
 SELECT 
     u.tg_id, u.username, u.reincarnation_multiplier,
-    c.name, c.lvl, c.exp, c.hp, c.atk, c.def, c.agi, c.luck, 
+    c.name, c.lvl, c.exp, c.hp, c.atk, c.def, c.agi, c.luck, c.max_hp,
     c.stamina, c.hunger, c.weight, c.cleanness, c.state, c.equipment,
     c.inventory, c.navigation, c.zen,
     c.wins, c.losses, c.total_fights,

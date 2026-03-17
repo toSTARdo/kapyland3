@@ -86,25 +86,27 @@ def render_pov(px, py, discovered_list, mode="capy", treasure_maps=None, flowers
     rows.append("═" * win_w)
     return "\n".join(rows)
 
-def render_world_viewer(view_x, view_y, discovered_list):
-    win_w, win_h = 30, 15
+def render_world_viewer(view_x, view_y, discovered_list, win_w, win_h):
+    # Центруємо вікно, не виходячи за межі карти
     start_x = max(0, min(MAP_WIDTH - win_w, view_x - win_w // 2))
     start_y = max(0, min(MAP_HEIGHT - win_h, view_y - win_h // 2))
     
     discovered_set = set(discovered_list)
-    rows = [f"🌐 <b>Огляд світу ({view_x}, {view_y})</b>", "═" * win_w]
+    # Динамічна рамка під розмір вікна
+    border = "═" * win_w
+    rows = [f"🌐 <b>Огляд світу ({view_x}, {view_y})</b>", border]
     
     for y in range(start_y, start_y + win_h):
         line = []
         for x in range(start_x, start_x + win_w):
             c_str = f"{x},{y}"
             if x == view_x and y == view_y:
-                line.append("𖠌")
+                line.append("📍") # Маркер фокусу
             elif c_str in discovered_set:
                 line.append(FULL_MAP[y][x])
             else:
                 line.append(FOG_ICON)
         rows.append("".join(line))
     
-    rows.append("═" * win_w)
+    rows.append(border)
     return "\n".join(rows)
