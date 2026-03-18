@@ -98,7 +98,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         # Розрахунок порції
         if amount_type not in ["one, all"]:
             to_eat = int(amount_type)
-        else
+        else:
             to_eat = 1 if amount_type == "one" else current_count
         unit_weight = WEIGHT_TABLE.get(food_type, 0.5)
         total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
