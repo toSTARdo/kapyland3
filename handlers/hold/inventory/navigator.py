@@ -223,11 +223,12 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         teleport_totems = loot.get('teleport_totem', 0)
         random_totem = loot.get('random_totem', 0)
         control_totem = loot.get('control_totem', 0)
+        lacrima = loot.get("lacrima", 0)
 
         # Форматування статусу для постійних тотемів
         has_random = "Наявний" if random_totem > 0 else "Немає"
         has_control = "Наявний" if control_totem > 0 else "Немає"
-        has_lacrima = "Наявний" if has_lacrima > 0 else "Немає"
+        has_lacrima = "Наявний" if lacrima > 0 else "Немає"
 
         lines = [
             f"🎟️ Квитки: <b>{lottery_tickets}</b>",
