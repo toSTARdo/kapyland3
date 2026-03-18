@@ -14,30 +14,43 @@ from config import BASE_HITPOINTS, WEAPON, ARMOR, NPC_REGISTRY, BOSS_ID_MAP, BOS
 
 router = Router()
 
+# Updated signature to accept 3 arguments
 @router.callback_query(F.data.startswith("challenge_"))
-async def send_challenge(callback: types.CallbackQuery):
-    data = callback.data.split("_")
-    opponent_id = int(data[1])
+async def send_challenge(callback: types.CallbackQuery, target_id: int = None, db_pool = None):
+    # If target_id wasn't passed by the router (e.g. direct button click), 
+    # we extract it from callback.data as a fallback
+    if target_id is None:
+        data = callback.data.split("_")
+        target_id = int(data[1])
+        
     challenger_id = callback.from_user.id
     challenger_name = callback.from_user.first_name
 
-    if opponent_id == challenger_id:
+    if target_id == challenger_id:
         return await callback.answer("❌ Ви не можете викликати самого себе!", show_alert=True)
 
+    # Check stamina (since you have db_pool now)
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            stamina = await conn.fetchval("SELECT stamina FROM capybaras WHERE owner_id = $1", challenger_id)
+            if stamina and stamina < 15:
+                return await callback.answer("🪫 Ви занадто втомилися (треба 15⚡️)", show_alert=True)
+
     builder = InlineKeyboardBuilder()
-    builder.button(text="🤝 ПРИЙНЯТИ", callback_data=f"accept_{challenger_id}_{opponent_id}")
-    builder.button(text="🏳️ ВІДМОВИТИСЯ", callback_data=f"decline_{challenger_id}_{opponent_id}")
+    # Note: Using target_id here instead of opponent_id to keep variable names consistent
+    builder.button(text="🤝 ПРИЙНЯТИ", callback_data=f"accept_{challenger_id}_{target_id}")
+    builder.button(text="🏳️ ВІДМОВИТИСЯ", callback_data=f"decline_{challenger_id}_{target_id}")
     builder.adjust(2)
 
     await callback.message.answer(
         f"⚔️ <b>ПУБЛІЧНИЙ ВИКЛИК!</b>\n"
-        f"Пірабара {html.bold(challenger_name)} кидає рукавичку <a href='tg://user?id={opponent_id}'>опоненту</a>!\n\n"
+        f"Пірабара <b>{challenger_name}</b> кидає рукавичку <a href='tg://user?id={target_id}'>опоненту</a>!\n\n"
         f"<i>Тільки викликаний гравець може прийняти бій.</i>",
         reply_markup=builder.as_markup(),
         parse_mode="HTML"
     )
     await callback.answer("Виклик кинуто в чат!")
-
+    
 @router.callback_query(F.data.startswith("decline_"))
 async def battle_declined(callback: types.CallbackQuery):
     data = callback.data.split("_")
