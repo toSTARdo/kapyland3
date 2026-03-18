@@ -39,10 +39,15 @@ def get_profile_text(animal: Animal):
     )
 
 def get_profile_kb(animal: Animal, page=0, show_quicklinks=False):
+    is_sleeping = animal.state.get("status") == "sleep" if animal.state.get("status") else False
     builder = InlineKeyboardBuilder()
     builder.button(text="🍎 Їсти", callback_data="feed_capy")
     builder.button(text="🧼 Мити", callback_data="wash_capy")
-    builder.button(text="💤 Сон", callback_data="sleep_capy")
+    if is_sleeping:
+        builder.button(text="☀️ Прокинутися", callback_data="wakeup_now")
+    else:
+        builder.button(text="💤 Сон", callback_data="sleep_capy")
+        
     builder.button(text="⚔️ Характеристики", callback_data="show_fight_stats")
     builder.button(text="🪷 Медитація", callback_data="zen_upgrade")
     builder.adjust(3, 1, 1)

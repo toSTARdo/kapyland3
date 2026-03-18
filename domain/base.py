@@ -35,6 +35,7 @@ class Animal(BaseModel):
     weight: float = 20.0
     stats: Stats
     hunger: int = 3
+    state:  Dict[str, Any] 
     cleanness: int = 3
     
     # FIXED: Using default_factory to prevent shared memory issues
