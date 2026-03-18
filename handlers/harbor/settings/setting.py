@@ -1,5 +1,5 @@
 import json
-import html
+from aiogram import html
 
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
