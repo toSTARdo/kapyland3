@@ -169,7 +169,7 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
                 rewards.append(f"{materials_names[m_key]} x{m_amt}")
 
             for _ in range(random.randint(1, 3)):
-                rarity = random.choices(["Legendary", "Mythic"], weights=[95, 5])[0]
+                rarity = random.choices(["Legendary", "Mythic"], weights=[999, 1])[0]
                 pool = ARTIFACTS.get(rarity, [{"name": "Сяючий камінь", "type": "gem"}])
                 item = random.choice(pool)
                 item_id = str(uuid4())[:8]
