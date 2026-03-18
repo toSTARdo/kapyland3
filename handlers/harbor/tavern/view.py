@@ -6,6 +6,7 @@ from aiogram.types import InputMediaPhoto
 from config import IMAGES_URLS, SOCIAL_TUTS
 from utils.helpers import ensure_dict, get_main_menu_chunk
 from handlers.harbor.tavern.callbacks import *
+from core.combat.battles import send_challenge
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool)
                 json.dumps({tut_key: True}), uid
             )
     if action == "challenge":
-        await start_pvp_battle(callback, target_id, db_pool)
+        await send_challenge(callback, target_id, db_pool)
     elif action == "inspect":
         await show_user_profile_card(callback, target_id, db_pool)
     elif action == "gift_to":
