@@ -181,7 +181,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             "3": [
                 {"name": "🧊 Древній лід", "min_w": 0.1, "max_w": 0.3, "chance": 3, "type": "materials", "key": "ice_crystal"},
                 {"name": "🦑 Зоряний кракен", "min_w": 0.5, "max_w": 300.0, "chance": 8, "type": "materials", "key": "kraken"},
-                {"name": "🐳 Кит", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "whale"}
+                {"name": "🐳 Кит", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "whale"},
                 {"name": "💀 Череп", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "skull"}
             ]
         }
