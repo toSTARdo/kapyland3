@@ -348,6 +348,15 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
                (c.fishing_stats->>'max_weight')::float as secondary_val
                FROM users u JOIN capybaras c ON u.tg_id = c.owner_id 
                ORDER BY val DESC LIMIT 5 OFFSET $1"""
+        ),
+        # --- UPDATED BURP TOP (JSONB EXTRACTION) ---
+        "burp": (
+            "🍺 Королі Відрижки", " dB",
+            """SELECT u.username, 
+               (COALESCE(c.stats_track->>'max_burp', '0'))::float as val 
+               FROM users u 
+               JOIN capybaras c ON u.tg_id = c.owner_id 
+               ORDER BY val DESC LIMIT 5 OFFSET $1"""
         )
     }
 
@@ -367,23 +376,31 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
             s_val = row['secondary_val'] if row['secondary_val'] is not None else 0
             text += (f"{medal} {pos}. <b>{row['username']}</b>\n"
                      f"   └ Улов: <code>{val:.2f}</code> кг | Рекорд: <code>{s_val:.2f}</code> {label}\n")
+        elif criteria == "burp":
+            # Round decibels to 1 decimal place
+            text += f"{medal} {pos}. <b>{row['username']}</b> — <code>{val:.1f}</code>{label}\n"
         else:
             text += f"{medal} {pos}. <b>{row['username']}</b> — {val}{label}\n"
 
     if not rows: text += "<i>На цій сторінці порожньо...</i>"
 
     builder = InlineKeyboardBuilder()
+    # 3-button row
     builder.row(
         types.InlineKeyboardButton(text="⚖️ Вага", callback_data="leaderboard:mass:0"),
         types.InlineKeyboardButton(text="🎖 Рівень", callback_data="leaderboard:lvl:0"),
-        types.InlineKeyboardButton(text="⚔️ Бій", callback_data="leaderboard:winrate:0"),
-        types.InlineKeyboardButton(text="🎣 Риба", callback_data="leaderboard:fishing:0")
+        types.InlineKeyboardButton(text="⚔️ Бій", callback_data="leaderboard:winrate:0")
+    )
+    # 2-button row
+    builder.row(
+        types.InlineKeyboardButton(text="🎣 Риба", callback_data="leaderboard:fishing:0"),
+        types.InlineKeyboardButton(text="📢 Відрижка", callback_data="leaderboard:burp:0")
     )
     
+    # Navigation and Back
     nav_btns = []
     if page > 0:
         nav_btns.append(types.InlineKeyboardButton(text="⬅️", callback_data=f"leaderboard:{criteria}:{page-1}"))
-    
     if len(rows) == 5:
         nav_btns.append(types.InlineKeyboardButton(text="➡️", callback_data=f"leaderboard:{criteria}:{page+1}"))
     
@@ -391,7 +408,7 @@ async def show_leaderboard(callback: types.CallbackQuery, db_pool):
         builder.row(*nav_btns)
     
     builder.row(types.InlineKeyboardButton(text="🔙 Назад", callback_data="social"))
-    builder.adjust(4, len(nav_btns) if nav_btns else 1, 1)
+    builder.adjust(3, 2, len(nav_btns) if nav_btns else 1, 1)
 
     try:
         await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")

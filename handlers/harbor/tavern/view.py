@@ -155,6 +155,19 @@ async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool)
                 "UPDATE users SET tutorial = COALESCE(tutorial, '{}'::jsonb) || $1::jsonb WHERE tg_id = $2",
                 json.dumps({tut_key: True}), uid
             )
+    if action == "challenge":
+        await start_pvp_battle(callback, target_id, db_pool)
+    elif action == "inspect":
+        await show_user_profile_card(callback, target_id, db_pool)
+    elif action == "gift_to":
+        await gift_category_select(callback, target_id, db_pool)
+    elif action == "steal_from":
+        await execute_steal_logic(callback, target_id, db_pool)
+    elif action == "date_request":
+        await send_date_request(callback, target_id, db_pool)
+    elif action == "ram":
+        await execute_ram_logic(callback, target_id, db_pool)
+    elif action == "inspect":
+        await handle_inspect_player(callback, target_id, db_pool)
     else:
-        # Тут твоя основна логіка виконання дії (наприклад, виклик функції бою)
-        await callback.answer(f"Виконую дію: {action}...")
+        await callback.answer(f"Дія {action} ще в розробці 🍊")
