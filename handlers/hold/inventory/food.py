@@ -124,7 +124,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         zen_gain = sum(1 for _ in range(to_eat) if random.random() < 0.20) if food_type == "fly_agaric" else 0
         
         burp_loudness = 0
-        burp_display = "\n💨 (тихо відригнула)"
+        burp_display = "\n💨 (тихенько відригнула)"
         if total_bonus >= 2.0:
             burp_loudness = min(190, (40 + random.randint(1, 20) + int(total_bonus * 2)))
             if burp_loudness > 120: burp_display = f"\n🔊 ВІДРИЖКА: {burp_loudness} дБ (Апко... пока...лікоп... Кінець світу короче! 💥)"
