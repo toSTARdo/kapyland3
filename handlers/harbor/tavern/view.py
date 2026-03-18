@@ -141,7 +141,8 @@ async def user_menu_handler(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data.regexp(r"^(challenge|date_request|gift_to|steal_from|ram|inspect):?"))
 async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool):
     # Витягуємо тип дії (наприклад, challenge)
-    action = callback.data.split(":")[0].split("_")[0] 
+    data_parts = callback.data.replace("_", ":").split(":")
+    action = data_parts[0]
     try:
         target_id = int(data_parts[1])
     except (IndexError, ValueError):
