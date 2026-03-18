@@ -156,11 +156,17 @@ async def run_battle_logic(
     if not p1_data or not p2_data: return
 
     print(f"DEBUG: p1_stamina = {p1_data.get('stamina')}, type = {type(p1_data.get('stamina'))}")
-    # Перевірка стаміни
-    if bot_type != "parrotbot" and (p1_data.get('stamina', 0) < 5):
-        msg = "🪫 Твоя капібара надто стомлена! (Треба 5⚡)"
-        return await event.answer(msg, show_alert=True) if isinstance(event, types.CallbackQuery) else await msg_interface.answer(msg)
+    is_training = bot_type in ["parrotbot", "testbot"]
+    stamina_cost = 15 if is_boss else 5
 
+    if not is_training:
+        p1_stamina = p1_data.get('stamina', 0)
+        
+        if p1_stamina < stamina_cost:
+            msg = f"🪫 Надто мало енергії для такого бою! (Треба {stamina_cost}⚡️)"
+            if isinstance(event, types.CallbackQuery):
+                return await event.answer(msg, show_alert=True)
+            return await msg_interface.answer(msg)
     # 2. Створення об'єктів бійців
     p1, p2 = _initialize_fighters(p1_data, p2_data)
 

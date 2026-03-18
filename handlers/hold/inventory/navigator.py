@@ -237,7 +237,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             f"🗺 Саморобні мапи: <b>{handmade_maps}</b>",
             f"🗿 Тотеми: <b>{teleport_totems}</b>",
             f"🎲🗿 Тотем хаосу: <b>{has_random}</b>",
-            f"🎯🗿 Тотем контролю: <b>{has_control}</b>"
+            f"🎯🗿 Тотем контролю: <b>{has_control}</b>",
             f"⚗️ Лакрима: <b>{has_lacrima}</b>"
         ]
         
