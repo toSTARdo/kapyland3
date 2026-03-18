@@ -4,6 +4,7 @@ import random
 import datetime as dt
 import uuid
 from aiogram import types, F, Router
+from aiogram.fsm.context import FSMContext
 from .map_assets import *
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from .map_renderer import render_pov, render_world_viewer, get_stamina_icons
