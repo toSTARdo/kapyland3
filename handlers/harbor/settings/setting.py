@@ -16,12 +16,11 @@ class SettingsStates(StatesGroup):
     waiting_for_new_name = State()
     waiting_for_bug_report = State()
 
-def get_settings_kb(quicklinks_enabled: bool, menu_page: int = 0) -> InlineKeyboardMarkup:
+def get_settings_kb(quicklinks_enabled: bool = True, menu_page: int = 0) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     
     builder.row(InlineKeyboardButton(text="📝 Змінити ім'я", callback_data="change_name_start"))
     
-    # Текст кнопки залежить від стану
     ql_status = "✅" if quicklinks_enabled else "❌"
     builder.row(InlineKeyboardButton(
         text=f"🔗 Швидкі посилання: {ql_status}", 
@@ -34,7 +33,6 @@ def get_settings_kb(quicklinks_enabled: bool, menu_page: int = 0) -> InlineKeybo
     builder.row(InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start"))
     builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
     
-    # Додаємо чанк, якщо активовано
     if quicklinks_enabled:
         get_main_menu_chunk(builder, page=menu_page, callback_prefix="open_settings")
     
@@ -46,7 +44,6 @@ async def show_settings(event: types.Message | types.CallbackQuery, db_pool):
     is_callback = isinstance(event, types.CallbackQuery)
     user_id = event.from_user.id
     
-    # Визначаємо сторінку чанка
     menu_page = 0
     if is_callback and ":p" in event.data:
         menu_page = int(event.data.split(":p")[1])
@@ -59,11 +56,13 @@ async def show_settings(event: types.Message | types.CallbackQuery, db_pool):
     kb = get_settings_kb(quicklinks_enabled, menu_page)
     
     if is_callback:
-        # Використовуємо універсальний метод оновлення
         try:
             await event.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML")
         except:
-            await event.message.edit_reply_markup(reply_markup=kb)
+            try:
+                await event.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
+            except:
+                await event.message.edit_reply_markup(reply_markup=kb)
         await event.answer()
     else:
         await event.answer_photo(photo=IMAGES_URLS["village_main"], caption=text, reply_markup=kb, parse_mode="HTML")
@@ -73,24 +72,13 @@ async def toggle_quicklinks(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        # Інвертуємо значення row (NOT row)
-        # COALESCE допомагає, якщо значення NULL
         new_val = await conn.fetchval(
-            """
-            UPDATE users 
-            SET quicklinks = NOT COALESCE(quicklinks, TRUE) 
-            WHERE tg_id = $1 
-            RETURNING quicklinks
-            """, 
+            "UPDATE users SET quicklinks = NOT COALESCE(quicklinks, TRUE) WHERE tg_id = $1 RETURNING quicklinks", 
             user_id
         )
 
     await callback.answer(f"Меню {'увімкнено' if new_val else 'вимкнено'}")
-    
-    # Оновлюємо клавіатуру на місці
-    await callback.message.edit_reply_markup(
-        reply_markup=get_settings_kb(quicklinks_enabled=new_val)
-    )
+    await callback.message.edit_reply_markup(reply_markup=get_settings_kb(quicklinks_enabled=new_val))
 
 @router.callback_query(F.data == "change_name_start")
 async def rename_start(callback: types.CallbackQuery, state: FSMContext):
@@ -100,7 +88,7 @@ async def rename_start(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(SettingsStates.waiting_for_new_name)
 async def rename_finish(message: types.Message, state: FSMContext, db_pool):
-    new_name = message.text.strip()
+    new_name = html.escape(message.text.strip())
     
     if len(new_name) > 30:
         return await message.answer("❌ Надто довге ім'я! Максимум — 30 символів.")
@@ -108,19 +96,18 @@ async def rename_finish(message: types.Message, state: FSMContext, db_pool):
     uid = message.from_user.id
     
     async with db_pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE capybaras SET name = $1 WHERE owner_id = $2", 
-            new_name, uid
-        )
+        await conn.execute("UPDATE capybaras SET name = $1 WHERE owner_id = $2", new_name, uid)
+        quicklinks_enabled = await conn.fetchval("SELECT quicklinks FROM users WHERE tg_id = $1", uid)
+        quicklinks_enabled = quicklinks_enabled if quicklinks_enabled is not None else True
 
     await state.clear()
     await message.answer(
         f"✅ Готово! Тепер твою капібару звати <b>{new_name}</b>", 
-        reply_markup=get_settings_kb(), 
+        reply_markup=get_settings_kb(quicklinks_enabled=quicklinks_enabled), 
         parse_mode="HTML"
     ) 
 
-@router.callback_query(F.data == "report_start")  # Змінив назву з bug_start на загальну
+@router.callback_query(F.data == "report_start")
 async def report_category_choice(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.button(text="👾 Баг", callback_data="report_type:bug")
@@ -128,6 +115,7 @@ async def report_category_choice(callback: types.CallbackQuery):
     builder.button(text="⚖️ Скарга/Баланс", callback_data="report_type:complaint")
     builder.button(text="❓ Інше", callback_data="report_type:other")
     builder.adjust(2)
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="open_settings"))
 
     await callback.message.answer(
         "📝 <b>Центр підтримки</b>\n\nОберіть тип вашого звернення:",
@@ -139,7 +127,7 @@ async def report_category_choice(callback: types.CallbackQuery):
 @router.callback_query(F.data.startswith("report_type:"))
 async def report_bug_start(callback: types.CallbackQuery, state: FSMContext):
     report_type = callback.data.split(":")[1]
-    await state.update_data(report_type=report_type) # Зберігаємо тип
+    await state.update_data(report_type=report_type)
     await state.set_state(SettingsStates.waiting_for_bug_report)
     
     prompts = {
@@ -150,17 +138,16 @@ async def report_bug_start(callback: types.CallbackQuery, state: FSMContext):
     }
     
     await callback.message.answer(
-        f"✍️ <b>{prompts.get(report_type)}</b>\n\nМожна додати фото/скріншот.",
+        f"✍️ <b>{prompts.get(report_type, 'Опишіть ваше звернення')}</b>\n\nМожна додати фото/скріншот.",
         parse_mode="HTML"
     )
     await callback.answer()
 
 @router.message(SettingsStates.waiting_for_bug_report)
-async def report_finish(message: types.Message, state: FSMContext, bot):
+async def report_finish(message: types.Message, state: FSMContext, bot, db_pool):
     data = await state.get_data()
     rep_type = data.get("report_type", "other")
     
-    # Співставлення типів з емодзі та тегами
     types_meta = {
         "bug": ("🐜 БАГ-РЕПОРТ", "#bug"),
         "idea": ("💡 НОВА ІДЕЯ", "#idea"),
@@ -168,7 +155,7 @@ async def report_finish(message: types.Message, state: FSMContext, bot):
         "other": ("❓ ЗВЕРНЕННЯ", "#other")
     }
     
-    title, tag = types_meta.get(rep_type)
+    title, tag = types_meta.get(rep_type, ("❓ ЗВЕРНЕННЯ", "#other"))
     bug_text = message.text or message.caption or "[Текст відсутній]"
     user_info = (
         f"👤 <b>Від:</b> {html.quote(message.from_user.full_name)}\n"
@@ -185,21 +172,19 @@ async def report_finish(message: types.Message, state: FSMContext, bot):
     )
     
     try:
-        # Відправляємо фото, якщо воно є, разом з текстом, або просто текст
         if message.photo:
-            await bot.send_photo(
-                chat_id=DEV_ID, 
-                photo=message.photo[-1].file_id, 
-                caption=report_msg, 
-                parse_mode="HTML"
-            )
+            await bot.send_photo(chat_id=DEV_ID, photo=message.photo[-1].file_id, caption=report_msg, parse_mode="HTML")
         else:
             await bot.send_message(chat_id=DEV_ID, text=report_msg, parse_mode="HTML")
             
+        async with db_pool.acquire() as conn:
+            ql = await conn.fetchval("SELECT quicklinks FROM users WHERE tg_id = $1", message.from_user.id)
+            ql = ql if ql is not None else True
+
         await message.answer(
             "✅ <b>Надіслано!</b>\nДякуємо за допомогу у розвитку Planet Mofu.",
             parse_mode="HTML",
-            reply_markup=get_settings_kb()
+            reply_markup=get_settings_kb(quicklinks_enabled=ql)
         )
     except Exception as e:
         await message.answer(f"❌ Помилка при надсиланні: {e}")
@@ -211,10 +196,7 @@ async def show_titles(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT unlocked_titles, state FROM capybaras WHERE owner_id = $1", 
-            uid
-        )
+        row = await conn.fetchrow("SELECT unlocked_titles, state FROM capybaras WHERE owner_id = $1", uid)
     
     if not row or not row['unlocked_titles']:
         return await callback.answer("❌ У тебе ще немає розблокованих титулів!", show_alert=True)
@@ -243,32 +225,20 @@ async def process_set_title(callback: types.CallbackQuery, db_pool):
     async with db_pool.acquire() as conn:
         state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
         state = state_raw if isinstance(state_raw, dict) else json.loads(state_raw or '{}')
-        
         state['current_title'] = new_title
-        
-        await conn.execute(
-            "UPDATE capybaras SET state = $1 WHERE owner_id = $2", 
-            json.dumps(state, ensure_ascii=False), uid
-        )
+        await conn.execute("UPDATE capybaras SET state = $1 WHERE owner_id = $2", json.dumps(state, ensure_ascii=False), uid)
 
     await callback.answer(f"🎖 Титул «{new_title}» встановлено!")
     await show_titles(callback, db_pool) 
 
-#MANUAL
-
 def get_manual_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     buttons = [
-        ("1. Тамагочі", "man_1"), 
-        ("2.1 Характеристики", "man_2_stats"),
-        ("2.2 Логіка бою", "man_2_logic"),
-        ("3. Лотерея", "man_3"), 
-        ("4. Карта та Світ", "man_4"),
-        ("5. Кузня (Крафт)", "man_5"), 
-        ("6. Алхімія", "man_6"),
-        ("7. Базар", "man_7"), 
-        ("8. Реінкарнація", "man_8"),
-        ("9. Міфіки", "man_9")
+        ("1. Тамагочі", "man_1"), ("2.1 Характеристики", "man_2_stats"),
+        ("2.2 Логіка бою", "man_2_logic"), ("3. Лотерея", "man_3"), 
+        ("4. Карта та Світ", "man_4"), ("5. Кузня (Крафт)", "man_5"), 
+        ("6. Алхімія", "man_6"), ("7. Базар", "man_7"), 
+        ("8. Реінкарнація", "man_8"), ("9. Міфіки", "man_9")
     ]
     for text, callback in buttons:
         builder.add(InlineKeyboardButton(text=text, callback_data=callback))
@@ -289,7 +259,6 @@ async def manual_main(callback: types.CallbackQuery):
 @router.callback_query(F.data.startswith("man_"))
 async def show_manual_detail(callback: types.CallbackQuery):
     page_id = callback.data.split("_")[-1]
-    
     details = {
         "1": (
             "<b>1. Тамагочі</b>\n\n"
@@ -362,11 +331,8 @@ async def show_manual_detail(callback: types.CallbackQuery):
             "Крафт потребує різні предмети з лотереї та виконання вимог."
         )
     }
-
     text = details.get(page_id, "Сторінка в розробці...")
-    
     back_kb = InlineKeyboardBuilder()
     back_kb.row(InlineKeyboardButton(text="⬅️ До списку розділів", callback_data="open_manual_main"))
-    
     await callback.message.edit_caption(caption=text, reply_markup=back_kb.as_markup(), parse_mode="HTML")
     await callback.answer()

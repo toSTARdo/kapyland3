@@ -128,7 +128,7 @@ class AnimalRepository:
                     luck=row['luck'],
                     stamina=row['stamina']
                 ),
-                state=state
+                state=state,
                 inventory=inventory, 
                 equipment=equipment,  
                 ship_id=row['ship_id'],
