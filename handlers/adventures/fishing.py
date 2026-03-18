@@ -227,7 +227,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             
             # --- НОВИЙ БЛОК: Додаємо Слоїк у матеріали ---
             materials = inventory.setdefault("materials", {})
-            materials["jar"] = materials.get("jar", 0) + 1 if random.random() < 0.1
+            materials["jar"] = materials.get("jar", 0) + 1 if random.random() < 0.1 else 0
             # ---------------------------------------------
 
             if random.random() < 0.1:
