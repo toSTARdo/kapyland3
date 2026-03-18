@@ -171,17 +171,18 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         BIOME_LOOT = {
             "1": [
                 {"name": "🥥 Кокос", "min_w": 0.8, "max_w": 1.2, "chance": 10, "type": "materials", "key": "coconut"},
-                {"name": "🐙 Вардосквірд", "min_w": 0.8, "max_w": 1.2, "chance": 10, "type": "materials", "key": "squid"}
+                {"name": "🪸 Корал", "min_w": 0.8, "max_w": 1.2, "chance": 10, "type": "materials", "key": "coral"}
             ],
             "2": [
-                {"name": "🐚 Мушля-Шхуна", "min_w": 1.0, "max_w": 3.0, "chance": 12, "type": "materials", "key": "shell"},
+                {"name": "🐚 Мушля-Шхуна", "min_w": 1.0, "max_w": 3.0, "chance": 2, "type": "materials", "key": "shell"},
                 {"name": "🦐 Креветка-боксер", "min_w": 0.5, "max_w": 0.5, "chance": 8, "type": "materials", "key": "mantis_shrimp"},
                 {"name": "🐊 Крокодилоподібний ящур", "min_w": 0.1, "max_w": 0.1, "chance": 5, "type": "materials", "key": "lizard"}
             ],
             "3": [
-                {"name": "🧊 Древній лід", "min_w": 0.1, "max_w": 0.3, "chance": 15, "type": "materials", "key": "ice_crystal"},
+                {"name": "🧊 Древній лід", "min_w": 0.1, "max_w": 0.3, "chance": 3, "type": "materials", "key": "ice_crystal"},
                 {"name": "🦑 Зоряний кракен", "min_w": 0.5, "max_w": 300.0, "chance": 8, "type": "materials", "key": "kraken"},
                 {"name": "🐳 Кит", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "whale"}
+                {"name": "💀 Череп", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "skull"}
             ]
         }
 
@@ -226,7 +227,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             
             # --- НОВИЙ БЛОК: Додаємо Слоїк у матеріали ---
             materials = inventory.setdefault("materials", {})
-            materials["jar"] = materials.get("jar", 0) + 1
+            materials["jar"] = materials.get("jar", 0) + 1 if random.random() < 0.1
             # ---------------------------------------------
 
             if random.random() < 0.1:

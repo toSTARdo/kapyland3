@@ -68,12 +68,15 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
     
     requirements_met = True
     req_warning = ""
+    profile = await get_full_profile(db_pool, user_id)
+    nav = profile.get('navigation')
+    if isinstance(nav, str):
+        nav = json.loads(nav)
 
     if "requirements" in node:
         reqs = node["requirements"]
         if "player_coords" in reqs:
-            profile = await get_full_profile(db_pool, user_id)
-            current_pos = f"{profile['navigation']['x']},{profile['navigation']['y']}"
+            current_pos = f"{nav['x']},{nav['y']}"
             target_pos = reqs["player_coords"]
             
             if current_pos != target_pos:
@@ -82,6 +85,32 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
 
     if not requirements_met:
         display_text += req_warning
+
+    if "actions" in node:
+        actions = node["actions"]
+        
+        # Переміщення гравця по карті
+        if "move" in actions:
+            target_coords = actions["move"] # Очікуємо рядок "x,y"
+            try:
+                tx, ty = map(int, target_coords.split(","))
+                
+                async with db_pool.acquire() as conn:
+                    # Отримуємо поточну навігацію, щоб не затерти інші дані (discovered, flowers тощо)
+                    nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", user_id)
+                    current_nav = json.loads(nav_raw) if isinstance(nav_raw, str) else (nav_raw or {})
+                    
+                    current_nav["x"] = tx
+                    current_nav["y"] = ty
+                    
+                    await conn.execute(
+                        "UPDATE capybaras SET navigation = $1 WHERE owner_id = $2",
+                        json.dumps(current_nav), user_id
+                    )
+                # Можна додати лог або сповіщення, якщо потрібно
+                # print(f"DEBUG: Player {user_id} moved to {target_coords} by node {node_id}")
+            except Exception as e:
+                print(f"Error in 'move' action for node {node_id}: {e}")
 
     if "title" in node:
             new_title = node["title"]
@@ -114,24 +143,44 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
                 builder.button(text=opt["text"], callback_data=f"{prefix}{opt['next_id']}")
             builder.adjust(1)
         else:
-            builder.button(text="🔙 Назад до штурвалу", callback_data="open_navigation")
+            builder.button(text="🔙 Назад до штурвалу", callback_data="open_map")
 
     if show_quicklinks:
         cb_prefix = "start_story_main" if story_type == "main" else "start_story_prologue"
         get_main_menu_chunk(builder, page=menu_page, callback_prefix=cb_prefix)
 
+    from aiogram.exceptions import TelegramBadRequest
+
+    # If message has media, we must delete and send a new one
     if message.photo or message.video:
         try:
             await message.delete()
         except:
             pass
-        await message.answer(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    else:
+        return await message.answer(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+    # If it's a normal text message, try to edit it
+    try:
+        await message.edit_text(
+            text=display_text, 
+            reply_markup=builder.as_markup(), 
+            parse_mode="HTML"
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            # The user probably clicked the same button twice. 
+            # We answer the callback (if this is one) to stop the loading spinner.
+            pass
+        else:
+            # It's a real error (e.g., message too long, chat not found), so raise it.
+            raise e
+    except Exception:
+        # Fallback: if edit_text failed for some other weird reason, try just the buttons
         try:
-            await message.edit_text(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-        except Exception:
             await message.edit_reply_markup(reply_markup=builder.as_markup())
-    
+        except TelegramBadRequest:
+            pass # Even this failed? Nothing to update.
+
 @router.callback_query(F.data.startswith("preview_race_"))
 async def handle_race_preview(callback: types.CallbackQuery):
     race_id = callback.data.replace("preview_race_", "")

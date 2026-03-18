@@ -44,6 +44,10 @@ class Fighter:
         eq_dict = inventory.get("equipment", {})
         has_cat_life = any(item.get("name") == "Котяче життя" for item in eq_dict.values())
 
+        loot = inventory.get("loot", {})
+        
+        self.has_lachryma = int(loot.get("lachryma", 0)) > 0
+
         extra_hp = 2 if has_cat_life else 0
         self.max_hp = (capy.get("max_hp", 3) * UNITS_PER_HEART) + extra_hp
         self.hp = self.max_hp
@@ -109,7 +113,7 @@ class CombatEngine:
 
         # 1. Bat Passive: Sonar
         current_block_chance = defe.get_block_chance()
-        if att.race == "bat" and random.random() < 0.8:
+        if att.race == "bat" and (random.random() < 0.6 or att.has_lachryma):
             current_block_chance *= 0.5
             race_logs.append(f"🔊 {html.bold(att.name)} оминає захист ворога!")
             # We don't log this every time to avoid spam, or log only on successful pierce
@@ -136,13 +140,13 @@ class CombatEngine:
         # Raccoon Passive: Trash Luck
         current_luck = att.luck
         if att.race == "raccoon" and att.hp < defe.hp:
-            current_luck *= 2
+            current_luck *= 2 if not att.has_lachryma else 4
             race_logs.append(f"🎰 {html.bold(att.name)} відчуває азарт погоні!")
 
         # Cat Passive: Counter-crit
         crit_chance = current_luck * STAT_WEIGHTS["luck_to_crit"]
         if att.cat_reflex_active:
-            crit_chance += 0.20
+            crit_chance += 0.20 if not att.has_lachryma else 0.40
             att.cat_reflex_active = False
             race_logs.append(f"🐱 Котячі рефлекси спрацювали!")
 
@@ -165,7 +169,7 @@ class CombatEngine:
         # 6. Capybara Passive: Zen
         capy_notif = ""
         if defe.race == "capybara" and total_damage > 0:
-            if random.random() < 0.25:
+            if random.random() < 0.25 or defe.has_lachryma:
                 defe.capy_zen_rounds = 2
                 capy_notif = f"\n🪷 {html.bold(defe.name)} зловив дзен (Блок +15%)!"
 

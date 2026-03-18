@@ -2,6 +2,7 @@ import asyncio
 import json
 import random
 import logging
+from uuid import uuid4
 from aiogram import Router, types, html, F
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -266,7 +267,6 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 WHERE owner_id = $1
             """, uid)
 
-        # ЛОГІКА ПЕРЕМОГИ (p1)
         if winner == p1:
             res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
             
@@ -274,40 +274,108 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 reward_info = await _process_ghost_loot(uid, p2_data, tomb_id, conn)
                 
             elif is_boss and boss_cfg:
-                # Оновлюємо прогрес босів та отримуємо їх кількість
-                bosses_count = await _update_boss_progress(uid, conn)
-                
-                reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ!</b>\n📈 +{boss_cfg['weight']} кг, +{boss_cfg['exp']} EXP"
-                
-                if bosses_count == 1:
-                    # ПЕРША ПЕРЕМОГА: Видаємо Мега-скриню
-                    await conn.execute("""
-                        UPDATE capybaras 
-                        SET inventory = jsonb_set(
-                            inventory, '{loot,mega_chest}', 
-                            (COALESCE((inventory->'loot'->>'mega_chest')::int, 0) + 1)::text::jsonb
-                        ) 
-                        WHERE owner_id = $1
-                    """, uid)
-                    reward_info += "\n🎁 <b>ПЕРША ПЕРЕМОГА:</b> Отримано 1 мега-скриню!"
-                else:
-                    # ПОВТОРНА ПЕРЕМОГА: Видаємо звичайну скриню
-                    await conn.execute("""
-                        UPDATE capybaras 
-                        SET inventory = jsonb_set(
-                            inventory, '{loot,chest}', 
-                            (COALESCE((inventory->'loot'->>'chest')::int, 0) + 1)::text::jsonb
-                        ) 
-                        WHERE owner_id = $1
-                    """, uid)
-                    reward_info += "\n🎁 <b>ПЕРЕМОГА:</b> Отримано 1 скриню!"
+                boss_id = boss_cfg.get('id') 
+                            
+                was_defeated = await conn.fetchval("""
+                                SELECT (stats_track->'defeated_boss_ids') ? $2 
+                                FROM capybaras WHERE owner_id = $1
+                            """, uid, boss_id)
 
-                # Нараховуємо досвід за боса
-                await grant_exp_and_lvl(uid, exp_gain=boss_cfg['exp'], weight_gain=boss_cfg['weight'], bot=bot, db_pool=db_pool)
+                            multiplier = 1.0
+                            if was_defeated:
+                                multiplier = 0.25  
+                                reward_info = f"\n\n<b>ПОВТОРНА ПЕРЕМОГА</b>"
+                            else:
+                                reward_info = f"\n\n🏆 <b>БОС ПОДОЛАНИЙ ВПЕРШЕ!</b>"
+
+                            final_weight = round(boss_cfg['weight'] * multiplier, 2)
+                            final_exp = int(boss_cfg['exp'] * multiplier)
+
+                            reward_info += f"\n📈 +{final_weight} кг, +{final_exp} EXP"
+
+                            # 4. Видача скринь та квитків
+                            if not was_defeated:
+                                # ПЕРША ПЕРЕМОГА
+                                await conn.execute("""
+                                    UPDATE capybaras 
+                                    SET inventory = jsonb_set(
+                                            inventory, '{loot,mega_chest}', 
+                                            (COALESCE((inventory->'loot'->>'mega_chest')::int, 0) + 1)::text::jsonb
+                                        ),
+                                        stats_track = jsonb_set(
+                                            stats_track, '{defeated_boss_ids}', 
+                                            COALESCE(stats_track->'defeated_boss_ids', '[]'::jsonb) || jsonb_build_array($2::text)
+                                        )
+                                    WHERE owner_id = $1
+                                """, uid, boss_id)
+                                reward_info += "\n🎁 Отримано 1 мега-скриню!"
+                            else:
+                                # ПОВТОРНА ПЕРЕМОГА
+                                await conn.execute("""
+                                    UPDATE capybaras 
+                                    SET inventory = jsonb_set(
+                                        inventory, '{loot,chest}', 
+                                        (COALESCE((inventory->'loot'->>'chest')::int, 0) + 1)::text::jsonb
+                                    ) 
+                                    WHERE owner_id = $1
+                                """, uid)
+                                reward_info += "\n🎁 Отримано 1 звичайну скриню!"
+
+                            # --- НОВЕ: ШАНС НА КВИТОК ---
+                            ticket_chance = 1.0 if not was_defeated else 0.25
+                            if random.random() < ticket_chance:
+                                await conn.execute("""
+                                    UPDATE capybaras 
+                                    SET inventory = jsonb_set(
+                                        inventory, '{loot,lottery_ticket}', 
+                                        (COALESCE((inventory->'loot'->>'lottery_ticket')::int, 0) + 1)::text::jsonb
+                                    ) 
+                                    WHERE owner_id = $1
+                                """, uid)
+                                reward_info += "\n🎟 <b>Бонус:</b> Знайдено лотерейний квиток!"
+
+                            # 5. Нараховуємо досвід
+                            await grant_exp_and_lvl(uid, exp_gain=final_exp, weight_gain=final_weight, bot=bot, db_pool=db_pool)
 
             elif not is_parrot:
-                # Звичайна перемога (не папуга, не бос, не привид)
+                # Звичайна перемога (над звичайним мобом bot_type != None)
                 reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +{winner.hp} кг, +{winner.hp} EXP"
+                
+                # --- ЛОГІКА ДРОПУ АРТЕФАКТІВ (Шанс 25%) ---
+                if bot_type is not None and random.random() < 0.25:
+                    # Визначаємо рідкість: 80% Common, 20% Rare
+                    rarity = random.choices(["Common", "Rare"], weights=[80, 20])[0]
+                    
+                    # Отримуємо пул предметів або дефолтний "Іржавий ніж"
+                    pool = ARTIFACTS.get(rarity, [{"name": "Іржавий ніж", "type": "weapon"}])
+                    item = random.choice(pool)
+                    
+                    # Генеруємо унікальний ID для інвентаря
+                    item_id = str(uuid4())[:8]
+                    
+                    # Отримуємо поточний інвентар з p2_data (або завантажуємо з БД)
+                    # p2_data — це зазвичай дані опонента, нам потрібен інвентар UID (p1)
+                    # Оскільки ми в async with conn, краще дістати свіжий інвентар:
+                    inv_json = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
+                    inv = json.loads(inv_json) if isinstance(inv_json, str) else (inv_json or {})
+                    
+                    eq_dict = inv.setdefault("equipment", {})
+                    eq_dict[item_id] = {
+                        "name": item["name"], 
+                        "rarity": rarity, 
+                        "type": item["type"],
+                        "lvl": 0, 
+                        "count": 1, 
+                        "desc": f"Знайдено після перемоги над {p2.name}."
+                    }
+                    
+                    # Оновлюємо інвентар у базі
+                    await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv), uid)
+                    
+                    # Додаємо текст до повідомлення
+                    reward_info += f"\n\n✨ <b>Знайдено артефакт:</b> {item['name']} ({rarity})!"
+
+                # Нараховуємо досвід та вагу
                 await grant_exp_and_lvl(uid, exp_gain=winner.hp, weight_gain=winner.hp, bot=bot, db_pool=db_pool)
 
         # ЛОГІКА ПОРАЗКИ (p1 програв)

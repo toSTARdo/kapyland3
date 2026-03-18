@@ -30,7 +30,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT c.stamina, c.navigation, c.state, c.inventory, c.cooldowns, u.quicklinks 
+            SELECT c.stamina, c.navigation, c.state, c.inventory, c.cooldowns, c.stats_track, u.quicklinks 
             FROM capybaras c 
             JOIN users u ON c.owner_id = u.tg_id
             WHERE c.owner_id = $1
@@ -43,6 +43,7 @@ async def render_map(callback: types.CallbackQuery, db_pool):
         inv = json.loads(row['inventory'])
         cooldowns = json.loads(row['cooldowns']) if row['cooldowns'] else {}
         stamina = row['stamina']
+        stats_track = row["stats_track"]
         show_quicklinks = row['quicklinks'] if row['quicklinks'] is not None else True
 
         last_refresh = cooldowns.get("flowers_refresh")
@@ -130,10 +131,11 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         return await callback.answer("Там лише безодня... ⛔", show_alert=True)
 
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT stamina, zen, navigation, inventory, state, lvl FROM capybaras WHERE owner_id = $1", uid)
+        row = await conn.fetchrow("SELECT stamina, zen, navigation, inventory, state, stats_track, lvl FROM capybaras WHERE owner_id = $1", uid)
         
         stamina = row['stamina']
         capy_lvl = row['lvl']
+        stats_track = json.loads(row["stats_track"])
         if stamina < 1: return await callback.answer("Ти занадто втомився... ⚡", show_alert=True)
 
         nav = json.loads(row['navigation'])
@@ -174,7 +176,7 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
 
 
         if target_tile in WATER_TILES and biome["id"] == 2:
-            if event_roll < 0.001 * danger_mod:
+            if event_roll < 0.0001 * danger_mod:
                 await callback.answer("💀 ВОДА ЗАПОВНЮЄ ЛЕГЕНІ... ТИ ВТОПИВСЯ!", show_alert=True)
                 
                 death_data = await handle_death(uid, db_pool, death_reason="Затягнута у безодню 🌊")
@@ -249,10 +251,23 @@ async def handle_move(callback: types.CallbackQuery, db_pool):
         for m in treasure_maps:
             if m.get("pos") == coord_key:
                 m_type = m.get("type")
-                
+            
                 if m_type == "boss_den":
-                    return await run_battle_logic(callback, db_pool, bot_type=BOSS_ID_MAP[m.get("boss_num")], is_boss=True)
-                
+                    boss_num = int(m.get("boss_num"))
+                    
+                    last_defeated = int(stats_track.get("bosses_defeated", 0))
+
+
+                    if last_defeated < boss_num:
+                        continue 
+
+                    return await run_battle_logic(
+                        callback, 
+                        db_pool, 
+                        bot_type=BOSS_ID_MAP.get(boss_num), 
+                        is_boss=True
+                    )
+
                 elif m_type == "tomb" and not m.get("is_beaten"):
                     await callback.answer("👻 Перед тобою з'явився привид предка...", show_alert=True)
                     return await run_battle_logic(callback, db_pool, is_ghost=True, tomb_id=m.get("owner_id"))

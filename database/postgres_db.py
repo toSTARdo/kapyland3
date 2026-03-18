@@ -3,6 +3,8 @@ import logging
 import ssl
 from config import POSTGRE_URL
 
+POSTGRE_URL = "postgresql://neondb_owner:npg_3GWqKQ0JhFRY@ep-solitary-butterfly-agjuh9dk-pooler.c-2.eu-central-1.aws.neon.tech/neondb"
+
 logger = logging.getLogger(__name__)
 
 async def create_pool():

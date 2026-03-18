@@ -34,6 +34,9 @@ async def handle_food_choice(callback: types.CallbackQuery, db_pool):
     builder = InlineKeyboardBuilder()
     builder.button(text=f"🍴 З'їсти 1", callback_data=f"eat:one:{food_type}")
     
+    if count >= 10:
+        builder.button(text=f"🍴 З'їсти 10", callback_data=f"eat:10:{food_type}")
+
     if count > 1:
         builder.button(text=f"🍴 З'їсти все ({count})", callback_data=f"eat:all:{food_type}")
     
@@ -56,24 +59,25 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
     _, amount_type, food_type = callback.data.split(":")
     user_id = callback.from_user.id
     
+    # Константи
     WEIGHT_TABLE = {
-        "tangerines": 0.5,
+        "kiwi": 0.2,
+        "fly_agaric": 0.3,
+        "mushroom": 0.5,
+        "tangerines": 1.2,
+        "mango": 2.5,
         "watermelon_slices": 1.0,
-        "melon": 5.0,
-        "mango": 0.5,
-        "kiwi": 0.1,
-        "mushroom": 0.2,
-        "fly_agaric": 0.1
+        "melon": 10.0
     }
+    TOXIC_CHANCE = {"mushroom": 0.001, "fly_agaric": 0.05}
+    C_PHRASES = [
+        "😋 Капі-ням!", "😋 Агресивне чавкання...", "😋 Ом-ном-ном!", 
+        "🌪️ Всмоктала як пилосос!", "😋 Справжній гурман"
+    ]
 
-    TOXIC_CHANCE = {
-        "mushroom": 0.001,
-        "fly_agaric": 0.05
-    }
-    
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT c.inventory, c.lvl, c.weight, u.reincarnation_multiplier, c.zen 
+            SELECT c.inventory, c.lvl, u.reincarnation_multiplier, c.stats_track 
             FROM capybaras c
             JOIN users u ON c.owner_id = u.tg_id
             WHERE c.owner_id = $1
@@ -82,82 +86,76 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         if not row: return
 
         inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        stats_track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else (row['stats_track'] or {})
         current_lvl = row['lvl']
         reinc_mult = row['reincarnation_multiplier'] or 1.0
         
         current_count = inv.get("food", {}).get(food_type, 0)
-        
         if current_count <= 0:
             await callback.answer("❌ Вже все з'їли!")
             return await render_inventory_page(callback.message, user_id, db_pool, page="food", is_callback=True)
 
-        to_eat = 1 if amount_type == "one" else current_count
+        # Розрахунок порції
+        if amount_type not in ["one, all"]:
+            to_eat = int(amount_type)
+        else
+            to_eat = 1 if amount_type == "one" else current_count
         unit_weight = WEIGHT_TABLE.get(food_type, 0.5)
         total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
         
         # --- ЛОГІКА ВИБУХУ (OVERFEEDING) ---
-        safe_one_time_limit = 5.0 + (current_lvl * 30) 
-        pop_chance = 0
-        if total_bonus > safe_one_time_limit:
-            excess = total_bonus - safe_one_time_limit
-            pop_chance = min(0.95, excess * 0.01)
-
-        if random.random() < pop_chance:
-            await callback.answer("💥 БА-БАХ! Капібара луснула!", show_alert=True)
-            benefit = await handle_death(user_id, db_pool, death_reason="Луснула від переїдання 🍉")
-            await callback.message.answer(f"💀 Твоя капібара вибухнула! Новий множник: x{benefit.get('new_mult', 1.0)}")
-            return
-
-        # --- ЛОГІКА ОТРУЄННЯ (TOXICITY) ---
-        toxic_risk = TOXIC_CHANCE.get(food_type, 0)
-        if toxic_risk > 0:
-            total_toxic_chance = 1 - (1 - toxic_risk) ** to_eat
-            if random.random() < total_toxic_chance:
-                await callback.answer("🍄 Світ став надто яскравим...", show_alert=True)
-                benefit = await handle_death(user_id, db_pool, death_reason=f"Отруївся грибом ({food_type}) 🍄‍🟫")
-                await callback.message.answer(f"💀 Капібара отруїлася! Новий множник: x{benefit.get('new_mult', 1.0)}")
+        safe_limit = 10.0 + (current_lvl * 30) 
+        if total_bonus > safe_limit:
+            if random.random() < min(0.95, (total_bonus - safe_limit) * 0.01):
+                await callback.answer("💥 БА-БАХ! Капібара луснула!", show_alert=True)
+                benefit = await handle_death(user_id, db_pool, death_reason="Луснула від переїдання 🍉")
+                await callback.message.answer(f"💀 Тварина вибухнула! Новий множник: x{benefit.get('new_mult', 1.0)}")
                 return
 
-        # --- НОВА ЛОГІКА: ZEN (FLY AGARIC) ---
-        zen_gain = 0
-        zen_alert = ""
-        if food_type == "fly_agaric":
-            # Шанс 20% на кожну з'їдену одиницю отримати +1 Zen
-            for _ in range(to_eat):
-                if random.random() < 0.20:
-                    zen_gain += 1
-            
-            if zen_gain > 0:
-                await callback.answer("Вас просвітило... +1 Дзен", show_alert=True)
-                zen_alert = f"🪷 Дзен: +{zen_gain}"
+        # --- ЛОГІКА ОТРУЄННЯ ---
+        toxic_risk = TOXIC_CHANCE.get(food_type, 0)
+        if toxic_risk > 0 and random.random() < (1 - (1 - toxic_risk) ** to_eat):
+            await callback.answer("🍄 Світ став надто яскравим...", show_alert=True)
+            benefit = await handle_death(user_id, db_pool, death_reason=f"Отруївся грибом ({food_type})")
+            await callback.message.answer(f"💀 Тварина отруїлася! Новий множник: x{benefit.get('new_mult', 1.0)}")
+            return
 
-        # --- ОНОВЛЕННЯ ІНВЕНТАРЯ ТА ZEN ---
+        # --- ZEN & BURP ---
+        zen_gain = sum(1 for _ in range(to_eat) if random.random() < 0.20) if food_type == "fly_agaric" else 0
+        
+        burp_loudness = 0
+        burp_display = "\n💨 (тихо відригнула)"
+        if total_bonus >= 2.0:
+            burp_loudness = min(190, (40 + random.randint(1, 20) + int(total_bonus * 2)))
+            if burp_loudness > 120: burp_display = f"\n🔊 ВІДРИЖКА: {burp_loudness} дБ (Апко... пока...лікоп... Кінець світу короче! 💥)"
+            elif burp_loudness > 80: burp_display = f"\n🔊 ВІДРИЖКА: {burp_loudness} дБ (ПОТУЖНО І НЕЗЛАМНО 💨)"
+            else: burp_display = f"\n🔊 Відрижка: {burp_loudness} дБ (Ганьба)"
+
+        # --- ОНОВЛЕННЯ ІНВЕНТАРЯ ТА СТАТИСТИКИ ---
         inv["food"][food_type] -= to_eat
-        if inv["food"][food_type] <= 0:
-            del inv["food"][food_type]
+        if inv["food"][food_type] <= 0: del inv["food"][food_type]
 
-        # Оновлюємо інвентар та дзен (якщо він є) одним запитом
         await conn.execute("""
             UPDATE capybaras 
-            SET inventory = $1, zen = zen + $2 
-            WHERE owner_id = $3
-        """, json.dumps(inv, ensure_ascii=False), zen_gain, user_id)
+            SET inventory = $1, 
+                zen = zen + $2,
+                stats_track = stats_track || jsonb_build_object('max_burp', GREATEST(COALESCE((stats_track->>'max_burp')::int, 0), $3))
+            WHERE owner_id = $4
+        """, json.dumps(inv), zen_gain, burp_loudness, user_id)
 
     # Нарахування досвіду
-    exp_gain = int(total_bonus)
-    if total_bonus < 1 and random.random() < total_bonus:
-        exp_gain = 1
+    exp_gain = max(1, int(total_bonus)) if total_bonus >= 1 or random.random() < total_bonus else 0
+    await grant_exp_and_lvl(user_id, exp_gain=exp_gain, weight_gain=total_bonus, bot=callback.bot, db_pool=db_pool)
 
-    res = await grant_exp_and_lvl(user_id, exp_gain=exp_gain, weight_gain=total_bonus, bot=callback.bot, db_pool=db_pool)
-
-    if not res:
-        return await callback.answer("🤔 Щось пішло не так...")
-    
+    # Фінальна відповідь
+    phrase = "МАСОНАБІРНИЙ ОБІД!" if total_bonus > 50 else random.choice(C_PHRASES)
+    zen_text = f"\n🪷 Дзен: +{zen_gain}" if zen_gain > 0 else ""
     mult_text = f" (x{reinc_mult}) 💫" if reinc_mult > 1 else ""
+    
     await callback.answer(
-        f"😋 Капі-ням!{mult_text}\n"
+        f"{phrase}{mult_text}\n"
         f"⚖️ Вага: +{total_bonus} кг\n"
-        f"✨ EXP: +{exp_gain}{zen_alert}",
+        f"✨ EXP: +{exp_gain}{zen_text}{burp_display}",
         show_alert=False
     )
     

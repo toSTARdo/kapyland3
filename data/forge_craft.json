@@ -42,7 +42,8 @@
       "ingredients": {
         "equipment": ["Саморобна мапа"],
         "materials": {
-          "teleport_totem": 1
+          "teleport_totem": 1,
+          "skull": 1
         }
       },
       "desc": "Дозволяє переміщатися між довільними точками на мапі.",
@@ -74,14 +75,18 @@
     "success_rate": 1.0,
     "type": "artifact"
     },
-    "lacrima": {
+  "lachryma": {
       "name": "Лакрима",
       "emoji": "⚗️",
       "ingredients": {
-        "materials": {"jar":1, "time_potion": 1 }
+        "ice_crystal": 10,
+        "lotus": 10,
+        "shell": 3,
+        "jellyfish": 5,
+        "jar": 1
       },
-      "desc": "Магічна крапля, що пахне вчорашнім днем. Дозволяє зберегти душу в паралельному часовому шарі.",
-      "success_rate": 1.0
+      "effect": "material",
+      "description": "Магічна сльоза, застигла в часі. Використовується для активації прихованих сил раси."
     },
     "handmade_map": {
       "name": "Саморобна мапа",

@@ -17,8 +17,8 @@ def load_game_data(filepath):
 
 #===================ENVIROMENT VARS======================#
 
-TOKEN= os.getenv("BOT_TOKEN")
-DEV_ID= os.getenv("DEV_ID")
+TOKEN="8321592158:AAH2W6mPuP1MxWYHOmzXIJm1mKAahL2Se2U"
+DEV_ID="807986999"
 MONGO_URL = os.getenv("MONGO_URL")
 POSTGRE_URL = os.getenv("POSTGRE_URL")
 
@@ -103,7 +103,7 @@ DISPLAY_NAMES = {
         
         # Біом 1: Архіпелаг Джуа
         "coconut": "🥥 Кокос",
-        "squid": "🐙 Вардосквірд",
+        "coral": "🪸 Корал",
         
         # Біом 2: Уроборострім
         "shell": "🐚 Мушля-Шхуна",
@@ -114,6 +114,7 @@ DISPLAY_NAMES = {
         "ice_crystal": "🧊 Древній лід",
         "kraken": "🦑 Зоряний кракен",
         "whale": "🐳 Кит",
+        "skull": "💀 Череп", 
 
         # Трави та Квіти
         "mint": "🌿 М'ята",
@@ -782,8 +783,8 @@ BOSS_ID_MAP = {
     # --- JUA ARCHIPELAGO (Стартова зона: ID 1-7) ---
     1: "boss_pelican",  
     2: "boss_lynx",
-    3: "boss_raccoon_trash", # Перший тест на удачу (Luck)
-    4: "boss_rat_king",      # Перевірка на спритність (Agility)
+    3: "boss_rat_king", # Перший тест на удачу (Luck)
+    4: "boss_raccoon_trash",      # Перевірка на спритність (Agility)
     5: "boss_monkey_king",   # Збалансований боєць
     6: "boss_lion_henry",    # Сильний удар, але косий
     7: "boss_alvida",        # Фінальний бос архіпелагу
@@ -808,30 +809,33 @@ BOSS_ID_MAP = {
 
 BOSS_REWARDS = {
     # --- JUA ARCHIPELAGO (ID 1-7) ---
-    "boss_pelican":       {"weight": 5.0,  "exp": 15},
-    "boss_raccoon_trash": {"weight": 6.0,  "exp": 20},
-    "boss_rat_king":      {"weight": 7.5,  "exp": 30},
-    "boss_lynx":          {"weight": 9.0,  "exp": 45},
-    "boss_monkey_king":   {"weight": 11.0, "exp": 60},
-    "boss_lion_henry":    {"weight": 13.5, "exp": 80},
-    "boss_alvida":        {"weight": 18.0, "exp": 120},
+    # Початкова фаза: швидкий ріст, щоб гравець відчув прогрес
+    "boss_pelican":       {"weight": 5.0,  "exp": 20},    # Lvl 3.1
+    "boss_raccoon_trash": {"weight": 7.0,  "exp": 32},    # Lvl 4.0
+    "boss_rat_king":      {"weight": 10.0, "exp": 50},    # Lvl 5.0
+    "boss_lynx":          {"weight": 14.0, "exp": 72},    # Lvl 6.0
+    "boss_monkey_king":   {"weight": 20.0, "exp": 100},   # Lvl 7.0
+    "boss_lion_henry":    {"weight": 28.0, "exp": 150},   # Lvl 8.6
+    "boss_alvida":        {"weight": 35.0, "exp": 200},   # Lvl 10.0
 
     # --- UROBOROSTREAM (ID 8-14) ---
-    "boss_snake_lee":     {"weight": 22.0, "exp": 180},
-    "boss_otter_river":   {"weight": 25.0, "exp": 250},
-    "boss_frog_shinobi":  {"weight": 30.0, "exp": 350},
-    "boss_catfish_gun":   {"weight": 35.0, "exp": 450},
-    "boss_owl_wise":      {"weight": 42.0, "exp": 600},
-    "boss_fat_cat":       {"weight": 50.0, "exp": 800},
-    "boss_turtle_ancient":{"weight": 65.0, "exp": 1100},
+    # Мід-гейм: EXP росте швидше, бо кожен новий рівень вимагає значно більше досвіду
+    "boss_snake_lee":     {"weight": 45.0, "exp": 300},   # Lvl 12.2
+    "boss_otter_river":   {"weight": 55.0, "exp": 450},   # Lvl 15.0
+    "boss_frog_shinobi":  {"weight": 70.0, "exp": 650},   # Lvl 18.0
+    "boss_catfish_gun":   {"weight": 85.0, "exp": 900},   # Lvl 21.2
+    "boss_owl_wise":      {"weight": 105.0,"exp": 1250},  # Lvl 25.0
+    "boss_fat_cat":       {"weight": 130.0,"exp": 1700},  # Lvl 29.1
+    "boss_turtle_ancient":{"weight": 160.0,"exp": 2450},  # Lvl 35.0
 
     # --- STARFJORDS OF WINTER EHWAZ (ID 15-20) ---
-    "boss_husky_kuzan":   {"weight": 100.0, "exp": 1500},
-    "boss_hakihaki":      {"weight": 100.0,  "exp": 2200},
-    "boss_bear_north":    {"weight": 130.0, "exp": 3500},
-    "boss_walrus_captain":{"weight": 170.0, "exp": 5000},
-    "boss_whale_moby":    {"weight": 220.0, "exp": 8000},
-    "boss_penguin_rich":  {"weight": 350.0, "exp": 15000}
+    # Хай-гейм: Величезні цифри для відчуття епічності фіналу
+    "boss_husky_kuzan":   {"weight": 200.0, "exp": 3500}, # Lvl 41.8
+    "boss_hakihaki":      {"weight": 250.0, "exp": 5000}, # Lvl 50.0
+    "boss_bear_north":    {"weight": 310.0, "exp": 7500}, # Lvl 61.2
+    "boss_walrus_captain":{"weight": 400.0, "exp": 11000},# Lvl 74.1
+    "boss_whale_moby":    {"weight": 520.0, "exp": 16500},# Lvl 90.8
+    "boss_penguin_rich":  {"weight": 700.0, "exp": 20000} # Lvl 111.8
 }
 
 AZTEC_TOTEM_NAMES = [

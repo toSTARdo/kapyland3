@@ -227,6 +227,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         # Форматування статусу для постійних тотемів
         has_random = "Наявний" if random_totem > 0 else "Немає"
         has_control = "Наявний" if control_totem > 0 else "Немає"
+        has_lacrima = "Наявний" if has_lacrima > 0 else "Немає"
 
         lines = [
             f"🎟️ Квитки: <b>{lottery_tickets}</b>",
@@ -236,6 +237,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             f"🗿 Тотеми: <b>{teleport_totems}</b>",
             f"🎲🗿 Тотем хаосу: <b>{has_random}</b>",
             f"🎯🗿 Тотем контролю: <b>{has_control}</b>"
+            f"⚗️ Лакрима: <b>{has_lacrima}</b>"
         ]
         
         content = "\n".join([l for l in lines if "<b>0</b>" not in l]) or "<i>Порожньо...</i>"
