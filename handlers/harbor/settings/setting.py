@@ -88,7 +88,7 @@ async def rename_start(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(SettingsStates.waiting_for_new_name)
 async def rename_finish(message: types.Message, state: FSMContext, db_pool):
-    new_name = html.escape(message.text.strip())
+    new_name = html.quote(message.text.strip())
     
     if len(new_name) > 30:
         return await message.answer("❌ Надто довге ім'я! Максимум — 30 символів.")
