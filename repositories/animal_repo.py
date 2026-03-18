@@ -168,3 +168,5 @@ class AnimalRepository:
     def get_icon(self, mood: str = "chill") -> str:
             race_set = MOOD_SETS.get(self.race, MOOD_SETS["capybara"])
             return race_set.get(mood, race_set.get("chill", "₍ᐢ•(ｪ)•ᐢ₎"))
+
+#damn
