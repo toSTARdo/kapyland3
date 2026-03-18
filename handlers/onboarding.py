@@ -155,35 +155,25 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
 
     from aiogram.exceptions import TelegramBadRequest
 
-    # If message has media, we must delete and send a new one
-    if message.photo or message.video:
-        try:
-            await message.delete()
-        except:
-            pass
-        return await message.answer(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    is_bot_message = message.from_user.id == message.bot.id
 
-    # If it's a normal text message, try to edit it
-    try:
-        await message.edit_text(
+    if is_bot_message and not (message.photo or message.video):
+        try:
+            await message.edit_text(
+                text=display_text, 
+                reply_markup=builder.as_markup(), 
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest:
+            # Fallback if editing is impossible for other reasons
+            await message.answer(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    else:
+        # If it's a User message (like /start) or has media, ALWAYS send a new message
+        await message.answer(
             text=display_text, 
             reply_markup=builder.as_markup(), 
             parse_mode="HTML"
         )
-    except TelegramBadRequest as e:
-        if "message is not modified" in str(e):
-            # The user probably clicked the same button twice. 
-            # We answer the callback (if this is one) to stop the loading spinner.
-            pass
-        else:
-            # It's a real error (e.g., message too long, chat not found), so raise it.
-            raise e
-    except Exception:
-        # Fallback: if edit_text failed for some other weird reason, try just the buttons
-        try:
-            await message.edit_reply_markup(reply_markup=builder.as_markup())
-        except TelegramBadRequest:
-            pass # Even this failed? Nothing to update.
 
 @router.callback_query(F.data.startswith("preview_race_"))
 async def handle_race_preview(callback: types.CallbackQuery):
