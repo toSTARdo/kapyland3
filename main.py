@@ -9,7 +9,7 @@ import config
 from database.postgres_db import create_pool, init_pg
 from handlers import get_handlers_router
 from jobs.send_goodnight import send_goodnight
-from jobs.give_everyday_gift import give_everyday_gift
+from jobs.give_everyday_gift import send_daily_notification
 from middlewares.capy_guard import CapyGuardMiddleware
 
 # --- ІМПОРТИ НОВИХ ШАРІВ ---
@@ -57,7 +57,7 @@ async def main():
 
     # 6. Планувальник завдань
     scheduler = AsyncIOScheduler(timezone="Europe/Kyiv")
-    scheduler.add_job(give_everyday_gift, 'cron', hour=8, minute=0, args=[bot, db_pool])
+    scheduler.add_job(send_daily_notification, 'cron', hour=8, minute=0, args=[bot, db_pool])
     scheduler.add_job(send_goodnight, 'cron', hour=20, minute=00, args=[bot, db_pool])
     scheduler.start()
 
