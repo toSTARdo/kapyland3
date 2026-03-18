@@ -48,15 +48,15 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
         return
 
     user_id = message.chat.id
-    display_text = node["text"]
+    display_text = node["text"]  # Start with base text
 
-    # 1. ACQUIRE CONNECTION ONCE
+    # --- 1. DATABASE BLOCK (All DB work happens here) ---
     async with db_pool.acquire() as conn:
-        # Get user settings
+        # Get settings
         user_data = await conn.fetchrow("SELECT quicklinks FROM users WHERE tg_id = $1", user_id)
         show_quicklinks = user_data['quicklinks'] if user_data and user_data['quicklinks'] is not None else True
 
-        # Handle specific node logic
+        # Special node progress
         if str(node_id) == "sail_away":
             await conn.execute("""
                 INSERT INTO story_progress (user_id, quest_id, node_id, is_completed)
@@ -65,11 +65,9 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
                 DO UPDATE SET node_id = EXCLUDED.node_id, is_completed = TRUE
             """, user_id, str(node_id))
 
-        # We must call save_progress or other DB helpers inside this block 
-        # OR pass the pool/connection correctly.
         await save_progress(db_pool, user_id, story_type, node_id)
 
-        # Handle Movement
+        # Handle Movement (Actions)
         if "actions" in node and "move" in node["actions"]:
             target_coords = node["actions"]["move"]
             try:
@@ -78,7 +76,6 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
                 current_nav = json.loads(nav_raw) if isinstance(nav_raw, str) else (nav_raw or {})
                 current_nav["x"] = tx
                 current_nav["y"] = ty
-                
                 await conn.execute(
                     "UPDATE capybaras SET navigation = $1 WHERE owner_id = $2",
                     json.dumps(current_nav), user_id
@@ -86,82 +83,37 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
             except Exception as e:
                 print(f"Error in 'move' action: {e}")
 
-        # 2. FIXED: This now happens INSIDE the 'async with' block
+        # Handle Title Unlock
         if "title" in node:
             new_title = node["title"]
             await conn.execute("""
-                UPDATE capybaras 
-                SET unlocked_titles = array_append(unlocked_titles, $1)
-                WHERE owner_id = $2 
-                AND NOT ($1 = ANY(unlocked_titles))
+                UPDATE capybaras SET unlocked_titles = array_append(unlocked_titles, $1)
+                WHERE owner_id = $2 AND NOT ($1 = ANY(unlocked_titles))
             """, new_title, user_id)
             display_text += f"\n\n✨ <b>Ви отримали новий титул:</b> {new_title}!"
 
-    # --- Database work finished, now handle UI logic ---
+    # --- 2. UI LOGIC BLOCK (No more direct 'conn' calls here) ---
     builder = InlineKeyboardBuilder()
     profile = await get_full_profile(db_pool, user_id)
-    display_text = node["text"]
     
     requirements_met = True
     req_warning = ""
     
-    if not profile:
-        nav = {"x": 77, "y": 144} 
-    else:
-        nav = profile.get('navigation')
-        if isinstance(nav, str):
-            nav = json.loads(nav)
+    # Coordinates check
+    nav = profile.get('navigation') if profile else {"x": 77, "y": 144}
+    if isinstance(nav, str): nav = json.loads(nav)
 
-    if "requirements" in node:
-        reqs = node["requirements"]
-        if "player_coords" in reqs:
-            current_pos = f"{nav['x']},{nav['y']}"
-            target_pos = reqs["player_coords"]
-            
-            if current_pos != target_pos:
-                requirements_met = False
-                req_warning = f"\n\n📍 {html.italic(f'Ця дія доступна лише на координатах {target_pos} (ви зараз на {current_pos})')}"
+    if "requirements" in node and "player_coords" in node["requirements"]:
+        current_pos = f"{nav['x']},{nav['y']}"
+        target_pos = node["requirements"]["player_coords"]
+        if current_pos != target_pos:
+            requirements_met = False
+            req_warning = f"\n\n📍 {html.italic(f'Ця дія доступна лише на {target_pos} (ви на {current_pos})')}"
 
     if not requirements_met:
         display_text += req_warning
 
-    if "actions" in node:
-        actions = node["actions"]
-        
-        # Переміщення гравця по карті
-        if "move" in actions:
-            target_coords = actions["move"] # Очікуємо рядок "x,y"
-            try:
-                tx, ty = map(int, target_coords.split(","))
-                
-                async with db_pool.acquire() as conn:
-                    # Отримуємо поточну навігацію, щоб не затерти інші дані (discovered, flowers тощо)
-                    nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", user_id)
-                    current_nav = json.loads(nav_raw) if isinstance(nav_raw, str) else (nav_raw or {})
-                    
-                    current_nav["x"] = tx
-                    current_nav["y"] = ty
-                    
-                    await conn.execute(
-                        "UPDATE capybaras SET navigation = $1 WHERE owner_id = $2",
-                        json.dumps(current_nav), user_id
-                    )
-                # Можна додати лог або сповіщення, якщо потрібно
-                # print(f"DEBUG: Player {user_id} moved to {target_coords} by node {node_id}")
-            except Exception as e:
-                print(f"Error in 'move' action for node {node_id}: {e}")
-
-    if "title" in node:
-            new_title = node["title"]
-            await conn.execute("""
-                UPDATE capybaras 
-                SET unlocked_titles = array_append(unlocked_titles, $1)
-                WHERE owner_id = $2 
-                AND NOT ($1 = ANY(unlocked_titles))
-            """, new_title, user_id)
-            
-            display_text += f"\n\n✨ <b>Ви отримали новий титул:</b> {new_title}!"
-
+    # Build Buttons
     if story_type == "prologue" and node.get("status") in ["dead", "win"]:
         title = node.get("title", "Невідома доля")
         display_text = (
@@ -174,7 +126,6 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
             for race_id, info in RACE_INFO.items():
                 builder.button(text=f"{info['emoji']} {info['name']}", callback_data=f"preview_race_{race_id}")
             builder.adjust(2)
-    
     elif "options" in node:
         if requirements_met:
             prefix = "story_" if story_type == "prologue" else "main_"
@@ -188,27 +139,15 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
         cb_prefix = "start_story_main" if story_type == "main" else "start_story_prologue"
         get_main_menu_chunk(builder, page=menu_page, callback_prefix=cb_prefix)
 
-    from aiogram.exceptions import TelegramBadRequest
-
+    # Send/Edit Message
     is_bot_message = message.from_user.id == message.bot.id
-
     if is_bot_message and not (message.photo or message.video):
         try:
-            await message.edit_text(
-                text=display_text, 
-                reply_markup=builder.as_markup(), 
-                parse_mode="HTML"
-            )
-        except TelegramBadRequest:
-            # Fallback if editing is impossible for other reasons
-            await message.answer(display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            await message.edit_text(text=display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        except Exception:
+            await message.answer(text=display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
     else:
-        # If it's a User message (like /start) or has media, ALWAYS send a new message
-        await message.answer(
-            text=display_text, 
-            reply_markup=builder.as_markup(), 
-            parse_mode="HTML"
-        )
+        await message.answer(text=display_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("preview_race_"))
 async def handle_race_preview(callback: types.CallbackQuery):
