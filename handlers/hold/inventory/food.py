@@ -85,32 +85,39 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
         
         if not row: return
 
-        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        stats_track = json.loads(row['stats_track']) if isinstance(row['stats_track'], str) else (row['stats_track'] or {})
-        current_lvl = row['lvl']
-        reinc_mult = row['reincarnation_multiplier'] or 1.0
-        
-        current_count = inv.get("food", {}).get(food_type, 0)
-        if current_count <= 0:
-            await callback.answer("❌ Вже все з'їли!")
-            return await render_inventory_page(callback.message, user_id, db_pool, page="food", is_callback=True)
-
-        # Розрахунок порції
-        if amount_type not in ["one, all"]:
-            to_eat = int(amount_type)
-        else:
+        if amount_type in ["one", "all"]:
             to_eat = 1 if amount_type == "one" else current_count
+        else:
+            to_eat = int(amount_type)
+
         unit_weight = WEIGHT_TABLE.get(food_type, 0.5)
         total_bonus = round(to_eat * unit_weight * reinc_mult, 2)
-        
-        # --- ЛОГІКА ВИБУХУ (OVERFEEDING) ---
-        safe_limit = 10.0 + (current_lvl * 30) 
+
+        # 2. Розрахунок лімітів
+        # Піднімаємо базовий ліміт, щоб на лоу-левелах не вмирали від кавуна
+        safe_limit = 50.0 + (current_lvl * 40) 
+        danger_zone = safe_limit * 1.5  # Зона, де починається ризик
+
         if total_bonus > safe_limit:
-            if random.random() < min(0.95, (total_bonus - safe_limit) * 0.01):
-                await callback.answer("💥 БА-БАХ! Капібара луснула!", show_alert=True)
-                benefit = await handle_death(user_id, db_pool, death_reason="Луснула від переїдання 🍉")
-                await callback.message.answer(f"💀 Тварина вибухнула! Новий множник: x{benefit.get('new_mult', 1.0)}")
-                return
+            # Якщо переїдання не критичне (до 1.5x від ліміту) — просто штраф стаміни
+            if total_bonus <= danger_zone:
+                await callback.answer("🤢 Ой-ой... Ти переїв. Живіт болить, енергія впала.", show_alert=True)
+                async with db_pool.acquire() as conn:
+                    await conn.execute("UPDATE capybaras SET stamina = GREATEST(stamina - 20, 0) WHERE owner_id = $1", user_id)
+                # Бій триває, але капібара не вмирає
+            
+            else:
+                # Тільки якщо їжі МНОГО (більше ніж 1.5x ліміту), з'являється шанс вибуху
+                # Шанс набагато менший: 0.2% за кожний кг перебору понад небезпечну зону
+                death_chance = min(0.80, (total_bonus - danger_zone) * 0.002) 
+                
+                if random.random() < death_chance:
+                    await callback.answer("💥 КРИТИЧНЕ ПЕРЕЇДАННЯ! Капібара не витримала тиску...", show_alert=True)
+                    benefit = await handle_death(user_id, db_pool, death_reason=f"Луснула від величезної порції {food_type} 🍉")
+                    await callback.message.answer(f"💀 Тварина вибухнула! Новий множник: x{benefit.get('new_mult', 1.0)}")
+                    return
+                else:
+                    await callback.answer("😨 Фух! Майже розірвало, але обійшлося. Більше так не роби!", show_alert=True)
 
         # --- ЛОГІКА ОТРУЄННЯ ---
         toxic_risk = TOXIC_CHANCE.get(food_type, 0)
