@@ -66,6 +66,7 @@ class Fighter:
 
     def get_hit_chance(self) -> float:
         chance = BASE_HIT_CHANCE + (self.atk * STAT_WEIGHTS["atk_to_hit"]) + self.weapon_data.get("hit_bonus", 0)
+        print(f"{chance} | from weapon: {self.weapon_data.get("hit_bonus", 0)}")
         if self.adrenaline_active: chance *= 2.0
         return chance
 
