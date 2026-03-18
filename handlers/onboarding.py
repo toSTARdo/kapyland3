@@ -48,11 +48,15 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
         return
 
     user_id = message.chat.id
-    
+    display_text = node["text"]
+
+    # 1. ACQUIRE CONNECTION ONCE
     async with db_pool.acquire() as conn:
+        # Get user settings
         user_data = await conn.fetchrow("SELECT quicklinks FROM users WHERE tg_id = $1", user_id)
         show_quicklinks = user_data['quicklinks'] if user_data and user_data['quicklinks'] is not None else True
 
+        # Handle specific node logic
         if str(node_id) == "sail_away":
             await conn.execute("""
                 INSERT INTO story_progress (user_id, quest_id, node_id, is_completed)
@@ -61,14 +65,45 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
                 DO UPDATE SET node_id = EXCLUDED.node_id, is_completed = TRUE
             """, user_id, str(node_id))
 
-    await save_progress(db_pool, user_id, story_type, node_id)
+        # We must call save_progress or other DB helpers inside this block 
+        # OR pass the pool/connection correctly.
+        await save_progress(db_pool, user_id, story_type, node_id)
 
+        # Handle Movement
+        if "actions" in node and "move" in node["actions"]:
+            target_coords = node["actions"]["move"]
+            try:
+                tx, ty = map(int, target_coords.split(","))
+                nav_raw = await conn.fetchval("SELECT navigation FROM capybaras WHERE owner_id = $1", user_id)
+                current_nav = json.loads(nav_raw) if isinstance(nav_raw, str) else (nav_raw or {})
+                current_nav["x"] = tx
+                current_nav["y"] = ty
+                
+                await conn.execute(
+                    "UPDATE capybaras SET navigation = $1 WHERE owner_id = $2",
+                    json.dumps(current_nav), user_id
+                )
+            except Exception as e:
+                print(f"Error in 'move' action: {e}")
+
+        # 2. FIXED: This now happens INSIDE the 'async with' block
+        if "title" in node:
+            new_title = node["title"]
+            await conn.execute("""
+                UPDATE capybaras 
+                SET unlocked_titles = array_append(unlocked_titles, $1)
+                WHERE owner_id = $2 
+                AND NOT ($1 = ANY(unlocked_titles))
+            """, new_title, user_id)
+            display_text += f"\n\n✨ <b>Ви отримали новий титул:</b> {new_title}!"
+
+    # --- Database work finished, now handle UI logic ---
     builder = InlineKeyboardBuilder()
+    profile = await get_full_profile(db_pool, user_id)
     display_text = node["text"]
     
     requirements_met = True
     req_warning = ""
-    profile = await get_full_profile(db_pool, user_id)
     
     if not profile:
         nav = {"x": 77, "y": 144} 
