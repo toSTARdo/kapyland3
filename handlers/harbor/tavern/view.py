@@ -142,6 +142,10 @@ async def user_menu_handler(callback: types.CallbackQuery, db_pool):
 async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool):
     # Витягуємо тип дії (наприклад, challenge)
     action = callback.data.split(":")[0].split("_")[0] 
+    try:
+        target_id = int(data_parts[1])
+    except (IndexError, ValueError):
+        return await callback.answer("Помилка: ID гравця не знайдено ❌")
     uid = callback.from_user.id
 
     async with db_pool.acquire() as conn:
