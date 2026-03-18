@@ -69,9 +69,13 @@ async def render_story_node(message: types.Message, node_id: str, story_type: st
     requirements_met = True
     req_warning = ""
     profile = await get_full_profile(db_pool, user_id)
-    nav = profile.get('navigation')
-    if isinstance(nav, str):
-        nav = json.loads(nav)
+    
+    if not profile:
+        nav = {"x": 77, "y": 144} 
+    else:
+        nav = profile.get('navigation')
+        if isinstance(nav, str):
+            nav = json.loads(nav)
 
     if "requirements" in node:
         reqs = node["requirements"]
@@ -266,6 +270,7 @@ async def cmd_start(message: types.Message, db_pool):
         progress = await conn.fetchrow("SELECT quest_id, node_id FROM story_progress WHERE user_id = $1 AND is_completed = FALSE", uid)
         
         if progress:
+            await message.answer("Завантаження вашої пригоди...") 
             await render_story_node(message, progress['node_id'], progress['quest_id'], db_pool)
             return
 
