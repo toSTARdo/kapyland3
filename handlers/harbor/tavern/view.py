@@ -5,6 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InputMediaPhoto
 from config import IMAGES_URLS, SOCIAL_TUTS
 from utils.helpers import ensure_dict, get_main_menu_chunk
+from handlers.harbor.tavern.callbacks import *
 
 logger = logging.getLogger(__name__)
 
