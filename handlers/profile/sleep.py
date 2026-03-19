@@ -47,11 +47,11 @@ async def cmd_sleep(event: types.Message | types.CallbackQuery, db_pool):
         return await event.answer(msg, parse_mode="HTML")
 
     if status == "success":
-        async with db_pool.acquire() as conn:
-            state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
-            current_state = json.loads(state_raw) if isinstance(state_raw, str) else (state_raw or {})
+        from repositories.animal_repo import AnimalRepository # переконайся, що імпорт є
 
-        new_kb = get_profile_kb(current_state)
+        repo = AnimalRepository(db_pool)
+        animal = await repo.get_by_id(uid)
+        new_kb = get_profile_kb(animal)
         alert_msg = "💤 Капібара лягла спати!"
         
         if isinstance(event, types.CallbackQuery):
@@ -89,11 +89,11 @@ async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
     if status == "overslept":
         alert_msg = "😴 Капібара відіспала кінську голову! Стаміна: 100⚡." 
 
-    async with db_pool.acquire() as conn:
-        state_raw = await conn.fetchval("SELECT state FROM capybaras WHERE owner_id = $1", uid)
-        current_state = json.loads(state_raw) if isinstance(state_raw, str) else (state_raw or {})
+    from repositories.animal_repo import AnimalRepository # переконайся, що імпорт є
 
-    new_kb = get_profile_kb(current_state)
+    repo = AnimalRepository(db_pool)
+    animal = await repo.get_by_id(uid)
+    new_kb = get_profile_kb(animal)
     
     try:
         await callback.answer(alert_msg, show_alert=True)
