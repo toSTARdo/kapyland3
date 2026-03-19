@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 async def send_daily_notification(bot: Bot, db_pool):
     """Функція для розсилки повідомлень про нагороду"""
     async with db_pool.acquire() as conn:
-        # Беремо тих, хто заходив останні 3 дні, щоб не спамити мертвим аккаунтам
-        active_threshold = int(datetime.now().timestamp()) - 259200
+        active_threshold = datetime.now() - timedelta(days=3) 
+        
         rows = await conn.fetch(
             "SELECT owner_id FROM capybaras WHERE last_seen > $1", 
-            active_threshold
+            active_threshold # Тепер тут об'єкт datetime
         )
         
         count = 0

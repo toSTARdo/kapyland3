@@ -146,7 +146,7 @@ async def claim_reward_handler(callback: CallbackQuery, db_pool):
         """, 
         json.dumps(inv, ensure_ascii=False), 
         json.dumps(stats, ensure_ascii=False), 
-        int(time.time()), 
+        datetime.now(), 
         uid)
 
         # ВІЗУАЛІЗАЦІЯ
