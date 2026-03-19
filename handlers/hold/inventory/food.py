@@ -87,6 +87,7 @@ async def handle_eat(callback: types.CallbackQuery, db_pool):
 
         inv = row["inventory"]
         reinc_mult = row["reincarnation_multiplier"]
+        current_lvl = row["lvl"]
         if isinstance(inv, str): inv = json.loads(inv)
         current_count = inv.get("food", {}).get(food_type, 0)
         if amount_type in ["one", "all"]:
