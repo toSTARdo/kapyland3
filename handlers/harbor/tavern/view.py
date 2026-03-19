@@ -165,8 +165,6 @@ async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool)
             )
     if action == "challenge":
         await send_challenge(callback, target_id, db_pool)
-    elif action == "inspect":
-        await show_user_profile_card(callback, target_id, db_pool)
     elif action == "gift_to":
         await gift_category_select(callback, target_id, db_pool)
     elif action == "steal_from":

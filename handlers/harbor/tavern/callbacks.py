@@ -20,152 +20,128 @@ ITEM_DISPLAY_NAMES = {
     "mango": "🥭 Манго"
 }
 
-@router.callback_query(F.data.startswith("steal_from:"))
-async def execute_steal_logic(callback: types.CallbackQuery, db_pool):
-    target_id = int(callback.data.split(":")[1])
-    uid = callback.from_user.id
-    
-    async with db_pool.acquire() as conn:
-        actor_row = await conn.fetchrow("SELECT meta, name FROM capybaras WHERE owner_id = $1", uid)
-        target_row = await conn.fetchrow("SELECT meta, name FROM capybaras WHERE owner_id = $1", target_id)
-        
-        if not actor_row or not target_row: return
-        
-        a_meta = json.loads(actor_row['meta']) if isinstance(actor_row['meta'], str) else actor_row['meta']
-        t_meta = json.loads(target_row['meta']) if isinstance(target_row['meta'], str) else target_row['meta']
-        
-        can_steal, _ = check_daily_limit(a_meta, "steal")
-        if not can_steal:
-            return await callback.answer("🥷 Ти вже сьогодні виходив на полювання. Спробуй завтра!", show_alert=True)
-
-        base_success_chance = 0.05
-        base_catch_chance = 0.10
-
-        luck_stat = a_meta.get("stats", {}).get("luck", 1)
-        luck_bonus = luck_stat * 0.01
-        
-        sleep_bonus = 0.10 if t_meta.get("status") == "sleep" else 0.0
-        
-        equipped_items = a_meta.get("equipment", [])
-        has_steal_item = any("steal" in str(item).lower() for item in equipped_items)
-
-        if has_steal_item:
-            final_success_chance = 0.75
-            final_catch_chance = 0.85
-        else:
-            final_success_chance = base_success_chance + luck_bonus + sleep_bonus
-            final_catch_chance = final_success_chance + base_catch_chance
-
-        roll = random.random()
-
-        if roll < final_success_chance:
-            t_items = t_meta.get("inventory", {}).get("equipment", [])
-            
-            if t_items:
-                stolen_item = random.choice(t_items)
-                t_meta["inventory"]["equipment"] = [i for i in t_items if i != stolen_item]
-                a_meta.setdefault("inventory", {}).setdefault("equipment", []).append(stolen_item)
-
-                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(t_meta, ensure_ascii=False), target_id)
-                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(a_meta, ensure_ascii=False), uid)
-                
-                await callback.message.edit_caption(
-                    f"🥷 <b>НАЙШВИДШІ ЛАПКИ!</b>\n"
-                    f"Ви непомітно витягли <b>{stolen_item['name']}</b> у {target_row['name']}!\n"
-                    f"🍀 Твій успіх: {int(final_success_chance*100)}%",
-                    parse_mode="HTML"
-                )
-            else:
-                await callback.message.edit_caption(f"🧤 Ти обшукав {target_row['name']}, але в кишенях порожньо...")
-
-        elif roll < final_catch_chance:
-            if t_meta.get("status") == "sleep":
-                start_time_str = t_meta.get("sleep_start")
-                gained_stamina = 0
-                
-                if start_time_str:
-                    start_time = datetime.datetime.fromisoformat(start_time_str)
-                    now = datetime.datetime.now()
-                    duration_mins = (now - start_time).total_seconds() / 60
-                    gained_stamina = int(duration_mins * (100 / 120))
-                    
-                t_meta["status"] = "active"
-                t_meta["stamina"] = min(100, t_meta.get("stamina", 0) + gained_stamina)
-                t_meta.pop("wake_up", None)
-                t_meta.pop("sleep_start", None)
-                
-                await conn.execute(
-                    "UPDATE capybaras SET meta = $1 WHERE owner_id = $2", 
-                    json.dumps(t_meta, ensure_ascii=False), target_id
-                )
-                
-                wake_msg = f"\n🔔 Ціль миттєво прокинулась! (+{gained_stamina}⚡)"
-            else:
-                wake_msg = ""
-
-            await callback.message.edit_caption(
-                f"😱 <b>ЧОРТ! ВАС ПІЙМАЛИ!</b>{wake_msg}\n"
-                f"Починається бій за життя!", parse_mode="HTML"
-            )
-            asyncio.create_task(run_battle_logic(callback, opponent_id=target_id, db_pool=db_pool))
-
-        else:
-            await callback.answer("💨 Ти злякався шурхоту і втік ні з чим. Буває...", show_alert=True)
-
 @router.callback_query(F.data.startswith("ram:"))
 async def execute_ram_logic(callback: types.CallbackQuery, db_pool):
     target_id = int(callback.data.split(":")[1])
     uid = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT equipment, inventory, cooldowns, stamina 
-            FROM capybaras 
-            WHERE owner_id = $1
-        """, uid)
+        row = await conn.fetchrow("SELECT equipment, inventory, state, stamina FROM capybaras WHERE owner_id = $1", uid)
         
-        if not row:
-            return await callback.answer("Помилка: Капібару не знайдено!", show_alert=True)
-
-        stamina = row['stamina']
-        if stamina < 5:
-            return await callback.answer("Тобі бракує сил! Відпочинь і тоді махай тараном", show_alert=True)
-        equip = row['equipment'] if isinstance(row['equipment'], dict) else json.loads(row['equipment'])
-        inv = row['inventory'] if isinstance(row['inventory'], dict) else json.loads(row['inventory'])
-        cools = row['cooldowns'] if isinstance(row['cooldowns'], dict) else json.loads(row['cooldowns'])
-
-        can_ram, updated_cools = check_daily_limit(cools, "ram")
-
-        if not can_ram:
-            return await callback.answer("💥 Корабель ще лагодять! Спробуй завтра.", show_alert=True)
-
-        updated_cools["ram_cooldown"] = datetime.datetime.now().isoformat()
-
-        await conn.execute("""
-            UPDATE capybaras 
-            SET cooldowns = $1 
-            WHERE owner_id = $2
-        """, json.dumps(updated_cools), uid)
-
-        weapon = inv.get("equipment", {})
-        weapon_name = weapon.get("name", "").lower() if isinstance(weapon, dict) else str(weapon).lower()
+        if not row: return
         
-        has_ram = "таран" in weapon_name or "бур лаганна" in weapon_name
-        
-        if not has_ram:
-            all_loot = {**inv.get("materials", {}), **inv.get("loot", {})}
-            has_ram = any("таран" in k.lower() or "laganna" in k.lower() for k in all_loot.keys())
+        if (row['stamina'] or 0) < 15:
+            return await callback.answer("🪫 Тобі бракує сил для такого маневру (треба 15⚡)", show_alert=True)
 
-        if not has_ram:
-            return await callback.answer("❌ Тобі потрібен 'Таран' або 'Бур Лаганна'!", show_alert=True)
+        def get_dict(data):
+            if isinstance(data, dict): return data
+            try: return json.loads(data) if data else {}
+            except: return {}
+
+        state = get_dict(row['state'])
+        inv = get_dict(row['inventory'])
+        
+        last_ram_str = state.get("last_ram")
+        if last_ram_str:
+            last_ram = datetime.fromisoformat(last_ram_str)
+            if (datetime.now() - last_ram).total_seconds() < 3600 * 24: # 1 година КД
+                return await callback.answer("🛠 Корабель ще лагодять після минулого тарану!", show_alert=True)
+
+
+        all_items_str = str(row['equipment']) + str(row['inventory'])
+        if "таран" not in all_items_str.lower() and "бур" not in all_items_str.lower():
+            return await callback.answer("❌ Тобі потрібен встановлений 'Таран'!", show_alert=True)
+
+        state["last_ram"] = datetime.now().isoformat()
+        await conn.execute(
+            "UPDATE capybaras SET state = $1, stamina = stamina - 15 WHERE owner_id = $2", 
+            json.dumps(state), uid
+        )
 
     await callback.message.edit_caption(
-        caption="💥 <b>БА-БАХ!</b>\n\nТи влетів у суперника на повному ходу! Тріск дерева, крики капібар — бій починається!", 
+        caption="💥 <b>БА-БАХ!</b>\nТи протаранив вороже судно! Тріски летять в усі боки! 🪵", 
         parse_mode="HTML"
     )
     
     asyncio.create_task(run_battle_logic(callback, opponent_id=target_id, db_pool=db_pool))
-    await callback.answer("Таран активовано! 🪵")
+
+@router.callback_query(F.data.startswith("steal_from:"))
+async def execute_steal_logic(callback: types.CallbackQuery, db_pool):
+    from datetime import datetime, timezone
+    target_id = int(callback.data.split(":")[1])
+    uid = callback.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        actor_row = await conn.fetchrow("SELECT meta, name, stamina FROM capybaras WHERE owner_id = $1", uid)
+        target_row = await conn.fetchrow("SELECT meta, name, stamina FROM capybaras WHERE owner_id = $1", target_id)
+        
+        if not actor_row or not target_row: 
+            return await callback.answer("Ціль зникла...")
+        
+        def get_dict(data):
+            if isinstance(data, dict): return data
+            try: return json.loads(data) if data else {}
+            except: return {}
+
+        a_meta = get_dict(actor_row['meta'])
+        t_meta = get_dict(target_row['meta'])
+        
+        can_steal, _ = check_daily_limit(a_meta, "steal")
+        if not can_steal:
+            return await callback.answer("🥷 Сьогодні ліміт крадіжок вичерпано!", show_alert=True)
+
+        base_success = 0.05
+        luck_bonus = a_meta.get("stats", {}).get("luck", 1) * 0.01
+        sleep_bonus = 0.15 if t_meta.get("status") == "sleep" else 0.0
+        
+        equipped = a_meta.get("equipment", {})
+        has_steal_item = any("злодій" in str(v).lower() for v in equipped.values())
+
+        if has_steal_item:
+            final_success = 0.40
+            final_catch = 0.70
+        else:
+            final_success = base_success + luck_bonus + sleep_bonus
+            final_catch = final_success + 0.20
+
+        roll = random.random()
+
+        if roll < final_success:
+            inventory = t_meta.get("inventory", [])
+            items_to_steal = [i for i in inventory if isinstance(i, dict)]
+            
+            if items_to_steal:
+                stolen_item = random.choice(items_to_steal)
+                
+                t_meta["inventory"] = [i for i in inventory if i != stolen_item]
+                a_meta.setdefault("inventory", []).append(stolen_item)
+
+                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(t_meta, ensure_ascii=False), target_id)
+                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(a_meta, ensure_ascii=False), uid)
+                
+                await callback.message.edit_caption(
+                    caption=f"🥷 <b>НАЙШВИДШІ ЛАПКИ!</b>\nВи поцупили <b>{stolen_item.get('name', 'щось цінне')}</b> у {target_row['name']}!",
+                    parse_mode="HTML"
+                )
+            else:
+                await callback.answer("🧤 У капібари порожні кишені...", show_alert=True)
+
+        elif roll < final_catch:
+            wake_msg = ""
+            if t_meta.get("status") == "sleep":
+                t_meta["status"] = "active"
+                t_meta.pop("wake_up", None)
+                t_meta.pop("sleep_start", None)
+                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(t_meta), target_id)
+                wake_msg = f"\n🔔 {target_row['name']} миттєво прокинувся від галасу!"
+
+            await callback.message.edit_caption(
+                caption=f"😱 <b>ВАС ПІЙМАЛИ НА ГАРЯЧОМУ!</b>{wake_msg}\nПриготуйтеся до бійки!", 
+                parse_mode="HTML"
+            )
+            asyncio.create_task(run_battle_logic(callback, opponent_id=target_id, db_pool=db_pool))
+        else:
+            await callback.answer("💨 Ви злякалися власної тіні і втекли.", show_alert=True)
 
 @router.callback_query(F.data.startswith("inspect:"))
 async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
@@ -185,11 +161,19 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
         """, target_id)
         
     if not target:
-        return await callback.answer("Капібара зникла у тумані...")
+        return await callback.answer("❌ Капібара зникла у тумані...", show_alert=True)
 
-    state = target['state'] if isinstance(target['state'], dict) else json.loads(target['state'] or '{}')
-    equip = target['equipment'] if isinstance(target['equipment'], dict) else json.loads(target['equipment'] or '{}')
-    stats = target['stats'] if isinstance(target['stats'], dict) else json.loads(target['stats'] or '{}')
+    def parse_json(field):
+        if not field: return {}
+        if isinstance(field, dict): return field
+        try:
+            return json.loads(field)
+        except:
+            return {}
+
+    state = parse_json(target['state'])
+    equip = parse_json(target['equipment'])
+    stats = parse_json(target['stats'])
     
     current_title = state.get('current_title', '')
     status = state.get("status", "active")
@@ -197,29 +181,48 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
     
     title_display = f" «{current_title}»" if current_title else ""
     status_text = "💤 Спить" if status == "sleep" else "🐾 Гуляє архіпелагом"
-    karma_title = "😇 Свята булочка" if target['karma'] > 50 else "😈 Мародерна капі" if target['karma'] < -50 else "😐 Нейтральна капі"
     
+    karma_val = target['karma'] or 0
+    if karma_val > 50:
+        karma_title = "😇 Свята булочка"
+    elif karma_val < -50:
+        karma_title = "😈 Мародерна капі"
+    else:
+        karma_title = "😐 Нейтральна капі"
+    
+    def get_item_name(item, default):
+        if isinstance(item, dict):
+            return item.get('name', default)
+        return item if item else default
+
+    weapon_name = get_item_name(equip.get('weapon'), "Лапки")
+    armor_name = get_item_name(equip.get('armor'), "Хутро")
+    artifact_name = get_item_name(equip.get('artifact'), "Порожньо")
+
+    atk_val = round(100 * (BASE_HIT_CHANCE + STAT_WEIGHTS['atk_to_hit'] * stats.get('attack', 1)))
+    def_val = round(100 * (BASE_BLOCK_CHANCE + STAT_WEIGHTS['def_to_block'] * stats.get('defense', 1)))
+    agi_val = round(100 * (STAT_WEIGHTS['agi_to_dodge'] * stats.get('agility', 1)))
+    lck_val = round(100 * (STAT_WEIGHTS['luck_to_crit'] * stats.get('luck', 1)))
+
     text = (
-        f"📜 <b>Детальне досьє: {target['capy_name']} «{title_line}»</b>\n"
-        f"👤 Власник: {target['username']}\n"
+        f"📜 <b>Детальне досьє: {target['capy_name']}{title_display}</b>\n"
+        f"👤 Власник: <code>{target['username']}</code>\n"
         f"🚢 Човен: <b>{target['ship_name'] or 'Самотній плавець'}</b>\n"
         f"━━━━━━━━━━━━━━━\n"
         f"🔹 <b>Статус:</b> {status_text}\n"
-        f"🔹 <b>Карма:</b> {karma_title} ({target['karma']})\n"
+        f"🔹 <b>Карма:</b> {karma_title} ({karma_val})\n"
         f"🔹 <b>Настрій:</b> {mood}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"🎖 <b>Рівень:</b> {target['lvl']}\n"
         f"⚖️ <b>Вага:</b> {target['weight']} кг\n"
         f"━━━━━━━━━━━━━━━\n"
         f"⚔️ <b>Арсенал:</b>\n"
-        f"└ Зброя: <b>{equip.get('weapon', {}).get('name', 'Лапки') if isinstance(equip.get('weapon'), dict) else equip.get('weapon', 'Лапки')}</b>\n"
-        f"└ Захист: <b>{equip.get('armor', 'Хутро')}</b>\n"
-        f"└ Реліквія: <b>{equip.get('artifact') or 'Порожньо'}</b>\n\n"
+        f"└ Зброя: <b>{weapon_name}</b>\n"
+        f"└ Захист: <b>{armor_name}</b>\n"
+        f"└ Реліквія: <b>{artifact_name}</b>\n\n"
         f"<b>Показники:</b>\n"
-        f"🔥 ATK: <b>{round(100*(BASE_HIT_CHANCE + STAT_WEIGHTS['atk_to_hit'] * stats.get('attack', 1)), 0)}%</b>  |  "
-        f"🛡️ DEF: <b>{round(100*(BASE_BLOCK_CHANCE + STAT_WEIGHTS['def_to_block'] * stats.get('defense', 1)), 0)}%</b>\n"
-        f"💨 AGI: <b>{round(100*(STAT_WEIGHTS['agi_to_dodge'] * stats.get('agility', 1)), 0)}%</b>  |  "
-        f"🍀 LCK: <b>+{round(100*(STAT_WEIGHTS['luck_to_crit'] * stats.get('luck', 1)), 0)}%</b>\n\n"
+        f"🔥 ATK: <b>{atk_val}%</b>  |  🛡️ DEF: <b>{def_val}%</b>\n"
+        f"💨 AGI: <b>{agi_val}%</b>  |  🍀 LCK: <b>+{lck_val}%</b>\n\n"
         f"<i>Капібара виглядає {mood.lower()}, здається, вона готова до пригод.</i>"
     )
 
@@ -229,7 +232,13 @@ async def handle_inspect_player(callback: types.CallbackQuery, db_pool):
     builder.button(text="🔙 Назад", callback_data="social")
     builder.adjust(2, 1)
 
-    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        if callback.message.photo:
+            await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        else:
+            await callback.message.edit_text(text=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
 
 @router.callback_query(F.data.startswith("gift_to:"))
 async def gift_category_select(callback: types.CallbackQuery, db_pool):
