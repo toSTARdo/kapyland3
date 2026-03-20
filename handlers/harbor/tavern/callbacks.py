@@ -150,7 +150,7 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
 
     text = (f"📜 <b>Розшукується: {target['name']}</b>\n"
             f"👤 Власник: <code>{target['username']}</code>\n"
-            f"{ship_info}</b>\n"
+            f"<b>{ship_info}</b>\n"
             f"━━━━━━━━━━━━━━━\n"
             f"🔹 <b>Зараз:</b> {'💤 Спить' if state.get('status') == 'sleep' else '🐾 Гуляє'}\n"
             f"🎖 <b>Рівень:</b> {target['lvl']} | ⚖️ <b>Вага:</b> {target['weight']} кг\n"
