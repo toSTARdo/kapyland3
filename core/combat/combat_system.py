@@ -134,9 +134,9 @@ class CombatEngine:
         crit_bonus = 1 if is_crit else 0
         crit_text = "💥 " if is_crit else ""
         
-        #if att.race == "raccoon" and att.hp < defe.hp and att.get_luck_roll() > 0.8:
-        #    ability_damage += 1
-        #    race_logs.append("🎰 Удача єнота!")
+        if att.race == "raccoon" and att.hp < defe.hp and att.get_luck_roll() > 0.8:
+            ability_damage += 1
+            race_logs.append("🎰 Удача єнота!")
 
         base_damage = 1
         total_damage = round(base_damage + crit_bonus + ability_damage, 0)
