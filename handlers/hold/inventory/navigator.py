@@ -174,7 +174,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         f"<b>💰 Ціна продажу:</b> {price} 🍉\n━━━━━━━━━━━━"
                     )
 
-                    equip_text = "⚔️" if not is_eq else "❌")
+                    equip_text = "⚔️" if not is_eq else "❌"
                     
                     main_btns = [
                         types.InlineKeyboardButton(text=equip_text, callback_data=f"equip:{item.type}:{item.name}:{item.lvl}")
