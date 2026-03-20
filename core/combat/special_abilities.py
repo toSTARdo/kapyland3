@@ -48,8 +48,7 @@ def weapon_ability(base_prob):
                 
             total_dmg, logs = 0, []
 
-           if pattern == "sequential":
-                # Беремо лише один поточний індекс
+            if pattern == "sequential":
                 current_idx = att._ability_state[w_name]
                 active_indices = [current_idx]
                 
