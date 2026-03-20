@@ -604,7 +604,7 @@ NPC_REGISTRY = {
             },
             "weapon_full": {"name": "Затискання", "lvl": 1},
             "armor_full": {"name": "Шипований панцир", "lvl": 5},
-            "hp_bonus": 4, , "race": "bot"
+            "hp_bonus": 4, "race": "bot"
         },
         "sea_dragon_azure": {
             "kapy_name": "Морський Дракончик «Лазурит»", 
