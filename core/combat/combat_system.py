@@ -137,7 +137,7 @@ class CombatEngine:
             return f"⚡ {html.bold(defe.name)} спритно ухилився!{adren_notif}\n<i>{chr(10).join(race_logs)}</i>"
 
         # 3. Resolve Hit
-        if defe.get_hit_chance() > att.get_hit_chance():
+        if random.random() > att.get_hit_chance():
             return f"💨 {att.color} {html.bold(att.name)} промахнувся!{adren_notif}"
 
         # 4. Resolve Block
