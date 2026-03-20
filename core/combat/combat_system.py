@@ -101,7 +101,6 @@ class Fighter:
 
 class CombatEngine:
     @staticmethod
-    #SUPER DUPER INNOVATIVE METHOD
     def get_linear_slope(s: float) -> float:
         r = random.random()
         if abs(s) < 1e-6:
@@ -115,87 +114,65 @@ class CombatEngine:
         adren_notif = att.update_adrenaline() + defe.update_adrenaline()
         race_logs = []
 
-        # 1. Ефект Сонара (Кажан)
         current_block_chance = defe.get_block_chance()
         if att.race == "bat" and (random.random() < 0.6 or att.has_lachryma):
             current_block_chance *= 0.5
             race_logs.append(f"🔊 {html.bold(att.name)} оминає захист ворога!")
         
-        # 2. Ухилення
         if random.random() < defe.get_dodge_chance():
             if defe.race == "cat":
                 defe.cat_reflex_active = True
                 race_logs.append(f"🐾 {html.bold(defe.name)} готує контрудар!")
             return f"⚡ {html.bold(defe.name)} спритно ухилився!{adren_notif}\n<i>{chr(10).join(race_logs)}</i>"
 
-        # 3. Влучання (Hit)
-        if random.random() > att.get_hit_chance():
-            return f"💨 {att.color} {html.bold(att.name)} промахнувся!{adren_notif}"
+        base_chance = 0.50
+        bonus_points = (att.atk) + (att.weapon_data.get("hit_bonus", 0) * 100) + (att.weapon.get("lvl", 0))
 
-        # 4. Блок
-        if random.random() < current_block_chance:
-            armor_msg = defe.armor_data.get("text", "заблокував удар")
-            return f"🔰 {html.bold(defe.name)} {armor_msg}!{adren_notif}"
+        if random.random() < s:
+            if random.random() < current_block_chance:
+                armor_msg = defe.armor_data.get("text", "заблокував удар")
+                return f"🔰 {html.bold(defe.name)} {armor_msg}!{adren_notif}"
 
-        s = (att.atk) + (att.weapon_data.get("hit_bonus", 0) * 100) + (att.weapon.get("lvl", 0))
+            final_dmg = 1.0
+            
+            current_luck = att.luck
+            if att.race == "raccoon" and att.hp < defe.hp:
+                current_luck *= 2 if not att.has_lachryma else 4
+                race_logs.append(f"🎰 Азарт єнота!")
 
-        power_factor = CombatEngine.get_linear_slope(s)
+            crit_chance = current_luck * STAT_WEIGHTS["luck_to_crit"]
+            if att.cat_reflex_active:
+                crit_chance += 0.20
+                att.cat_reflex_active = False
 
-        base_damage = 1.0
-        max_bonus = 1.5
-        total_damage = base_damage + (power_factor * max_bonus)
-
-        # Расовий бонус Єнота (Trash Luck)
-        current_luck = att.luck
-        if att.race == "raccoon" and att.hp < defe.hp:
-            current_luck *= 2 if not att.has_lachryma else 4
-            race_logs.append(f"🎰 {html.bold(att.name)} відчуває азарт погоні!")
-
-        # Критичний удар (через Удачу)
-        crit_chance = current_luck * STAT_WEIGHTS["luck_to_crit"]
-        if att.cat_reflex_active:
-            crit_chance += 0.20 if not att.has_lachryma else 0.40
-            att.cat_reflex_active = False
-            race_logs.append(f"🐱 Котячі рефлекси спрацювали!")
-
-        crit_bonus = 0
-        if random.random() < crit_chance:
-            crit_bonus = 1.0
-            crit_text = "💥 "
-        else:
             crit_text = ""
+            if random.random() < crit_chance:
+                final_dmg += 1.0
+                crit_text = "💥 "
 
-        # Спеціальні здібності зброї
-        ability_damage = 0
-        ability_logs = []
-        special_key = att.weapon_data.get("special")
-        if special_key in ABILITY_REGISTRY:
-            res_dmg, is_active, logs = ABILITY_REGISTRY[special_key](att, defe, round_num)
-            if is_active:
-                ability_damage = res_dmg
-                ability_logs = logs
+            special_key = att.weapon_data.get("special")
+            if special_key in ABILITY_REGISTRY:
+                res_dmg, is_active, logs = ABILITY_REGISTRY[special_key](att, defe, round_num)
+                if is_active:
+                    final_dmg += res_dmg
+                    race_logs.extend(logs)
 
-        # Фінальна сума
-        final_dmg = round(total_damage + crit_bonus + ability_damage, 1)
-        defe.hp = max(0.0, round(defe.hp - final_dmg, 1))
+            defe.hp = max(0.0, round(defe.hp - final_dmg, 1))
 
-        # 6. Дзен Капібари
-        capy_notif = ""
-        if defe.race == "capybara" and final_dmg > 0:
-            if random.random() < 0.25 or defe.has_lachryma:
-                defe.capy_zen_rounds = 2
-                capy_notif = f"\n🪷 {html.bold(defe.name)} зловив дзен (Блок +15%)!"
+            raw_text = random.choice(att.weapon_data["texts"])
+            attack_verb = raw_text.replace("{defen}", html.bold(defe.name))
+            prefix = "❤️‍🔥 " if att.adrenaline_active else ""
+            
+            capy_notif = ""
+            if defe.race == "capybara" and final_dmg > 0:
+                if random.random() < 0.25 or defe.has_lachryma:
+                    defe.capy_zen_rounds = 2
+                    capy_notif = f"\n🪷 {html.bold(defe.name)} зловив дзен!"
 
-        # Формування повідомлення
-        raw_text = random.choice(att.weapon_data["texts"])
-        attack_verb = raw_text.replace("{defen}", html.bold(defe.name))
-        prefix = "❤️‍🔥 " if att.adrenaline_active else ""
-        
-        msg = (f"{prefix}{crit_text}{att.color} {html.bold(att.name)} {attack_verb}!\n"
-               f"➔ Шкода: {html.bold('-' + str(final_dmg) + ' HP')}")
-        
-        all_extra = race_logs + ability_logs
-        if all_extra:
-            msg += f"\n<i>{chr(10).join(all_extra)}</i>"
+            msg = (f"{prefix}{crit_text}{att.color} {html.bold(att.name)} {attack_verb}!\n"
+                   f"➔ Шкода: {html.bold('-' + str(final_dmg) + ' HP')}")
+            
+            if race_logs: msg += f"\n<i>{chr(10).join(race_logs)}</i>"
+            return msg + capy_notif + adren_notif
 
-        return msg + capy_notif + adren_notif
+        return f"💨 {att.color} {html.bold(att.name)} промахнувся!{adren_notif}"
