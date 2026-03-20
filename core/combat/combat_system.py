@@ -105,7 +105,7 @@ class CombatEngine:
         race_logs = []
 
         # RACE EFFECT: Bat Sonar (Passive chance to halve defender's block chance by piercing defense)
-        current_block_threshold = 0.75
+        current_block_threshold = 0.85
         if att.race == "bat" and (random.random() < 0.6 or att.has_lachryma):
             current_block_threshold = 0.90
             race_logs.append("🔊 Сонар оминає захист!")
