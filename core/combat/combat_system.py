@@ -72,8 +72,8 @@ class Fighter:
         return ""
 
     def get_hit_chance(self) -> float:
-        print("index:", self.atk + self.weapon_data.get("hit_bonus", 0)*50 + self.weapon.get("lvl", 0))
-        chance = get_linear_slope(self.atk*3 + self.weapon_data.get("hit_bonus", 0)*300 + self.weapon.get("lvl", 0))
+        print("index:", self.atk*0.1 + self.weapon_data.get("hit_bonus", 0)*40 + self.weapon.get("lvl", 0)*0)
+        chance = get_linear_slope(self.atk*0.1 + self.weapon_data.get("hit_bonus", 0)*40 + self.weapon.get("lvl", 0)*0)
         #chance = BASE_HIT_CHANCE + (self.atk * STAT_WEIGHTS["atk_to_hit"]) + self.weapon_data.get("hit_bonus", 0)
         print(f"{chance} | from weapon: {self.weapon_data.get("hit_bonus", 0)}")
         if self.adrenaline_active: chance *= 2.0
