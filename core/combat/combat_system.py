@@ -134,7 +134,7 @@ class CombatEngine:
         crit_bonus = 1 if is_crit else 0
         crit_text = "💥 " if is_crit else ""
         
-        base_damage = 1 + (att.atk * 0.05) * att.weapon_data.get("power", 1.0)
+        base_damage = 1
         total_damage = round(base_damage + crit_bonus + ability_damage, 0)
         
         # RACE EFFECT: Raccoon Trash Luck (Bonus damage if current HP is lower than opponent's HP)
