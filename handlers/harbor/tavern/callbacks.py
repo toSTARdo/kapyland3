@@ -8,7 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import BASE_HIT_CHANCE, BASE_BLOCK_CHANCE, STAT_WEIGHTS, DISPLAY_NAMES
 from core.combat.battles import run_battle_logic
-from utils.helpers import check_daily_limit
+from utils.helpers import check_daily_limit, ensure_dict
 
 router = Router()
 
@@ -30,7 +30,7 @@ async def execute_ram_logic(callback: types.CallbackQuery, target_id: int, db_po
         if (row['stamina'] or 0) < 15:
             return await callback.answer("🪫 Бракує сил (треба 15⚡)", show_alert=True)
 
-        state = get_dict(row['state'])
+        state = ensure_dict(row['state'])
         last_ram_str = state.get("last_ram")
         if last_ram_str and (datetime.now() - datetime.fromisoformat(last_ram_str)).total_seconds() < 3600:
             return await callback.answer("🛠 Корабель ще лагодять!", show_alert=True)
@@ -49,12 +49,12 @@ async def execute_steal_logic(callback: types.CallbackQuery, target_id: int, db_
     uid = callback.from_user.id
     
     async with db_pool.acquire() as conn:
-        actor_row = await conn.fetchrow("SELECT meta, name, stamina FROM capybaras WHERE owner_id = $1", uid)
-        target_row = await conn.fetchrow("SELECT meta, name, stamina FROM capybaras WHERE owner_id = $1", target_id)
+        actor_row = await conn.fetchrow("SELECT inventory, name, stamina FROM capybaras WHERE owner_id = $1", uid)
+        target_row = await conn.fetchrow("SELECT inventory, name, stamina FROM capybaras WHERE owner_id = $1", target_id)
         
         if not actor_row or not target_row: return await callback.answer("Ціль зникла...")
         
-        a_meta, t_meta = get_dict(actor_row['meta']), get_dict(target_row['meta'])
+        a_meta, t_meta = ensure_dict(actor_row['inventory']), ensure_dict(target_row['inventory'])
         can_steal, _ = check_daily_limit(a_meta, "steal")
         if not can_steal: return await callback.answer("🥷 Ліміт вичерпано!", show_alert=True)
 
@@ -70,8 +70,8 @@ async def execute_steal_logic(callback: types.CallbackQuery, target_id: int, db_
                 stolen = random.choice(items)
                 t_meta["inventory"] = [i for i in inventory if i != stolen]
                 a_meta.setdefault("inventory", []).append(stolen)
-                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(t_meta, ensure_ascii=False), target_id)
-                await conn.execute("UPDATE capybaras SET meta = $1 WHERE owner_id = $2", json.dumps(a_meta, ensure_ascii=False), uid)
+                await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(t_meta, ensure_ascii=False), target_id)
+                await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(a_meta, ensure_ascii=False), uid)
                 await callback.message.edit_caption(caption=f"🥷 <b>НАЙШВИДШІ ЛАПКИ!</b>\nПоцуплено <b>{stolen.get('name')}</b>!")
             else:
                 await callback.answer("🧤 Порожні кишені...", show_alert=True)
@@ -89,26 +89,28 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
     
     async with db_pool.acquire() as conn:
         target = await conn.fetchrow("""
-            SELECT u.username, c.name, c.lvl, c.karma, c.weight, c.state, c.equipment, c.stats, s.name as ship_name
+            SELECT u.username, c.name, c.lvl, c.karma, c.atk, c.def, c.luck, c.agi, c.max_hp, c.weight, c.state, c.equipment, s.name as ship_name
             FROM users u JOIN capybaras c ON u.tg_id = c.owner_id LEFT JOIN ships s ON c.ship_id = s.id
             WHERE u.tg_id = $1
         """, target_id)
         
     if not target: return await callback.answer("❌ Капібара зникла...", show_alert=True)
 
-    state, equip, stats = parse_json(target['state']), parse_json(target['equipment']), parse_json(target['stats'])
-    
-    # Формування тексту досьє (скорочено для читабельності)
-    karma_title = "😇 Свята булочка" if (target['karma'] or 0) > 50 else ("😈 Мародер" if (target['karma'] or 0) < -50 else "😐 Нейтральна")
-    
-    text = (f"📜 <b>Досьє: {target['name']}</b>\n"
+    state, equip = parse_json(target['state']), parse_json(target['equipment'])
+    atk, def_, agi, luck = target["atk"], target["def"], target["agi"], target["luck"]
+    max_hp = target["max_hp"]    
+
+    ship_info = f"𓊝 {target['ship_name']}" if {target['ship_name'] else "⊥ Мандрує на плоті"
+
+    text = (f"📜 <b>Розшукується: {target['name']}</b>\n"
             f"👤 Власник: <code>{target['username']}</code>\n"
-            f"🚢 Човен: <b>{target['ship_name'] or 'Самотній плавець'}</b>\n"
+            f"{ship_info}</b>\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"🔹 <b>Статус:</b> {'💤 Спить' if state.get('status') == 'sleep' else '🐾 Гуляє'}\n"
-            f"🔹 <b>Карма:</b> {karma_title}\n"
+            f"🔹 <b>Зараз:</b> {'💤 Спить' if state.get('status') == 'sleep' else '🐾 Гуляє'}\n"
             f"🎖 <b>Рівень:</b> {target['lvl']} | ⚖️ <b>Вага:</b> {target['weight']} кг\n"
             f"⚔️ <b>Арсенал:</b> {get_item_name(equip.get('weapon'), 'Лапки')}")
+            f"ATK: {atk} | DEF: {def_} | AGI: {agi} | LUCK: {luck}"
+            f"♥️: {max_hp}"
 
     builder = InlineKeyboardBuilder()
     builder.button(text="⚔️ Виклик", callback_data=f"challenge_{target_id}")
