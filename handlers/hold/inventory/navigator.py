@@ -174,18 +174,27 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                         f"<b>💰 Ціна продажу:</b> {price} 🍉\n━━━━━━━━━━━━"
                     )
 
+                    equip_text = "⚔️" if not is_eq else "❌")
+                    
+                    main_btns = [
+                        types.InlineKeyboardButton(text=equip_text, callback_data=f"equip:{item.type}:{item.name}:{item.lvl}")
+                    ]
+
+                    if item.count == 1:
+                        sell_text = "💰"
+                        main_btns.append(types.InlineKeyboardButton(text=sell_text, callback_data=f"sell_item:{k}:one"))
+                    
+                    main_btns.append(types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{curr_p}:none:{sort_mode}"))
+
                     if has_handmade_map:
+                        main_btns.append(types.InlineKeyboardButton(text="📥", callback_data=f"put_in_chest:equipment:{k}"))
+
+                    builder.row(*main_btns)
+
+                    if item.count > 1:
                         builder.row(
-                        types.InlineKeyboardButton(text="⚔️" if not is_eq else "❌ Зняти", callback_data=f"equip:{item.type}:{item.name}:{item.lvl}"),
-                        types.InlineKeyboardButton(text=f"💰", callback_data=f"sell_item:{k}"),
-                        types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{curr_p}:none:{sort_mode}"),
-                        types.InlineKeyboardButton(text="📥", callback_data=f"put_in_chest:equipment:{k}")
-                        )
-                    else:
-                        builder.row(
-                        types.InlineKeyboardButton(text="⚔️ Одягнути" if not is_eq else "❌ Зняти", callback_data=f"equip:{item.type}:{item.name}:{item.lvl}"),
-                        types.InlineKeyboardButton(text=f"💰 Продати", callback_data=f"sell_item:{k}"),
-                        types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{curr_p}:none:{sort_mode}"),
+                            types.InlineKeyboardButton(text="💰 Продати 1", callback_data=f"sell_item:{k}:one"),
+                            types.InlineKeyboardButton(text="♻️ Продати зайві", callback_data=f"sell_item:{k}:all_but_best")
                         )
 
 
@@ -522,35 +531,66 @@ async def handle_bulk_sell(callback: types.CallbackQuery, db_pool):
 
 @router.callback_query(F.data.startswith("sell_item:"))
 async def handle_sell_equipment(callback: types.CallbackQuery, db_pool):
-    item_key = callback.data.split(":")[1]
+    parts = callback.data.split(":")
+    item_key = parts[1]
+    mode = parts[2] if len(parts) > 2 else "one"
     uid = callback.from_user.id
+    
     prices = {"Common": 1, "Rare": 2, "Epic": 3, "Legendary": 5, "Mythic": 10}
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("SELECT inventory, equipment FROM capybaras WHERE owner_id = $1", uid)
-        inv, curr_eq = ensure_dict(row['inventory']), ensure_dict(row['equipment'])
-        eq_dict = inv.setdefault("equipment", {})
+        if not row: return
+        
+        inv = ensure_dict(row['inventory'])
+        curr_eq = ensure_dict(row['equipment'])
+        eq_dict = inv.get("equipment", {})
 
         if item_key not in eq_dict:
             return await callback.answer("❌ Предмет не знайдено.", show_alert=True)
 
-        item = Item(**eq_dict[item_key])
-
-        is_equipped = any(isinstance(v, dict) and v.get("name") == item.name and v.get("lvl") == item.lvl for v in curr_eq.values())
-        if is_equipped:
-            return await callback.answer("❌ Спочатку зніми цей предмет!", show_alert=True)
-
-        reward = prices.get(item.rarity, 1) + (10 * item.lvl)
+        target_data = eq_dict[item_key]
+        target_name = target_data.get("name")
         
-        if item.count > 1:
-            eq_dict[item_key]["count"] -= 1 
-        else:
-            del eq_dict[item_key]
+        total_reward = 0
+        msg = ""
 
-        inv.setdefault("food", {})["watermelon_slices"] = inv["food"].get("watermelon_slices", 0) + reward
+        if mode == "all_but_best":
+            all_copies = [(k, v) for k, v in eq_dict.items() if v.get("name") == target_name]
+            all_copies.sort(key=lambda x: x[1].get("lvl", 0), reverse=True)
+            
+            best_k = all_copies[0][0]
+            to_remove = []
+
+            for k, data in all_copies:
+                if k == best_k: continue
+                
+                is_equipped = any(isinstance(v, dict) and v.get("name") == data["name"] and v.get("lvl") == data["lvl"] for v in curr_eq.values())
+                
+                if not is_equipped:
+                    r = prices.get(data.get("rarity", "Common"), 1) + (10 * data.get("lvl", 0))
+                    total_reward += r
+                    to_remove.append(k)
+
+            if not to_remove:
+                return await callback.answer("У тебе лише один такий предмет або всі інші вдягнуті!", show_alert=True)
+
+            for k in to_remove: del eq_dict[k]
+            msg = f"♻️ Очищено {len(to_remove)} шт. Отримано: {total_reward} 🍉"
+
+        else:
+            is_equipped = any(isinstance(v, dict) and v.get("name") == target_data["name"] and v.get("lvl") == target_data["lvl"] for v in curr_eq.values())
+            if is_equipped:
+                return await callback.answer("❌ Не можна продати те, що вдягнуто!", show_alert=True)
+
+            total_reward = prices.get(target_data.get("rarity", "Common"), 1) + (10 * target_data.get("lvl", 0))
+            del eq_dict[item_key]
+            msg = f"💰 Продано: {target_name} за {total_reward} 🍉"
+
+        inv.setdefault("food", {})["watermelon_slices"] = inv.get("food", {}).get("watermelon_slices", 0) + total_reward
         await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), uid)
 
-    await callback.answer(f"🍉 +{reward} за {item.name}")
+    await callback.answer(msg, show_alert=True if mode == "all_but_best" else False)
     await render_inventory_page(callback.message, uid, db_pool, page="items", is_callback=True)
 
 @router.callback_query(F.data.startswith("equip:"))
