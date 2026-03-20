@@ -45,13 +45,13 @@ class Fighter:
         self.hp = self.max_hp
 
     def get_hit_roll(self) -> float:
-        s = (self.atk * 0.1) + (self.weapon_data.get("hit_bonus", 0) * 0.4) * (1 + self.lvl * 0.05)
+        s = (self.atk * 0.1) + (self.weapon_data.get("hit_bonus", 0) * 0.4) * (1 + self.weapon_data.get("lvl", 0) * 0.3)
         roll = get_linear_slope(s)
         return roll * 1.5 if self.adrenaline_active else roll
 
     def get_dodge_roll(self) -> float:
         weight_penalty = max(0.5, 1.0 - (self.weight - 20) / 100)
-        s = (self.agi * 0.15 + self.lvl * 0.05) * weight_penalty
+        s = (self.agi * 0.15) * weight_penalty
         roll = get_linear_slope(s)
         return roll * 1.5 if self.adrenaline_active else roll
 
@@ -62,7 +62,7 @@ class Fighter:
         return get_linear_slope(s)
 
     def get_luck_roll(self) -> float:
-        s = (self.luck * 0.2) + (self.lvl * 0.05)
+        s = (self.luck * 0.2)
         # RACE EFFECT: Cat Reflex (Dodging an attack sets a flag that significantly biases the luck slope for a counter-crit)
         if self.cat_reflex_active: s += 3.0 
         return get_linear_slope(s)
@@ -134,13 +134,13 @@ class CombatEngine:
         crit_bonus = 1 if is_crit else 0
         crit_text = "💥 " if is_crit else ""
         
-        base_damage = 1
-        total_damage = round(base_damage + crit_bonus + ability_damage, 0)
-        
-        # RACE EFFECT: Raccoon Trash Luck (Bonus damage if current HP is lower than opponent's HP)
-        if att.race == "raccoon" and att.hp < defe.hp:
+        if att.race == "raccoon" and att.hp < defe.hp and att.get_luck_roll() > 0.8:
             total_damage += 1
             race_logs.append("🎰 Удача єнота!")
+
+        base_damage = 1
+        total_damage = round(base_damage + crit_bonus + ability_damage, 0)
+    
 
         defe.hp = max(0, round(defe.hp - total_damage, 1))
 
