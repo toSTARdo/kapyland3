@@ -8,7 +8,7 @@ def get_linear_slope(s: float) -> float:
     r = random.random()
     if abs(s) < 1e-6:
         return r
-        return (math.sqrt(max(0, (1 - s)**2 + 4 * s * r)) - (1 - s)) / (2 * s)
+    return (math.sqrt(max(0, (1 - s)**2 + 4 * s * r)) - (1 - s)) / (2 * s)
 
 class Fighter:
     def __init__(self, capy: dict, config_data: dict, color: str = "🔸"):
@@ -71,7 +71,7 @@ class Fighter:
         return ""
 
     def get_hit_chance(self) -> float:
-        chance = get_linear_slope(self.atk + self.weapon_data.get("hit_bonus", 0)*100 + self.weapon_data.get("lvl", 0))
+        chance = get_linear_slope(self.atk + self.weapon_data.get("hit_bonus", 0)*100 + self.weapon.get("lvl", 0))
         #chance = BASE_HIT_CHANCE + (self.atk * STAT_WEIGHTS["atk_to_hit"]) + self.weapon_data.get("hit_bonus", 0)
         print(f"{chance} | from weapon: {self.weapon_data.get("hit_bonus", 0)}")
         if self.adrenaline_active: chance *= 2.0
