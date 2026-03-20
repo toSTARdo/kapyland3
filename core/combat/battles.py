@@ -289,7 +289,7 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
             elif is_boss and boss_cfg:
                 boss_id = str(boss_cfg.get('id'))
                 was_defeated = await conn.fetchval("""
-                    SELECT (stats_track->'defeated_boss_ids') ? $2 
+                    SELECT (stats_track->'bosses_defeated') ? $2 
                     FROM capybaras WHERE owner_id = $1
                 """, uid, boss_id)
 
@@ -311,8 +311,8 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                         UPDATE capybaras 
                         SET inventory = jsonb_set(inventory, '{loot,mega_chest}', 
                             (COALESCE((inventory->'loot'->>'mega_chest')::int, 0) + 1)::text::jsonb),
-                            stats_track = jsonb_set(stats_track, '{defeated_boss_ids}', 
-                            COALESCE(stats_track->'defeated_boss_ids', '[]'::jsonb) || jsonb_build_array($2::text))
+                            stats_track = jsonb_set(stats_track, '{bosses_defeated}', 
+                            COALESCE(stats_track->'bosses_defeated', '[]'::jsonb) || jsonb_build_array($2::text))
                         WHERE owner_id = $1
                     """
                     reward_info += "\n🎁 Отримано 1 мега-скриню!"
