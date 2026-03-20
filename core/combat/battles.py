@@ -248,7 +248,7 @@ async def _execute_battle_simulation(msg_interface, p1, p2, is_boss):
     await asyncio.sleep(1.5)
 
     round_num = 1
-    while p1.hp > 0 and p2.hp > 0 and round_num <= 30 if not is_boss else 50:
+    while p1.hp > 0 and p2.hp > 0 and round_num <= 30:
         report = CombatEngine.resolve_turn(attacker, defender, round_num)
         full_report = (
             f"🏟 <b>Раунд {round_num}</b>\n"
