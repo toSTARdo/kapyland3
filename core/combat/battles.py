@@ -171,7 +171,7 @@ async def run_battle_logic(
     p1, p2 = _initialize_fighters(p1_data, p2_data)
 
     # 3. Симуляція бою (включаючи ініціативу та повідомлення про спритність)
-    winner, loser = await _execute_battle_simulation(msg_interface, p1, p2)
+    winner, loser = await _execute_battle_simulation(msg_interface, p1, p2, is_boss)
 
     # 4. Обробка результатів та генерація reward_info
     res_text, reward_info = await _apply_battle_results(
@@ -229,7 +229,7 @@ async def _fetch_battle_data(uid, opp_id, bot_type, is_ghost, tomb_id, db_pool, 
     
     return p1_data, p2_data
 
-async def _execute_battle_simulation(msg_interface, p1, p2):
+async def _execute_battle_simulation(msg_interface, p1, p2, is_boss):
     main_msg = await msg_interface.answer(f"🏟 <b>ПІДГОТОВКА ДО БОЮ...</b>\n\n{p1.name} VS {p2.name}", parse_mode="HTML")
     await asyncio.sleep(1.5)
 
@@ -248,7 +248,7 @@ async def _execute_battle_simulation(msg_interface, p1, p2):
     await asyncio.sleep(1.5)
 
     round_num = 1
-    while p1.hp > 0 and p2.hp > 0 and round_num <= 30:
+    while p1.hp > 0 and p2.hp > 0 and round_num <= 30 if not is_boss else 50:
         report = CombatEngine.resolve_turn(attacker, defender, round_num)
         full_report = (
             f"🏟 <b>Раунд {round_num}</b>\n"
@@ -272,7 +272,6 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
     boss_cfg = BOSS_REWARDS.get(bot_type) if is_boss else None
 
     async with db_pool.acquire() as conn:
-        # 1. Базові витрати стаміни
         if not is_parrot:
             await conn.execute("""
                 UPDATE capybaras 
@@ -281,7 +280,6 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 WHERE owner_id = $1
             """, uid)
 
-        # --- СЦЕНАРІЙ: ПЕРЕМОГА ГРАВЦЯ (p1) ---
         if winner == p1:
             res = f"🏆 <b>ПЕРЕМОГА {p1.color}!</b>\n{html.bold(p1.name)} здобув звитягу!"
             
@@ -290,8 +288,6 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 
             elif is_boss and boss_cfg:
                 boss_id = str(boss_cfg.get('id'))
-                
-                # Перевірка на першу перемогу
                 was_defeated = await conn.fetchval("""
                     SELECT (stats_track->'defeated_boss_ids') ? $2 
                     FROM capybaras WHERE owner_id = $1
@@ -304,27 +300,25 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 final_exp = int(boss_cfg['exp'] * multiplier)
                 reward_info += f"\n📈 +{final_weight} кг, +{final_exp} EXP"
 
-                # Нагороди залежно від прогресу
+                update_query = """
+                    UPDATE capybaras 
+                    SET inventory = jsonb_set(inventory, '{loot,chest}', 
+                        (COALESCE((inventory->'loot'->>'chest')::int, 0) + 1)::text::jsonb)
+                    WHERE owner_id = $1
+                """
                 if not was_defeated:
-                    await conn.execute("""
+                    update_query = """
                         UPDATE capybaras 
                         SET inventory = jsonb_set(inventory, '{loot,mega_chest}', 
                             (COALESCE((inventory->'loot'->>'mega_chest')::int, 0) + 1)::text::jsonb),
                             stats_track = jsonb_set(stats_track, '{defeated_boss_ids}', 
                             COALESCE(stats_track->'defeated_boss_ids', '[]'::jsonb) || jsonb_build_array($2::text))
                         WHERE owner_id = $1
-                    """, uid, boss_id)
+                    """
                     reward_info += "\n🎁 Отримано 1 мега-скриню!"
-                else:
-                    await conn.execute("""
-                        UPDATE capybaras 
-                        SET inventory = jsonb_set(inventory, '{loot,chest}', 
-                            (COALESCE((inventory->'loot'->>'chest')::int, 0) + 1)::text::jsonb) 
-                        WHERE owner_id = $1
-                    """, uid)
-                    reward_info += "\n🎁 Отримано 1 звичайну скриню!"
+                
+                await conn.execute(update_query, uid, boss_id)
 
-                # Шанс на квиток
                 if random.random() < (1.0 if not was_defeated else 0.25):
                     await conn.execute("""
                         UPDATE capybaras 
@@ -337,48 +331,44 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 await grant_exp_and_lvl(uid, exp_gain=final_exp, weight_gain=final_weight, bot=bot, db_pool=db_pool)
 
             elif not is_parrot:
-                # Звичайна перемога над мобом
-                reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +{winner.hp} кг, +{winner.hp} EXP"
+                gain = int(p2.hp * 0.5) 
+                reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +{gain} кг, +{gain} EXP"
                 
-                # Дроп артефактів (25%)
                 if bot_type is not None and random.random() < 0.25:
                     rarity = random.choices(["Common", "Rare"], weights=[80, 20])[0]
                     pool = ARTIFACTS.get(rarity, [{"name": "Іржавий ніж", "type": "weapon"}])
                     item = random.choice(pool)
                     item_id = str(uuid4())[:8]
                     
-                    # Отримуємо свіжий інвентар (працюємо з JSONB в Python для зручності словника)
                     inv_raw = await conn.fetchval("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
                     inv = json.loads(inv_raw) if isinstance(inv_raw, str) else (inv_raw or {})
-                    
-                    # Додаємо предмет у словник-інвентар
-                    eq_dict = inv.setdefault("equipment", {})
-                    eq_dict[item_id] = {
-                        "name": item["name"], 
-                        "rarity": rarity, 
-                        "type": item["type"],
-                        "lvl": 0, 
-                        "desc": f"Трофей після бою з {p2.name}."
+                    inv.setdefault("equipment", {})[item_id] = {
+                        "name": item["name"], "rarity": rarity, "type": item["type"],
+                        "lvl": 0, "desc": f"Трофей після бою з {p2.name}."
                     }
-                    
                     await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv), uid)
                     reward_info += f"\n\n✨ <b>Артефакт:</b> {item['name']} ({rarity})!"
 
-                await grant_exp_and_lvl(uid, exp_gain=winner.hp, weight_gain=winner.hp, bot=bot, db_pool=db_pool)
+                await grant_exp_and_lvl(uid, exp_gain=gain, weight_gain=gain, bot=bot, db_pool=db_pool)
 
-        # --- СЦЕНАРІЙ: ПОРАЗКА (winner == p2) ---
         elif winner == p2:
-            res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} виявився сильнішим."
-            
+            res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} зніс кабіну."
             if is_parrot:
                 reward_info = "\n\n🦜 <i>Павло: «Більше тренуйся, сопляк!»</i>"
             else:
-                loss_weight = -1 * p2.hp
+                loss_weight = -1 * int(p2.hp * 0.2)
                 reward_info = f"\n\n📉 <b>Збитки:</b>\n🥈 {loss_weight} кг"
                 await grant_exp_and_lvl(uid, exp_gain=0, weight_gain=loss_weight, bot=bot, db_pool=db_pool)
 
+        else:
+            res = "🤝 <b>НІЧИЯ!</b>\nСили виявилися рівними, бійці впали на травичку."
+            if not is_parrot:
+                draw_exp = 1
+                reward_info = f"\n\n📈 <b>Результат:</b>\n⚪️ +0 кг, +{draw_exp} EXP"
+                await grant_exp_and_lvl(uid, exp_gain=draw_exp, weight_gain=0, bot=bot, db_pool=db_pool)
+
     return res, reward_info
-    
+
 async def _update_boss_progress(uid: int, conn) -> int:
     query = """
         UPDATE capybaras 
