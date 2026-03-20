@@ -17,7 +17,8 @@ class Fighter:
         self.weight = float(capy.get("weight", 20.0))
         self.color = color
         self.race = capy.get("race", "capybara") 
-        
+        self.inv = capy.get("inventory", {})
+
         stats = capy.get("stats", {})
         self.lvl = capy.get("lvl", 0)
         self.atk = stats.get("attack", 0)
@@ -43,6 +44,8 @@ class Fighter:
         has_cat_life = any(item.get("name") == "Котяче життя" for item in capy.get("inventory", {}).get("equipment", {}).values())
         self.max_hp = (capy.get("max_hp", 3) * UNITS_PER_HEART) + (2 if has_cat_life else 0)
         self.hp = self.max_hp
+
+        self.stolen_items = []
 
     def get_hit_roll(self) -> float:
         s = (self.atk * 0.1) + (self.weapon_data.get("hit_bonus", 0) * 0.4) * (1 + self.weapon_data.get("lvl", 0) * 0.3)
@@ -164,4 +167,23 @@ class CombatEngine:
         if all_extra:
             res += f"\n<i>{chr(10).join(all_extra)}</i>"
 
-        return res + capy_notif + adren_notif
+
+        steal_log = ""
+        if not (att.race == "boss" or defe.race == "boss") and random.random() < att.luck*0.005:
+            enemy_food = defe.inv.get("food", {})
+            
+            available_to_steal = [item for item, count in enemy_food.items() if count > 0]
+
+            if available_to_steal:
+                stolen_item = random.choice(available_to_steal)
+                
+                att.stolen_items.append(stolen_item)
+                
+                enemy_food[stolen_item] -= 1
+                
+                icons = {"tangerines": "🍊", "kiwi": "🥝", "mango": "🥭", "melon": "🍈", "watermelon_slices": "🍉"}
+                item_icon = icons.get(stolen_item, "📦")
+                
+                steal_log = f"\n💥 {html.bold(att.name)} вибив із ворога {item_icon}!"
+
+        return res + capy_notif + adren_notif + steal_log

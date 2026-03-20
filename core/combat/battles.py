@@ -351,6 +351,49 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
 
                 await grant_exp_and_lvl(uid, exp_gain=gain, weight_gain=gain, bot=bot, db_pool=db_pool)
 
+            bonus_chance = 0.3 + (p1.luck * 0.02)
+            if random.random() < bonus_chance:
+                food_pool = ["tangerines", "watermelon_slices", "melon", "mango", "kiwi"]
+                
+                food_weights = [50, 25, 15, 8, 2] 
+                
+                dropped_food = random.choices(food_pool, weights=food_weights, k=1)[0]
+                
+                await conn.execute(f"""
+                    UPDATE capybaras 
+                    SET inventory = jsonb_set(inventory, '{{food, {dropped_food}}}', 
+                    (COALESCE((inventory->'food'->>'{dropped_food}')::int, 0) + 1)::text::jsonb)
+                    WHERE owner_id = $1
+                """, uid)
+                
+                emoji_map = {
+                    "tangerines": "🍊", 
+                    "watermelon_slices": "🍉", 
+                    "melon": "🍈", 
+                    "mango": "🥭", 
+                    "kiwi": "🥝"
+                }
+                
+                food_icon = emoji_map.get(dropped_food, "🍽")
+                reward_info += f"\n🎁 <b>Знайдено:</b> 1x {food_icon}!"
+
+            if hasattr(p1, 'stolen_items') and p1.stolen_items and opp_id and not (is_boss or bot_type or is_ghost):
+                summary = []
+                for item in p1.stolen_items:
+                    await conn.execute(f"""
+                        UPDATE capybaras 
+                        SET inventory = jsonb_set(inventory, '{{food, {item}}}', 
+                        (COALESCE((inventory->'food'->>'{item}')::int, 0) + 1)::text::jsonb)
+                        WHERE owner_id = $1
+                    """, uid)
+                    summary.append(item)
+                
+                await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
+                                json.dumps(p2.inventory), opp_id)
+
+                if summary:
+                    reward_info += f"\n🏴‍☠️ <b>Вибито в бою:</b> " + ", ".join([f"<code>{i}</code>" for i in summary])
+
         elif winner == p2:
             res = f"💀 <b>ПОРАЗКА {p1.color}!</b>\n{html.bold(p2.name)} зніс кабіну."
             if is_parrot:
@@ -368,6 +411,35 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 await grant_exp_and_lvl(uid, exp_gain=draw_exp, weight_gain=0, bot=bot, db_pool=db_pool)
 
     return res, reward_info
+
+async def _execute_actual_steal(winner_id: int, loser_id: int, stolen_list: list, conn) -> str:
+    if not stolen_list: return ""
+    
+    to_steal = stolen_list[:2]
+    
+    row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", loser_id)
+    inv_loser = json.loads(row['inventory']) if isinstance(row['inventory'], str) else (row['inventory'] or {})
+    
+    summary = []
+    for item in to_steal:
+        if inv_loser.get("food", {}).get(item, 0) > 0:
+            inv_loser["food"][item] -= 1
+            if inv_loser["food"][item] <= 0: del inv_loser["food"][item]
+            
+            await conn.execute(f"""
+                UPDATE capybaras 
+                SET inventory = jsonb_set(inventory, '{{food, {item}}}', 
+                (COALESCE((inventory->'food'->>'{item}')::int, 0) + 1)::text::jsonb)
+                WHERE owner_id = $1
+            """, winner_id)
+            summary.append(item)
+
+    await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv_loser), loser_id)
+    
+    if summary:
+        items_str = ", ".join([f"<code>{i}</code>" for i in summary])
+        return f"\n🏴‍☠️ <b>Здобич з бою:</b> {items_str}"
+    return ""
 
 async def _update_boss_progress(uid: int, conn) -> int:
     query = """

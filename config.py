@@ -548,21 +548,21 @@ NPC_REGISTRY = {
             "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
             "weapon_full": {"name": "Весло", "lvl": 0},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 0
+            "hp_bonus": 0, "race": "bot"
         },
         "otter_vandal": {
             "kapy_name": "Видра мародер", "color": "🦦", "weight": 5.0,
             "stats": {"attack": 1, "defense": 1, "agility": 3, "luck": 1},
             "weapon_full": {"name": "Гармата", "lvl": 0},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 0
+            "hp_bonus": 0, "race": "bot"
         },
         "mimic": {
             "kapy_name": "Мімік", "color": "🗃",
             "stats": {"attack": 4, "defense": 2, "agility": 5, "luck": 2},
             "weapon_full": {"name": "Зуби акули", "lvl": 0},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 4
+            "hp_bonus": 4, "race": "bot"
         },
         "mantis_shrimp": {
             "kapy_name": "Креветка-Боксер", 
@@ -576,7 +576,7 @@ NPC_REGISTRY = {
             },
             "weapon_full": {"name": "Молотячі клешні", "lvl": 1},
             "armor_full": {"name": "Хітин", "lvl": 0},
-            "hp_bonus": 2
+            "hp_bonus": 2, "race": "bot"
         },
         "star_ninja_hitode": {
             "kapy_name": "Зірка-Ніндзя", 
@@ -590,7 +590,7 @@ NPC_REGISTRY = {
             },
             "weapon_full": {"name": "Швидка зірка", "lvl": 3},
             "armor_full": {"name": "Регенерація ядра", "lvl": 1},
-            "hp_bonus": 0
+            "hp_bonus": 0, "race": "bot"
         },
         "bastion_shell": {
             "kapy_name": "Мушля-Бастіон", 
@@ -604,7 +604,7 @@ NPC_REGISTRY = {
             },
             "weapon_full": {"name": "Затискання", "lvl": 1},
             "armor_full": {"name": "Шипований панцир", "lvl": 5},
-            "hp_bonus": 4
+            "hp_bonus": 4, , "race": "bot"
         },
         "sea_dragon_azure": {
             "kapy_name": "Морський Дракончик «Лазурит»", 
@@ -614,11 +614,11 @@ NPC_REGISTRY = {
                 "attack": 14,   
                 "defense": 4,
                 "agility": 12,
-                "luck": 18 
+                "luck": 18
             },
             "weapon_full": {"name": "Водяний пульс", "lvl": 3},
             "armor_full": {"name": "Луска дракона", "lvl": 2},
-            "hp_bonus": 2
+            "hp_bonus": 2, "race": "bot"
         },
         # --- ЕТАП 1: JUA ARCHIPELAGO (ID 1-7) ---
         # Початкові боси, статки в межах 5-12
@@ -627,49 +627,49 @@ NPC_REGISTRY = {
             "stats": {"attack": 8, "defense": 5, "agility": 5, "luck": 5},
             "weapon_full": {"name": "Весло", "lvl": 1},
             "armor_full": {"name": "Хутро", "lvl": 0},
-            "hp_bonus": 4, "is_boss": True
+            "hp_bonus": 4, "is_boss": True, "race": "bot"
         },
         "boss_raccoon_trash": {
             "kapy_name": "Єнот Ріккі «Сміттяр»", "color": "🦝",
             "stats": {"attack": 10, "defense": 8, "agility": 8, "luck": 15}, 
             "weapon_full": {"name": "Йоржик", "lvl": 2},
             "armor_full": {"name": "Діряве відро", "lvl": 1},
-            "hp_bonus": 6, "is_boss": True
+            "hp_bonus": 6, "is_boss": True, "race": "bot"
         },
         "boss_rat_king": {
             "kapy_name": "Щур Шмиг «Чума»", "color": "🐀",
             "stats": {"attack": 12, "defense": 5, "agility": 18, "luck": 5},
             "weapon_full": {"name": "Вампірський клинок", "lvl": 1},
             "armor_full": {"name": "Мівіна", "lvl": 1},
-            "hp_bonus": 8, "is_boss": True
+            "hp_bonus": 8, "is_boss": True, "race": "bot"
         },
         "boss_lynx": {
             "kapy_name": "Рись «Рвивітер»", "color": "🐆",
             "stats": {"attack": 14, "defense": 6, "agility": 20, "luck": 10},
             "weapon_full": {"name": "Совині кігті", "lvl": 2},
             "armor_full": {"name": "Хутро", "lvl": 2},
-            "hp_bonus": 10, "is_boss": True
+            "hp_bonus": 10, "is_boss": True, "race": "bot"
         },
         "boss_monkey_king": {
             "kapy_name": "Мавпа Укун «Банан»", "color": "🐒",
             "stats": {"attack": 15, "defense": 10, "agility": 18, "luck": 15},
             "weapon_full": {"name": "Чайний посох", "lvl": 2},
             "armor_full": {"name": "Хутро", "lvl": 3},
-            "hp_bonus": 12, "is_boss": True
+            "hp_bonus": 12, "is_boss": True, "race": "bot"
         },
         "boss_lion_henry": {
             "kapy_name": "Лев Генрі «Невдача»", "color": "🦁",
             "stats": {"attack": 18, "defense": 8, "agility": 8, "luck": -10}, # Luck пофікшено (був -5)
             "weapon_full": {"name": "Розсікач драконів", "lvl": 2}, 
             "armor_full": {"name": "Діряве відро", "lvl": 3},
-            "hp_bonus": 14, "is_boss": True
+            "hp_bonus": 14, "is_boss": True, "race": "bot"
         },
         "boss_alvida": {
             "kapy_name": "Леді Альвіда «Кокос»", "color": "👒",
             "stats": {"attack": 20, "defense": 12, "agility": 10, "luck": 15},
             "weapon_full": {"name": "Молот Мільйонер", "lvl": 3},
             "armor_full": {"name": "Рятувальний круг", "lvl": 3},
-            "hp_bonus": 16, "is_boss": True
+            "hp_bonus": 16, "is_boss": True, "race": "bot"
         },
 
         # --- ЕТАП 2: UROBOROSTREAM (ID 8-14) ---
@@ -679,42 +679,42 @@ NPC_REGISTRY = {
             "stats": {"attack": 16, "defense": 10, "agility": 20, "luck": 12},
             "weapon_full": {"name": "Швабра", "lvl": 4},
             "armor_full": {"name": "Плащ-невидимка", "lvl": 2},
-            "hp_bonus": 18, "is_boss": True
+            "hp_bonus": 18, "is_boss": True, "race": "bot"
         },
         "boss_otter_river": {
             "kapy_name": "Видра Ваня «Весло»", "color": "🦦",
             "stats": {"attack": 18, "defense": 12, "agility": 20, "luck": 15},
             "weapon_full": {"name": "Весло", "lvl": 5},
             "armor_full": {"name": "Рятувальний круг", "lvl": 4},
-            "hp_bonus": 20, "is_boss": True
+            "hp_bonus": 20, "is_boss": True, "race": "bot"
         },
         "boss_walrus_captain": {
             "kapy_name": "Морж Морган «Ікло»", "color": "🦭",
             "stats": {"attack": 20, "defense": 20, "agility": 10, "luck": 20},
             "weapon_full": {"name": "Таран", "lvl": 5},
             "armor_full": {"name": "Стара бочка", "lvl": 5},
-            "hp_bonus": 36, "is_boss": True
+            "hp_bonus": 36, "is_boss": True, "race": "bot"
         },
         "boss_whale_moby": {
             "kapy_name": "Кит Мобі Кап «Біла Скеля»", "color": "🐋",
             "stats": {"attack": 20, "defense": 20, "agility": 2, "luck": 20},
             "weapon_full": {"name": "Таран", "lvl": 5},
             "armor_full": {"name": "Скриня Дейві Джонсона", "lvl": 5},
-            "hp_bonus": 38, "is_boss": True
+            "hp_bonus": 38, "is_boss": True, "race": "bot"
         },
         "boss_frog_shinobi": {
             "kapy_name": "Жаба Джирая «Смертоква»", "color": "🐸",
             "stats": {"attack": 20, "defense": 10, "agility": 20, "luck": 20},
             "weapon_full": {"name": "Тенза Зангетсу", "lvl": 4}, 
             "armor_full": {"name": "Плащ-невидимка", "lvl": 3},
-            "hp_bonus": 22, "is_boss": True # Підняв HP
+            "hp_bonus": 22, "is_boss": True, "race": "bot"
         },
         "boss_catfish_gun": {
             "kapy_name": "Сом Ґан «Безжабрий»", "color": "🐟",
             "stats": {"attack": 20, "defense": 15, "agility": 12, "luck": 10},
             "weapon_full": {"name": "Гармата", "lvl": 4},
             "armor_full": {"name": "Стара бочка", "lvl": 4},
-            "hp_bonus": 24, "is_boss": True
+            "hp_bonus": 24, "is_boss": True, "race": "bot"
         },
         "boss_fat_cat": {
             "kapy_name": "Кіт Батон «Веселий»", "color": "🐈",
