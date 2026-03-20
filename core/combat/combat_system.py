@@ -1,5 +1,6 @@
 import random
 from aiogram import html
+import math
 from uuid import uuid4
 from config import UNITS_PER_HEART, BASE_HEARTS, BASE_HIT_CHANCE, STAT_WEIGHTS, BASE_BLOCK_CHANCE
 from core.combat.special_abilities import ABILITY_REGISTRY 
