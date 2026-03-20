@@ -142,7 +142,7 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
         
     if not target: return await callback.answer("❌ Капібара зникла...", show_alert=True)
 
-    state, equip = parse_json(target['state']), parse_json(target['equipment'])
+    state, equip = ensure_dict(target['state']), ensure_dict(target['equipment'])
     atk, def_, agi, luck = target["atk"], target["def"], target["agi"], target["luck"]
     max_hp = target["max_hp"]    
 
