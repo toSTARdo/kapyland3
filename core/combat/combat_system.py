@@ -76,6 +76,27 @@ class Fighter:
                 return f"\n❤️‍🔥 {html.bold(self.name)}: Адреналінове серце!"
         return ""
 
+        def get_hp_display(self) -> str:
+        temp_hp = self.hp
+        total_hearts = self.max_hp // UNITS_PER_HEART
+        display = "" if total_hearts < 5 else "\n"
+
+        for i in range(1, total_hearts + 1):
+            if temp_hp >= 2:
+                display += "❤️‍🔥" if self.adrenaline_active else "❤️"
+                temp_hp -= 2
+            elif temp_hp == 1:
+                display += "💔"
+                temp_hp -= 1
+            else:
+                display += "🖤"    
+
+            if i % 5 == 0 and i != total_hearts:
+                display += "\n"
+       
+
+        return f"{display}\n({self.hp}/{self.max_hp})" 
+
 class CombatEngine:
     @staticmethod
     def resolve_turn(att: Fighter, defe: Fighter, round_num: int) -> str:
