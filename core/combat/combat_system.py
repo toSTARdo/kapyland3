@@ -1,6 +1,8 @@
 import random
+import math
 from aiogram import html
 from uuid import uuid4
+# Припускаємо, що ці константи є в config
 from config import UNITS_PER_HEART, BASE_HEARTS, BASE_HIT_CHANCE, STAT_WEIGHTS, BASE_BLOCK_CHANCE
 from core.combat.special_abilities import ABILITY_REGISTRY 
 
@@ -33,10 +35,10 @@ class Fighter:
         })
 
         self._ability_state = {}
+        # Додаємо рівні до захисту
         self.def_ += self.weapon.get("lvl", 0)
         self.def_ += self.armor.get("lvl", 0)
 
-        # Race specific tracking
         self.cat_reflex_active = False
         self.capy_zen_rounds = 0
 
@@ -45,7 +47,6 @@ class Fighter:
         has_cat_life = any(item.get("name") == "Котяче життя" for item in eq_dict.values())
 
         loot = inventory.get("loot", {})
-        
         self.has_lachryma = int(loot.get("lachryma", 0)) > 0
 
         extra_hp = 2 if has_cat_life else 0
@@ -65,96 +66,106 @@ class Fighter:
         return ""
 
     def get_hit_chance(self) -> float:
+        # Базовий шанс влучання
         chance = BASE_HIT_CHANCE + (self.atk * STAT_WEIGHTS["atk_to_hit"]) + self.weapon_data.get("hit_bonus", 0)
-        print(f"{chance} | from weapon: {self.weapon_data.get("hit_bonus", 0)}")
-        if self.adrenaline_active: chance *= 2.0
-        return chance
+        if self.adrenaline_active: chance *= 1.5
+        return max(0.3, min(0.95, chance))
 
     def get_dodge_chance(self) -> float:
         base_dodge = self.agi * STAT_WEIGHTS["agi_to_dodge"]
         weight_penalty = max(0, (self.weight - 20) / 20) * 0.01
         chance = base_dodge - weight_penalty
-        if self.adrenaline_active: chance *= 2.0
-        return max(0.02, chance)
+        if self.adrenaline_active: chance *= 1.5
+        return max(0.02, min(0.7, chance))
 
     def get_block_chance(self) -> float:
         base_block = BASE_BLOCK_CHANCE + (self.def_ * STAT_WEIGHTS["def_to_block"]) + self.armor_data.get("defense", 0)
         if self.capy_zen_rounds > 0 and self.color in ["🟢", "🔴"]:
-            base_block += 0.15 # 15% bonus block for Zen Capybara
-        return base_block
+            base_block += 0.15 
+        return max(0.05, min(0.8, base_block))
 
     def get_hp_display(self) -> str:
-        temp_hp = self.hp
         total_hearts = self.max_hp // UNITS_PER_HEART
+        temp_hp = self.hp
         display = "" if total_hearts < 5 else "\n"
-
         for i in range(1, total_hearts + 1):
             if temp_hp >= 2:
                 display += "❤️‍🔥" if self.adrenaline_active else "❤️"
                 temp_hp -= 2
             elif temp_hp == 1:
-                display += "💔"
-                temp_hp -= 1
+                display += "💔"; temp_hp -= 1
             else:
-                display += "🖤"    
-
-            if i % 5 == 0 and i != total_hearts:
-                display += "\n"
-       
-
-        return f"{display}\n({self.hp}/{self.max_hp})" 
+                display += "🖤"
+            if i % 5 == 0 and i != total_hearts: display += "\n"
+        return f"{display}\n({self.hp}/{self.max_hp})"
 
 class CombatEngine:
+    @staticmethod
+    #SUPER DUPER INNOVATIVE METHOD
+    def get_linear_slope(s: float) -> float:
+        r = random.random()
+        if abs(s) < 1e-6:
+            return r
+        return (math.sqrt(max(0, (1 - s)**2 + 4 * s * r)) - (1 - s)) / (2 * s)
+
     @staticmethod
     def resolve_turn(att: Fighter, defe: Fighter, round_num: int) -> str:
         if att.capy_zen_rounds > 0: att.capy_zen_rounds -= 1
         
         adren_notif = att.update_adrenaline() + defe.update_adrenaline()
-        race_logs = [] # To store messages about race abilities working
+        race_logs = []
 
-        # 1. Bat Passive: Sonar
+        # 1. Ефект Сонара (Кажан)
         current_block_chance = defe.get_block_chance()
         if att.race == "bat" and (random.random() < 0.6 or att.has_lachryma):
             current_block_chance *= 0.5
             race_logs.append(f"🔊 {html.bold(att.name)} оминає захист ворога!")
-            # We don't log this every time to avoid spam, or log only on successful pierce
         
-        # 2. Resolve Dodge
+        # 2. Ухилення
         if random.random() < defe.get_dodge_chance():
             if defe.race == "cat":
                 defe.cat_reflex_active = True
                 race_logs.append(f"🐾 {html.bold(defe.name)} готує контрудар!")
             return f"⚡ {html.bold(defe.name)} спритно ухилився!{adren_notif}\n<i>{chr(10).join(race_logs)}</i>"
 
-        # 3. Resolve Hit
+        # 3. Влучання (Hit)
         if random.random() > att.get_hit_chance():
             return f"💨 {att.color} {html.bold(att.name)} промахнувся!{adren_notif}"
 
-        # 4. Resolve Block
+        # 4. Блок
         if random.random() < current_block_chance:
             armor_msg = defe.armor_data.get("text", "заблокував удар")
             return f"🔰 {html.bold(defe.name)} {armor_msg}!{adren_notif}"
 
-        # 5. Damage Calculation
-        base_damage = 1
-        
-        # Raccoon Passive: Trash Luck
+        s = (att.atk) + (att.weapon_data.get("hit_bonus", 0) * 100) + (att.weapon.get("lvl", 0))
+
+        power_factor = CombatEngine.get_linear_slope(s)
+
+        base_damage = 1.0
+        max_bonus = 1.5
+        total_damage = base_damage + (power_factor * max_bonus)
+
+        # Расовий бонус Єнота (Trash Luck)
         current_luck = att.luck
         if att.race == "raccoon" and att.hp < defe.hp:
             current_luck *= 2 if not att.has_lachryma else 4
             race_logs.append(f"🎰 {html.bold(att.name)} відчуває азарт погоні!")
 
-        # Cat Passive: Counter-crit
+        # Критичний удар (через Удачу)
         crit_chance = current_luck * STAT_WEIGHTS["luck_to_crit"]
         if att.cat_reflex_active:
             crit_chance += 0.20 if not att.has_lachryma else 0.40
             att.cat_reflex_active = False
             race_logs.append(f"🐱 Котячі рефлекси спрацювали!")
 
-        crit_bonus = 1 if random.random() < crit_chance else 0
-        crit_text = "💥 " if crit_bonus > 0 else ""
+        crit_bonus = 0
+        if random.random() < crit_chance:
+            crit_bonus = 1.0
+            crit_text = "💥 "
+        else:
+            crit_text = ""
 
-        # Special Abilities
+        # Спеціальні здібності зброї
         ability_damage = 0
         ability_logs = []
         special_key = att.weapon_data.get("special")
@@ -164,28 +175,26 @@ class CombatEngine:
                 ability_damage = res_dmg
                 ability_logs = logs
 
-        total_damage = round(base_damage + crit_bonus + ability_damage, 1)
-        defe.hp = max(0, round(defe.hp - total_damage, 1))
+        # Фінальна сума
+        final_dmg = round(total_damage + crit_bonus + ability_damage, 1)
+        defe.hp = max(0.0, round(defe.hp - final_dmg, 1))
 
-        # 6. Capybara Passive: Zen
+        # 6. Дзен Капібари
         capy_notif = ""
-        if defe.race == "capybara" and total_damage > 0:
+        if defe.race == "capybara" and final_dmg > 0:
             if random.random() < 0.25 or defe.has_lachryma:
                 defe.capy_zen_rounds = 2
                 capy_notif = f"\n🪷 {html.bold(defe.name)} зловив дзен (Блок +15%)!"
 
+        # Формування повідомлення
         raw_text = random.choice(att.weapon_data["texts"])
         attack_verb = raw_text.replace("{defen}", html.bold(defe.name))
-        
         prefix = "❤️‍🔥 " if att.adrenaline_active else ""
+        
         msg = (f"{prefix}{crit_text}{att.color} {html.bold(att.name)} {attack_verb}!\n"
-               f"➔ Шкода: {html.bold('-' + str(total_damage) + ' HP')}")
+               f"➔ Шкода: {html.bold('-' + str(final_dmg) + ' HP')}")
         
-        # Combine all additional logs
-        all_extra = []
-        if race_logs: all_extra.extend(race_logs)
-        if ability_logs: all_extra.extend(ability_logs)
-        
+        all_extra = race_logs + ability_logs
         if all_extra:
             msg += f"\n<i>{chr(10).join(all_extra)}</i>"
 
