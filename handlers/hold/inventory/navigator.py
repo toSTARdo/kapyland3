@@ -67,7 +67,6 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
                 recipe = RECIPES.get(p_id, {})
                 builder.row(
                     types.InlineKeyboardButton(text=f"{recipe.get('emoji', '🧪')} {recipe.get('name', p_id)} ({count})", callback_data=f"use_potion:{p_id}"),
-                    # New Bury Button for this specific potion
                     types.InlineKeyboardButton(text=f"📥 Покласти в скриню (1)", callback_data=f"put_in_chest:potions:{p_id}")
                 )
 
@@ -82,11 +81,25 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
         if not eq_dict:
             content = "<i>Твій трюм порожній...</i>"
         else:
-            unique_list = []
+            # --- НОВА ЛОГІКА ГРУПУВАННЯ ---
+            grouped = {}
             for k, data in eq_dict.items():
                 try:
-                    unique_list.append({"obj": Item(**data), "key": k})
+                    name = data.get("name")
+                    if name not in grouped:
+                        grouped[name] = []
+                    grouped[name].append({"obj": Item(**data), "key": k})
                 except: continue
+
+            unique_list = []
+            for name, copies in grouped.items():
+                copies.sort(key=lambda x: x["obj"].lvl, reverse=True)
+                
+                best_version = copies[0] 
+                total_count = len(copies)
+                
+                best_version["obj"].count = total_count 
+                unique_list.append(best_version)
 
             if sort_mode in RARITY_META:
                 unique_list = [x for x in unique_list if x["obj"].rarity == sort_mode]
@@ -163,8 +176,8 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
 
                     if has_handmade_map:
                         builder.row(
-                        types.InlineKeyboardButton(text="⚔️ Одягнути" if not is_eq else "❌ Зняти", callback_data=f"equip:{item.type}:{item.name}:{item.lvl}"),
-                        types.InlineKeyboardButton(text=f"💰 Продати", callback_data=f"sell_item:{k}"),
+                        types.InlineKeyboardButton(text="⚔️" if not is_eq else "❌ Зняти", callback_data=f"equip:{item.type}:{item.name}:{item.lvl}"),
+                        types.InlineKeyboardButton(text=f"💰", callback_data=f"sell_item:{k}"),
                         types.InlineKeyboardButton(text="✖️", callback_data=f"inv_page:items:{curr_p}:none:{sort_mode}"),
                         types.InlineKeyboardButton(text="📥", callback_data=f"put_in_chest:equipment:{k}")
                         )
