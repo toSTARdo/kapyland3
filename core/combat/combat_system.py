@@ -76,7 +76,7 @@ class Fighter:
                 return f"\n❤️‍🔥 {html.bold(self.name)}: Адреналінове серце!"
         return ""
 
-        def get_hp_display(self) -> str:
+    def get_hp_display(self) -> str:
         temp_hp = self.hp
         total_hearts = self.max_hp // UNITS_PER_HEART
         display = "" if total_hearts < 5 else "\n"
