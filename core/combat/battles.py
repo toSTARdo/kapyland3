@@ -248,7 +248,7 @@ async def _execute_battle_simulation(msg_interface, p1, p2, is_boss):
     await asyncio.sleep(1.5)
 
     round_num = 1
-    while p1.hp > 0 and p2.hp > 0 and round_num <= 30:
+    while p1.hp > 0 and p2.hp > 0 and round_num <= (30 if (not is_boss) else 50):
         report = CombatEngine.resolve_turn(attacker, defender, round_num)
         full_report = (
             f"🏟 <b>Раунд {round_num}</b>\n"
@@ -331,7 +331,7 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                 await grant_exp_and_lvl(uid, exp_gain=final_exp, weight_gain=final_weight, bot=bot, db_pool=db_pool)
 
             elif not is_parrot:
-                gain = int(p2.hp * 0.5) 
+                gain = int(abs(p1.hp - p2.hp) * 0.5) 
                 reward_info = f"\n\n📈 <b>Нагорода:</b>\n🥇 +{gain} кг, +{gain} EXP"
                 
                 if bot_type is not None and random.random() < 0.25:
