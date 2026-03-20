@@ -104,7 +104,7 @@ ABILITY_DATA = {
     "freeze_debuff": (0.2, [lambda a, d: mod_val(d, 'agi', -2), lambda a, d: mod_val(d, 'def_', -0.5), lambda a, d: mod_val(a, 'def_', 0.5), lambda a, d: mod_val(d, 'atk', -1)]),
     "fear_debuff": (0.2, [lambda a, d: mod_val(d, 'atk', -2), lambda a, d: mod_val(d, 'luck', -1), lambda a, d: mod_val(a, 'atk', 1), lambda a, d: mod_val(d, 'agi', -1)]),
     "energy_surge": (0.2, [lambda a, d: mod_val(a, 'agi', 2), lambda a, d: mod_val(a, 'luck', 1), lambda a, d: mod_val(a, 'atk', 1), lambda a, d: set_val(a, 'hp', max(1, a.hp - 0.5)) or 1]),
-    "owl_crit": (0.2, [lambda a, d: 1.5, lambda a, d: mod_val(d, 'def_', -1), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(a, 'luck', 2)]),
+    "owl_crit": (0.2, [lambda a, d: 1, lambda a, d: mod_val(d, 'def_', -1), lambda a, d: mod_val(a, 'agi', 1), lambda a, d: mod_val(a, 'luck', 2)]),
     "auto_attack": (0.2, [lambda a, d: mod_val(a, 'atk', 0.5), lambda a, d: mod_val(d, 'def_', -1), lambda a, d: mod_val(a, 'def_', 1), lambda a, d: 1]),
     "rage_boost": (0.2, [lambda a, d: mod_val(a, 'atk', 0.5), lambda a, d: mod_val(a, 'luck', 0.5), lambda a, d: mod_val(d, 'atk', -0.5), lambda a, d: mod_val(a, 'def_', 1)]),
     "ghost_strike": (0.2, [lambda a, d: 1, lambda a, d: mod_val(a, 'agi', 2), lambda a, d: set_val(d, 'luck', 0), lambda a, d: heal(a, 1)]),
