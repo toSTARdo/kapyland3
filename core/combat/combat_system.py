@@ -169,7 +169,7 @@ class CombatEngine:
 
 
         steal_log = ""
-        if not (att.race == "boss" or defe.race == "boss") and random.random() < att.luck*0.005:
+        if not (att.race == "bot" or defe.race == "bot") and random.random() < att.luck*0.005:
             enemy_food = defe.inv.get("food", {})
             
             available_to_steal = [item for item, count in enemy_food.items() if count > 0]
