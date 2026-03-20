@@ -168,7 +168,7 @@ async def handle_social_actions_with_tut(callback: types.CallbackQuery, db_pool)
     elif action == "gift_to":
         await gift_category_select(callback, target_id, db_pool)
     elif action == "steal_from":
-        await execute_steal_logic(callback, target_id, db_pool)
+        await execute_steallogic(callback, target_id, db_pool)
     elif action == "date_request":
         await send_date_request(callback, target_id, db_pool)
     elif action == "ram":

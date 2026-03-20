@@ -45,7 +45,7 @@ async def execute_ram_logic(callback: types.CallbackQuery, target_id: int, db_po
     await callback.message.edit_caption(caption="💥 <b>БА-БАХ!</b>\nТріски летять в усі боки! 🪵", parse_mode="HTML")
     asyncio.create_task(run_battle_logic(callback, opponent_id=target_id, db_pool=db_pool))
 
-async def execute_steal_logic(callback: types.CallbackQuery, target_id: int, db_pool):
+async def execute_steallogic(callback: types.CallbackQuery, target_id: int, db_pool):
     uid = callback.from_user.id
     
     async with db_pool.acquire() as conn:
@@ -154,7 +154,7 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
             f"━━━━━━━━━━━━━━━\n"
             f"🔹 <b>Зараз:</b> {'💤 Спить' if state.get('status') == 'sleep' else '🐾 Гуляє'}\n"
             f"🎖 <b>Рівень:</b> {target['lvl']} | ⚖️ <b>Вага:</b> {target['weight']} кг\n"
-            f"⚔️ <b>Арсенал:</b> {get_item_name(equip.get('weapon'), 'Лапки')}"
+            f"⚔️ <b>Арсенал:</b> {equip.get('name', 'Лапки')}"
             f"ATK: {atk} | DEF: {def_} | AGI: {agi} | LUCK: {luck}"
             f"♥️: {max_hp}")
 
