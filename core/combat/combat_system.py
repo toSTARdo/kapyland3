@@ -72,9 +72,9 @@ class Fighter:
         return ""
 
     def get_hit_chance(self) -> float:
-        print("index:", self.atk*0.1 + self.weapon_data.get("hit_bonus", 0)*40 + self.weapon.get("lvl", 0)*0.52)
-        slope = self.atk*0.1 + self.weapon_data.get("hit_bonus", 0)*40 + self.weapon.get("lvl", 0)*0.52
-        chance = get_linear_slope(slope*0.5)
+        print("index:", self.atk*0.1 + self.weapon_data.get("hit_bonus", 0)*0.1 * (1 + self.weapon.get("lvl", 0)*0.3))
+        slope = self.atk*0.1 + (self.weapon_data.get("hit_bonus", 0)*0.4) * (1 + self.weapon.get("lvl", 0)*0.3)
+        chance = get_linear_slope(slope)
         #chance = BASE_HIT_CHANCE + (self.atk * STAT_WEIGHTS["atk_to_hit"]) + self.weapon_data.get("hit_bonus", 0)
         print(f"{chance} | from weapon: {self.weapon_data.get("hit_bonus", 0)}")
         if self.adrenaline_active: chance *= 2.0
@@ -174,7 +174,7 @@ class CombatEngine:
                 ability_damage = res_dmg
                 ability_logs = logs
 
-        total_damage = round(base_damage + crit_bonus + ability_damage, 1)
+        total_damage = round(base_damage + crit_bonus + ability_damage, 0)
         defe.hp = max(0, round(defe.hp - total_damage, 1))
 
         # 6. Capybara Passive: Zen
