@@ -100,7 +100,7 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
     atk, def_, agi, luck = target["atk"], target["def"], target["agi"], target["luck"]
     max_hp = target["max_hp"]    
 
-    ship_info = f"𓊝 {target['ship_name']}" if {target['ship_name'] else "⊥ Мандрує на плоті"
+    ship_info = f"𓊝 {target['ship_name']}" if {target['ship_name']} else "⊥ Мандрує на плоті"
 
     text = (f"📜 <b>Розшукується: {target['name']}</b>\n"
             f"👤 Власник: <code>{target['username']}</code>\n"
