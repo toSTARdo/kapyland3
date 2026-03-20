@@ -48,20 +48,19 @@ def weapon_ability(base_prob):
                 
             total_dmg, logs = 0, []
 
-            if pattern == "sequential":
-                start_idx = att._ability_state[w_name]
-                active_indices = []
-                for j in range(len(available)):
-                    idx = (start_idx + j) % len(available)
-                    active_indices.append(idx)
+           if pattern == "sequential":
+                # Беремо лише один поточний індекс
+                current_idx = att._ability_state[w_name]
+                active_indices = [current_idx]
                 
-                att._ability_state[w_name] = (start_idx + 1) % len(available)
+                att._ability_state[w_name] = (current_idx + 1) % len(available)
                 
             elif pattern == "chaotic":
                 active_indices = [random.randrange(len(available))]
                 
             elif pattern == "ultimate":
                 active_indices = list(range(len(available)))
+                
             else:
                 active_indices = [0]
 
