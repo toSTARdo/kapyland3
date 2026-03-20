@@ -32,14 +32,14 @@ async def execute_ram_logic(callback: types.CallbackQuery, target_id: int, db_po
 
         state = ensure_dict(row['state'])
         last_ram_str = state.get("last_ram")
-        if last_ram_str and (datetime.now() - datetime.fromisoformat(last_ram_str)).total_seconds() < 3600:
+        if last_ram_str and (datetime.datetime.now() - datetime.datetime.fromisoformat(last_ram_str)).total_seconds() < 3600:
             return await callback.answer("🛠 Корабель ще лагодять!", show_alert=True)
 
         all_items = str(row['equipment']) + str(row['inventory'])
         if not any(x in all_items.lower() for x in ["таран", "бур"]):
             return await callback.answer("❌ Тобі потрібен 'Таран'!", show_alert=True)
 
-        state["last_ram"] = datetime.now().isoformat()
+        state["last_ram"] = datetime.datetime.now().isoformat()
         await conn.execute("UPDATE capybaras SET state = $1, stamina = stamina - 15 WHERE owner_id = $2", json.dumps(state), uid)
 
     await callback.message.edit_caption(caption="💥 <b>БА-БАХ!</b>\nТріски летять в усі боки! 🪵", parse_mode="HTML")
@@ -154,8 +154,8 @@ async def handle_inspect_player(callback: types.CallbackQuery, target_id: int, d
             f"━━━━━━━━━━━━━━━\n"
             f"🔹 <b>Зараз:</b> {'💤 Спить' if state.get('status') == 'sleep' else '🐾 Гуляє'}\n"
             f"🎖 <b>Рівень:</b> {target['lvl']} | ⚖️ <b>Вага:</b> {target['weight']} кг\n"
-            f"⚔️ <b>Арсенал:</b> {equip.get('name', 'Лапки')}"
-            f"ATK: {atk} | DEF: {def_} | AGI: {agi} | LUCK: {luck}"
+            f"⚔️ <b>Арсенал:</b> {equip.get('name', 'Лапки')}\n"
+            f"ATK: {atk} | DEF: {def_} | AGI: {agi} | LUCK: {luck}\n"
             f"♥️: {max_hp}")
 
     builder = InlineKeyboardBuilder()
