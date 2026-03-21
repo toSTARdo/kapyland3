@@ -632,13 +632,13 @@ NPC_REGISTRY = {
         "boss_raccoon_trash": {
             "kapy_name": "Єнот Ріккі «Сміттяр»", "color": "🦝",
             "stats": {"attack": 10, "defense": 8, "agility": 8, "luck": 15}, 
-            "weapon_full": {"name": "Йоржик", "lvl": 2},
+            "weapon_full": {"name": "Таран", "lvl": 2},
             "armor_full": {"name": "Діряве відро", "lvl": 1},
             "hp_bonus": 6, "is_boss": True, "race": "bot"
         },
         "boss_rat_king": {
             "kapy_name": "Щур Шмиг «Чума»", "color": "🐀",
-            "stats": {"attack": 12, "defense": 5, "agility": 18, "luck": 5},
+            "stats": {"attack": 12, "defense": 5, "agility": 18, "luck": 0},
             "weapon_full": {"name": "Вампірський клинок", "lvl": 1},
             "armor_full": {"name": "Мівіна", "lvl": 1},
             "hp_bonus": 8, "is_boss": True, "race": "bot"
