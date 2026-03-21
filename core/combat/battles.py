@@ -389,7 +389,7 @@ async def _apply_battle_results(uid, opp_id, winner, loser, p1, p2, p2_data, is_
                     summary.append(item)
                 
                 await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
-                                json.dumps(p2.inventory), opp_id)
+                                json.dumps(p2.inv), opp_id)
 
                 if summary:
                     reward_info += f"\n🏴‍☠️ <b>Вибито в бою:</b> " + ", ".join([f"<code>{i}</code>" for i in summary])
