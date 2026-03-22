@@ -13,10 +13,10 @@ def create_scale(current, max_val, emoji, empty_emoji='▫️'):
     current = max(0, min(int(current or 0), max_val))
     return f"{emoji * current}{empty_emoji * (max_val - current)} ({current}/{max_val})"
 
-def get_stamina_icons(stamina):
+def get_stamina_icons(stamina = 100, max_stamina = 100):
     stamina = stamina or 0
-    if stamina > 66: return "⚡⚡⚡"
-    if stamina > 33: return "⚡⚡ ●"
+    if stamina > int(max_stamina*(2/3)): return "⚡⚡⚡"
+    if stamina > int(max_stamina*(1/3)): return "⚡⚡ ●"
     return "⚡ ● ●" if stamina > 0 else "● ● ●"
 
 def get_profile_text(animal: Animal):
@@ -35,7 +35,7 @@ def get_profile_text(animal: Animal):
         f"ХП: {create_scale(animal.stats.hp, animal.stats.hp, '♥️', '🖤')}\n"
         f"Ситість: {create_scale(animal.hunger, 3, '🍏', '●')}\n"
         f"Гігієна: {create_scale(animal.cleanness, 3, '🧼', '🦠')}\n"
-        f"Енергія: <b>{get_stamina_icons(animal.stats.stamina)} ({animal.stats.max_stamina}/100)</b>"
+        f"Енергія: <b>{get_stamina_icons(animal.stats.stamina, animal.stats.max_stamina)} ({animal.stats.stamina}/{animal.stats.max_stamina})</b>"
     )
 
 def get_profile_kb(animal: Animal, page=0, show_quicklinks=False):
