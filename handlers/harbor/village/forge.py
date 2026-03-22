@@ -180,7 +180,7 @@ async def upgrade_list(callback: types.CallbackQuery, db_pool):
             all_items=items_to_paginate, 
             page=page, 
             per_page=5, 
-            callback_prefix="up_item",
+            item_prefix="up_item",
             nav_prefix="upgrade_menu"
 
         )
@@ -288,7 +288,7 @@ async def common_craft_list(callback: types.CallbackQuery, db_pool):
         all_items=items_to_paginate, 
         page=page, 
         per_page=5, 
-        callback_prefix="common_info", 
+        item_prefix="common_info", 
         nav_prefix="common_craft_list"
     )
 
@@ -466,7 +466,7 @@ async def forge_craft_list(callback: types.CallbackQuery, db_pool):
         all_items=items_to_paginate, 
         page=current_page, 
         per_page=ITEMS_PER_PAGE, 
-        callback_prefix="mythic_info",
+        item_prefix="mythic_info",
         nav_prefix="forge_craft_list"
     )
 

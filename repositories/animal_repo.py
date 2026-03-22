@@ -152,7 +152,7 @@ class AnimalRepository:
                 await conn.execute("""
                     INSERT INTO capybaras (
                         owner_id, name, race, lvl, weight, hp, atk, def, agi, luck, stamina, 
-                        inventory, equipment, ship_id
+                        inventory, equipment, ship_id, max_stamina
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     ON CONFLICT (owner_id) DO UPDATE SET
                     name = EXCLUDED.name, race = EXCLUDED.race, lvl = EXCLUDED.lvl, 
