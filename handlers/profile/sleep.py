@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from handlers.profile.view import get_profile_kb
+from handlers.profile.view import get_profile_kb, get_profile_text
 
 router = Router()
 
@@ -85,33 +85,41 @@ async def cmd_wakeup(callback: types.CallbackQuery, db_pool):
     if status == "error":
         return await callback.answer("❌ Ти вже не спиш!", show_alert=True)
     
+    from repositories.animal_repo import AnimalRepository
+    repo = AnimalRepository(db_pool)
+    animal = await repo.get_by_id(uid)
+    
+    if not animal:
+        return await callback.answer("❌ Помилка завантаження даних.")
+
     alert_msg = f"🥥 Капібарі на голову впав кокос і вона проснулася! Вона відновила {gain}⚡ стаміни."
     if status == "overslept":
         alert_msg = "😴 Капібара відіспала кінську голову! Стаміна: 100⚡." 
 
-    from repositories.animal_repo import AnimalRepository # переконайся, що імпорт є
+    async with db_pool.acquire() as conn:
+        quicklinks = await conn.fetchval("SELECT quicklinks FROM users WHERE tg_id = $1", uid)
+    if quicklinks is None: quicklinks = True
 
-    repo = AnimalRepository(db_pool)
-    animal = await repo.get_by_id(uid)
-    new_kb = get_profile_kb(animal)
+    new_text = get_profile_text(animal)
+    new_kb = get_profile_kb(animal, show_quicklinks=quicklinks)
     
     try:
         await callback.answer(alert_msg, show_alert=True)
 
         if callback.message.photo:
             await callback.message.edit_caption(
-                caption=callback.message.caption,
+                caption=new_text,
                 reply_markup=new_kb,
                 parse_mode="HTML"
             )
         else:
             await callback.message.edit_text(
-                text=callback.message.text,
+                text=new_text,
                 reply_markup=new_kb,
                 parse_mode="HTML"
             )
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error updating profile: {e}")
 
 async def sleep_db_operation(tg_id: int, db_pool):
     async with db_pool.acquire() as conn:

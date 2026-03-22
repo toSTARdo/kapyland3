@@ -35,7 +35,7 @@ def get_profile_text(animal: Animal):
         f"ХП: {create_scale(animal.stats.hp, animal.stats.hp, '♥️', '🖤')}\n"
         f"Ситість: {create_scale(animal.hunger, 3, '🍏', '●')}\n"
         f"Гігієна: {create_scale(animal.cleanness, 3, '🧼', '🦠')}\n"
-        f"Енергія: <b>{get_stamina_icons(animal.stats.stamina)} ({animal.stats.stamina}/100)</b>"
+        f"Енергія: <b>{get_stamina_icons(animal.stats.stamina)} ({animal.stats.max_stamina}/100)</b>"
     )
 
 def get_profile_kb(animal: Animal, page=0, show_quicklinks=False):

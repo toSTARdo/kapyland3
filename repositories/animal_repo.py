@@ -51,7 +51,8 @@ class AnimalRepository:
                     def_=row['def'],
                     agi=row['agi'],
                     luck=row['luck'],
-                    stamina=row['stamina']
+                    stamina=row['stamina'],
+                    max_stamina=row['max_stamina']
                 ),
                 state=state,
                 inventory=inventory, 
