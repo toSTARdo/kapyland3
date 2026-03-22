@@ -138,6 +138,11 @@ def apply_pagination(builder, all_items, page, per_page, item_prefix, nav_prefix
 @router.callback_query(F.data.startswith("upgrade_menu") | F.data.startswith("up_menu_pg:"))
 async def upgrade_list(callback: types.CallbackQuery, db_pool):
     page = 0
+    parts = callback.data.split(":")
+    try:
+        current_page = int(parts[-1]) if len(parts) > 1 and parts[-1].isdigit() else 0
+    except (ValueError, IndexError):
+        current_page = 0
     if callback.data.startswith("up_menu_pg:"):
         page = int(callback.data.split(":")[1])
 
@@ -178,7 +183,7 @@ async def upgrade_list(callback: types.CallbackQuery, db_pool):
         current_p = apply_pagination(
             builder=builder, 
             all_items=items_to_paginate, 
-            page=page, 
+            page=current_page, 
             per_page=5, 
             item_prefix="up_item",
             nav_prefix="upgrade_menu"
@@ -257,14 +262,12 @@ async def confirm_upgrade(callback: types.CallbackQuery, db_pool):
 async def common_craft_list(callback: types.CallbackQuery, db_pool):
     # 1. Безпечне отримання сторінки
     page = 0
-    data_parts = callback.data.split(":")
-    
-    # Перевіряємо, чи є другий елемент і чи він складається лише з цифр
-    if len(data_parts) > 1 and data_parts[1].isdigit():
-        page = int(data_parts[1])
-    else:
-        # Якщо там "handmade_map" або порожньо — залишаємо сторінку 0
-        page = 0
+    parts = callback.data.split(":")
+    # "forge_craft_list:pg:2" → parts = ["forge_craft_list", "pg", "2"]
+    try:
+        current_page = int(parts[-1]) if len(parts) > 1 and parts[-1].isdigit() else 0
+    except (ValueError, IndexError):
+        current_page = 0
 
     user_id = callback.from_user.id
     builder = InlineKeyboardBuilder()
@@ -286,7 +289,7 @@ async def common_craft_list(callback: types.CallbackQuery, db_pool):
     current_p = apply_pagination(
         builder=builder, 
         all_items=items_to_paginate, 
-        page=page, 
+        page=current_page, 
         per_page=5, 
         item_prefix="common_info", 
         nav_prefix="common_craft_list"
@@ -438,7 +441,10 @@ async def process_common_craft(callback: types.CallbackQuery, db_pool):
 @router.callback_query(F.data.startswith("forge_craft_list"))
 async def forge_craft_list(callback: types.CallbackQuery, db_pool):
     parts = callback.data.split(":")
-    current_page = int(parts[1]) if len(parts) > 1 else 0
+    try:
+        current_page = int(parts[-1]) if len(parts) > 1 and parts[-1].isdigit() else 0
+    except (ValueError, IndexError):
+        current_page = 0
     
     user_id = callback.from_user.id
     async with db_pool.acquire() as conn:
