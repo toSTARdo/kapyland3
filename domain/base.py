@@ -11,6 +11,7 @@ class Stats(BaseModel):
     agi: int = 1
     luck: int = 0
     stamina: int = 100
+    max_stamina: int = 100
 
 # --- Items ---
 class Item(BaseModel):
