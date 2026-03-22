@@ -104,9 +104,9 @@ def get_upgrade_cost(rarity: str, current_lvl: int) -> int:
     base = base_costs.get(rarity.lower(), 1)
     return base + current_lvl
 
-def apply_pagination(builder, all_items, page, per_page, callback_prefix, nav_prefix=None):
+def apply_pagination(builder, all_items, page, per_page, item_prefix, nav_prefix=None):
     if nav_prefix is None:
-        nav_prefix = callback_prefix
+        nav_prefix = item_prefix
         
     total_pages = max(1, (len(all_items) + per_page - 1) // per_page)
     page = max(0, min(page, total_pages - 1))
@@ -116,18 +116,21 @@ def apply_pagination(builder, all_items, page, per_page, callback_prefix, nav_pr
     items_slice = all_items[start:end]
 
     for suffix, text in items_slice:
-        builder.row(types.InlineKeyboardButton(text=text, callback_data=f"{callback_prefix}:{suffix}"))
+        builder.row(types.InlineKeyboardButton(
+            text=text, 
+            callback_data=f"{item_prefix}:{suffix}"
+        ))
 
     if total_pages > 1:
         nav = []
-        # Left
-        cb_l = f"{nav_prefix}:{page-1}" if page > 0 else "none"
+        cb_l = f"{nav_prefix}:pg:{page-1}" if page > 0 else "none"
         nav.append(types.InlineKeyboardButton(text="⬅️" if page > 0 else " ", callback_data=cb_l))
-        # Mid
+        
         nav.append(types.InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="none"))
-        # Right
-        cb_r = f"{nav_prefix}:{page+1}" if page < total_pages - 1 else "none"
+        
+        cb_r = f"{nav_prefix}:pg:{page+1}" if page < total_pages - 1 else "none"
         nav.append(types.InlineKeyboardButton(text="➡️" if page < total_pages - 1 else " ", callback_data=cb_r))
+        
         builder.row(*nav)
     
     return page

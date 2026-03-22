@@ -153,18 +153,19 @@ class AnimalRepository:
                     INSERT INTO capybaras (
                         owner_id, name, race, lvl, weight, hp, atk, def, agi, luck, stamina, 
                         inventory, equipment, ship_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     ON CONFLICT (owner_id) DO UPDATE SET
                     name = EXCLUDED.name, race = EXCLUDED.race, lvl = EXCLUDED.lvl, 
                     weight = EXCLUDED.weight, hp = EXCLUDED.hp, atk = EXCLUDED.atk, 
                     def = EXCLUDED.def, agi = EXCLUDED.agi, luck = EXCLUDED.luck, 
                     stamina = EXCLUDED.stamina, inventory = EXCLUDED.inventory, 
-                    equipment = EXCLUDED.equipment, ship_id = EXCLUDED.ship_id
+                    equipment = EXCLUDED.equipment, ship_id = EXCLUDED.ship_id,
+                    max_stamina = EXCLUDED.max_stamina
                 """, 
                 animal.owner_id, animal.name, animal.race, animal.level, animal.weight,
                 animal.stats.hp, animal.stats.atk, animal.stats.def_, 
                 animal.stats.agi, animal.stats.luck, animal.stats.stamina,
-                inv_json, equip_json, animal.ship_id)
+                inv_json, equip_json, animal.ship_id, animal.stats.max_stamina)
                 
     def get_icon(self, mood: str = "chill") -> str:
             race_set = MOOD_SETS.get(self.race, MOOD_SETS["capybara"])
