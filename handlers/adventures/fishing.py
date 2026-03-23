@@ -12,6 +12,16 @@ from utils.helpers import get_main_menu_chunk
 
 router = Router()
 
+def get_clicked_button_text(callback: types.CallbackQuery) -> str:
+    if not callback.message or not callback.message.reply_markup:
+        return ""
+    
+    for row in callback.message.reply_markup.inline_keyboard:
+        for button in row:
+            if button.callback_data == callback.data:
+                return button.text
+    return ""
+
 def to_dict(data):
     if isinstance(data, dict): return data
     if isinstance(data, str): 
@@ -129,12 +139,19 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             catch_multiplier = 2
             multi_note = " ✨ <b>ПОДВІЙНИЙ УЛОВ! (x2)</b>"
 
-        if row['stamina'] < 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
-            return await callback.answer("🪫 Тобі треба відпочити! (Мінімум 10⚡)", show_alert=True)
+        btn_text = get_clicked_button_text(callback)
+         
+        if "Закинути ще раз" in btn_text or "Назад" in btn_text:
+            if row['stamina'] < 10:
+                return await callback.answer("🪫 Тобі треба відпочити! (10⚡)", show_alert=True)
+            
+            stamina = row['stamina'] - 10
+        else:
+            stamina = row['stamina']
 
-        stamina = row['stamina'] - 10
+        is_eclipse = False
 
-        if rod_lvl >= 3 and random.random() < 0.02:
+        if rod_lvl >= 3 and random.random() < 0.01 and is_eclipse:
             async with db_pool.acquire() as conn:
                 await conn.execute("UPDATE capybaras SET stamina = stamina - 5 WHERE owner_id = $1", uid)
             
