@@ -238,7 +238,7 @@ async def handle_slots(message: types.Message, db_pool):
         food["mango"] -= 1
         
         await conn.execute(
-            "UPDATE capybaras SET inventory = $1 WHERE owner_id = $3", 
+            "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", 
             json.dumps(inv, ensure_ascii=False), uid
         )
 
