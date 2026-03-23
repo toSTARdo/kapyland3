@@ -263,7 +263,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             f"⚗️ Лакрима: <b>{has_lacrima}</b>"
         ]
         
-        content = "\n".join([l for l in lines if "<b>0</b>" not in l]) or "<i>Порожньо...</i>"
+        content = "\n".join([l for l in lines]) or "<i>Порожньо...</i>"
 
         # --- ЛОГІКА КНОПОК ВІДКРИТТЯ ---
         if chests > 0 or mega_chests > 0:            
@@ -301,7 +301,6 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             
             # Додаємо їх окремим рядком (або декількома)
             if bury_options:
-                builder.row(types.InlineKeyboardButton(text="─── ЗАКОПАТИ ───", callback_data="none"))
                 builder.row(*bury_options)
                 
     elif page == "maps":
@@ -393,6 +392,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             nav_builder.button(text=btn_text, callback_data=cb_val)
         nav_builder.adjust(2)
         builder.attach(nav_builder)
+        builder.row(types.InlineKeyboardButton(text="⬅️ До трюму", callback_data=f"open_inventory_main")
     
     if show_quicklinks:
         # Використовуємо окремий префікс для інвентарю, щоб пагінація чанка не ламала пагінацію предметів
