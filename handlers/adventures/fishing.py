@@ -215,7 +215,8 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         fish_weight = round(random.uniform(item['min_w'], item['max_w'] * weight_bonus), 2)
 
         inventory_note = ""
-        stamina -= 10
+        if stamina >= 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
+            stamina -= 10
                 
         total_catch_weight = round(fish_weight * catch_multiplier, 2)
         fishing_stats["total_weight"] = round(fishing_stats.get("total_weight", 0) + total_catch_weight, 2)
