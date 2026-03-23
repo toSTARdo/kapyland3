@@ -392,7 +392,7 @@ async def render_inventory_page(message, user_id, db_pool, page="food", current_
             nav_builder.button(text=btn_text, callback_data=cb_val)
         nav_builder.adjust(2)
         builder.attach(nav_builder)
-        builder.row(types.InlineKeyboardButton(text="⬅️ До трюму", callback_data=f"open_inventory_main")
+        builder.row(types.InlineKeyboardButton(text="⬅️ До трюму", callback_data=f"open_inventory_main"))
     
     if show_quicklinks:
         # Використовуємо окремий префікс для інвентарю, щоб пагінація чанка не ламала пагінацію предметів

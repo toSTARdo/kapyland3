@@ -129,7 +129,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             catch_multiplier = 2
             multi_note = " ✨ <b>ПОДВІЙНИЙ УЛОВ! (x2)</b>"
 
-        if stamina < 10:
+        if stamina < 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
             return await callback.answer("🪫 Тобі треба відпочити! (Мінімум 10⚡)", show_alert=True)
 
         if rod_lvl >= 3 and random.random() < 0.02:
