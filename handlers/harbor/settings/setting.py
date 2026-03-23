@@ -17,20 +17,26 @@ class SettingsStates(StatesGroup):
     waiting_for_bug_report = State()
 
 def get_settings_kb(quicklinks_enabled: bool = True, menu_page: int = 0) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
+builder = InlineKeyboardBuilder()
     
-    builder.row(InlineKeyboardButton(text="📝 Змінити ім'я", callback_data="change_name_start"))
+    builder.row(
+        InlineKeyboardButton(text="📝 Ім'я", callback_data="change_name_start"),
+        InlineKeyboardButton(text="🎖 Титул", callback_data="open_titles_list")
+    )
     
-    ql_status = "✅" if quicklinks_enabled else "❌"
+    builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
+    
+    builder.row(
+        InlineKeyboardButton(text="📖 Довідник", callback_data="open_manual_main"),
+        InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start")
+    )
+
+        ql_status = "✅" if quicklinks_enabled else "❌"
     builder.row(InlineKeyboardButton(
         text=f"🔗 Швидкі посилання: {ql_status}", 
         callback_data="toggle_quicklinks"
     ))
     
-    builder.row(InlineKeyboardButton(text="🎖 Обрати Титул", callback_data="open_titles_list"))
-    builder.row(InlineKeyboardButton(text="📖 Довідник", callback_data="open_manual_main"))
-    builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
-    builder.row(InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start"))
     builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
     
     if quicklinks_enabled:
