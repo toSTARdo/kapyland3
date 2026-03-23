@@ -129,8 +129,10 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             catch_multiplier = 2
             multi_note = " ✨ <b>ПОДВІЙНИЙ УЛОВ! (x2)</b>"
 
-        if stamina < 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
+        if row['stamina'] < 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
             return await callback.answer("🪫 Тобі треба відпочити! (Мінімум 10⚡)", show_alert=True)
+
+        stamina = row['stamina'] - 10
 
         if rod_lvl >= 3 and random.random() < 0.02:
             async with db_pool.acquire() as conn:
@@ -215,8 +217,6 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
         fish_weight = round(random.uniform(item['min_w'], item['max_w'] * weight_bonus), 2)
 
         inventory_note = ""
-        if stamina >= 10 and callback.message in ["🎣 Закинути ще раз", "🔙 Назад"]:
-            stamina -= 10
                 
         total_catch_weight = round(fish_weight * catch_multiplier, 2)
         fishing_stats["total_weight"] = round(fishing_stats.get("total_weight", 0) + total_catch_weight, 2)
