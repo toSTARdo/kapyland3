@@ -17,58 +17,109 @@ class ShipActions(StatesGroup):
     waiting_for_invite_id = State()
     waiting_for_new_name = State()
 
+import math
+
+SHIP_BONUSES = {
+    "tangerines": {"name": "🍊 Мандарини", "bonus": "EXP/Weight", "desc": "Досвід та вага"},
+    "mushroom": {"name": "🍄‍🟫 Гриби", "bonus": "Combat", "desc": "ATK/DEF/AGI"},
+    "kiwi": {"name": "🥝 Ківі", "bonus": "Luck", "desc": "Удача"},
+    "melon": {"name": "🍈 Дині", "bonus": "Fishing", "desc": "Шанс риболовлі"},
+    "mango": {"name": "🥭 Манго", "bonus": "Stamina", "desc": "Відновлення/Економія"}
+}
+
 @router.callback_query(F.data == "ship_treasury")
-async def ship_watermelon_vault(callback: types.CallbackQuery, db_pool):
+async def ship_upgrade_vault(callback: types.CallbackQuery, db_pool):
     uid = callback.from_user.id
     async with db_pool.acquire() as conn:
         ship = await conn.fetchrow("""
-            SELECT s.id, s.name, COALESCE((s.cargo->>'watermelons')::int, 0) as watermelons 
-            FROM ships s JOIN capybaras c ON s.id = c.ship_id 
+            SELECT s.id, s.name, s.cargo 
+            FROM ships s 
+            JOIN capybaras c ON s.id = c.ship_id 
             WHERE c.owner_id = $1
         """, uid)
         
         row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
-        inventory = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
-        user_melons = inventory.get("food", {}).get("watermelon_slices", 0)
+        
+    if not ship:
+        return await callback.answer("❌ Корабель не знайдено!", show_alert=True)
 
-    text = (
-        f"🍉 <b>Склад кавунів «{ship['name']}»</b>\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"📦 У трюмі: <b>{ship['watermelons']} шт.</b>\n"
-        f"🎒 У тебе: <b>{user_melons} шт.</b>"
-    )
+    inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+    cargo = json.loads(ship['cargo']) if isinstance(ship['cargo'], str) else (ship['cargo'] or {})
+    user_food = inv.get("food", {})
 
+    text = f"🏗 <b>Модернізація «{ship['name']}»</b>\n━━━━━━━━━━━━━━━\n"
     builder = InlineKeyboardBuilder()
-    if user_melons > 0:
-        builder.button(text="📥 Покласти 1 🍉", callback_data="ship_deposit:1")
-        builder.button(text="📥 Покласти все", callback_data=f"ship_deposit:{user_melons}")
-    
+
+    for key, info in SHIP_BONUSES.items():
+        db_key = "watermelons" if key == "melon" else key 
+        in_hold = int(cargo.get(db_key, 0))
+        
+        lvl = int(math.sqrt(in_hold))
+        bonus_val = lvl * 5
+        
+        next_lvl_req = (lvl + 1)**2
+        progress = f"{in_hold}/{next_lvl_req}"
+        
+        text += (
+            f"{info['name']} | <b>Lvl {lvl}</b> (+{bonus_val}%)\n"
+            f"└ <i>{info['desc']}</i>: <code>{progress}</code>\n"
+        )
+
+        user_has = user_food.get(key, 0)
+        if user_has > 0:
+            builder.button(
+                text=f"📥 Вкласти {info['name']} ({user_has})", 
+                callback_data=f"ship_dep_menu:{key}"
+            )
+
     builder.button(text="🔙 Назад", callback_data="ship_main")
     builder.adjust(1)
-    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    
+    await callback.message.edit_caption(
+        caption=text, 
+        reply_markup=builder.as_markup(), 
+        parse_mode="HTML"
+    )
 
 @router.callback_query(F.data.startswith("ship_deposit:"))
-async def execute_melon_deposit(callback: types.CallbackQuery, db_pool):
-    amount = int(callback.data.split(":")[1])
+async def handle_ship_deposit(callback: types.CallbackQuery, db_pool):
+    parts = callback.data.split(":")
+    resource = parts[1]
+    raw_amount = parts[2]
     uid = callback.from_user.id
+
+    db_key = "watermelons" if resource == "watermelon_slices" else resource
+
     async with db_pool.acquire() as conn:
-        res = await conn.execute(f"""
-            UPDATE capybaras SET inventory = jsonb_set(inventory, '{{food, watermelon_slices}}', 
-            ((inventory->'food'->>'watermelon_slices')::int - {amount})::text::jsonb)
-            WHERE owner_id = $1 AND (inventory->'food'->>'watermelon_slices')::int >= $2
-        """, uid, amount)
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
+        inv = json.loads(row['inventory']) if isinstance(row['inventory'], str) else row['inventory']
+        
+        user_has = inv.get("food", {}).get(resource, 0)
+        
+        amount = user_has if raw_amount == "all" else int(raw_amount)
 
-        if res == "UPDATE 0":
-            return await callback.answer("❌ Недостатньо кавунів!")
+        if amount <= 0 or user_has < amount:
+            return await callback.answer(f"❌ Недостатньо ресурсів!")
 
-        await conn.execute("""
-            UPDATE ships SET cargo = jsonb_set(cargo, '{watermelons}', 
-            (COALESCE((cargo->>'watermelons')::int, 0) + $1)::text::jsonb)
-            WHERE id = (SELECT ship_id FROM capybaras WHERE owner_id = $2)
-        """, amount, uid)
+        inv["food"][resource] -= amount
+        
+        async with conn.transaction():
+            await conn.execute(
+                "UPDATE capybaras SET inventory = $1 WHERE owner_id = $2",
+                json.dumps(inv, ensure_ascii=False), uid
+            )
 
-    await callback.answer(f"🍉 Додано {amount} кавунів!")
-    await ship_watermelon_vault(callback, db_pool)
+            await conn.execute(f"""
+                UPDATE ships SET cargo = jsonb_set(
+                    COALESCE(cargo, '{{}}'), 
+                    '{{{db_key}}}', 
+                    (COALESCE((cargo->>'{db_key}')::int, 0) + $1)::text::jsonb
+                )
+                WHERE id = (SELECT ship_id FROM capybaras WHERE owner_id = $2)
+            """, amount, uid)
+
+    await callback.answer(f"📥 Вкладено {amount} шт.!")
+    await ship_upgrade_vault(callback, db_pool)
 
 @router.callback_query(F.data == "ship_engine")
 async def ship_engine_room(callback: types.CallbackQuery, db_pool):
