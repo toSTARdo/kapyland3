@@ -218,7 +218,7 @@ async def handle_slots(message: types.Message, db_pool):
     uid = message.from_user.id
     
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT inventory, FROM capybaras WHERE owner_id = $1", uid)
+        row = await conn.fetchrow("SELECT inventory FROM capybaras WHERE owner_id = $1", uid)
         if not row: return
 
         inv = json.loads(row['inventory'] or '{}')
