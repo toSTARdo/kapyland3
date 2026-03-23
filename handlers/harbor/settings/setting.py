@@ -23,9 +23,7 @@ def get_settings_kb(quicklinks_enabled: bool = True, menu_page: int = 0) -> Inli
             InlineKeyboardButton(text="📝 Ім'я", callback_data="change_name_start"),
             InlineKeyboardButton(text="🎖 Титул", callback_data="open_titles_list")
         )
-        
-        builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
-        
+                
         builder.row(
             InlineKeyboardButton(text="📖 Довідник", callback_data="open_manual_main"),
             InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start")
@@ -37,6 +35,7 @@ def get_settings_kb(quicklinks_enabled: bool = True, menu_page: int = 0) -> Inli
             callback_data="toggle_quicklinks"
         ))
         
+        builder.row(InlineKeyboardButton(text="🎬 Переможна реакція (GIF)", callback_data="setup_victory_gif"))
         builder.row(InlineKeyboardButton(text="⬅️ Назад до Порту", callback_data="open_port_main"))
         
         if quicklinks_enabled:

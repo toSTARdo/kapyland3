@@ -181,8 +181,15 @@ async def run_battle_logic(
 
     # 5. Фінальний звіт
     await msg_interface.answer(f"🏁 <b>БІЙ ЗАВЕРШЕНО</b>\n━━━━━━━━━━━━━━\n{res_text}{reward_info}", parse_mode="HTML")
+       
+    if winner.id == p1.id:
+        winner_id = p1.id
+    elif bot_type is None and winner.id == p2.id:
+        winner_id = p2.id
 
-    # 6. Сюжетний перехід
+    if winner_id:
+        await asyncio.sleep(0.5) 
+        await send_victory_celebration(event.bot, msg_interface.chat.id, winner_id, db_pool)
     if outcomes:
         await _handle_story_outcomes(msg_interface, winner, p1, outcomes, db_pool)
 
