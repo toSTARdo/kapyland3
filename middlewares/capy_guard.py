@@ -91,7 +91,7 @@ class CapyGuardMiddleware(BaseMiddleware):
 
             now = datetime.datetime.now(datetime.timezone.utc)
             stamina = meta.get("stamina", 100)
-            MAX_STAMINA = meta.get("MAX_STAMINA", 100)
+            MAX_STAMINA = meta.get("max_stamina", 100)
             last_regen_str = meta.get("last_regen")
             
             needs_update = False
@@ -120,7 +120,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                     
                     if now >= wake_time:
                         meta["status"] = "active"
-                        meta["stamina"] = meta["MAX_STAMINA"]
+                        meta["stamina"] = MAX_STAMINA
                         needs_update = True
 
             self.update_stats_track(meta, event)
