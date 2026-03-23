@@ -212,3 +212,68 @@ async def handle_open_chest(callback: types.CallbackQuery, db_pool):
             "\n".join([f"• {r}" for r in rewards]) + f"\n\n📦 Лишилося: {loot[target_chest_key]}",
             reply_markup=builder.as_markup(), parse_mode="HTML"
         )
+
+@router.message(F.dice.emoji == "🎰")
+async def handle_slots(message: types.Message, db_pool):
+    uid = message.from_user.id
+    
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT inventory, FROM capybaras WHERE owner_id = $1", uid)
+        if not row: return
+
+        inv = json.loads(row['inventory'] or '{}')
+        food = inv.get("food", {})
+        mango_count = food.get("mango", 0)
+
+        if mango_count < 1:
+            try:
+                await message.delete()
+            except:
+                pass
+            
+            msg = await message.answer("❌ <b>Тобі треба 🥭 Манго, щоб зіграти в автомати!</b>", parse_mode="HTML")
+            await asyncio.sleep(5)
+            return await msg.delete()
+
+        food["mango"] -= 1
+        
+        await conn.execute(
+            "UPDATE capybaras SET inventory = $1 WHERE owner_id = $3", 
+            json.dumps(inv, ensure_ascii=False), uid
+        )
+
+        score = message.dice.value
+        await asyncio.sleep(2.1)
+
+        result_text = ""
+        reward_items = []
+
+        if score == 64:
+            result_text = "🎰 <b>ДЖЕКПОТ!!!</b> 🎰\nТи виграв щось неймовірне!"
+            loot = inv.setdefault("loot", {})
+            loot["mega_chest"] = loot.get("mega_chest", 0) + 1
+            reward_items.append("🕋 Мега-скриня x1")
+        elif score in [1, 22, 43]:
+            result_text = "✨ <b>ТРИ В РЯД!</b> ✨"
+            loot = inv.setdefault("loot", {})
+            loot["chest"] = loot.get("chest", 0) + 2
+            reward_items.append("🗃 Скриня x2")
+        elif score in [16, 32, 48]:
+            result_text = "💰 <b>Непогано!</b>"
+            food["kiwi"] = food.get("kiwi", 0) + 3
+            reward_items.append("🥝 Ківі x3")
+        else:
+            result_text = "🌊 <b>Порожньо...</b>"
+
+        if reward_items:
+            await conn.execute("UPDATE capybaras SET inventory = $1 WHERE owner_id = $2", json.dumps(inv, ensure_ascii=False), uid)
+            rewards_str = "\n".join([f"• {item}" for item in reward_items])
+            await message.reply(
+                f"{result_text}\n━━━━━━━━━━━━━━━\n{rewards_str}\n\n🥭 Лишилося: {food['mango']}",
+                parse_mode="HTML"
+            )
+        else:
+            await message.reply(
+                f"{result_text}\n<i>Манго 🥭 було смачним, але автомати сьогодні невблаганні.</i>\nЛишилося: {food['mango']}", 
+                parse_mode="HTML"
+            )
