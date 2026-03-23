@@ -72,7 +72,7 @@ async def process_open_alchemy(callback: types.CallbackQuery, db_pool):
         all_items=recipe_items,
         page=current_page,
         per_page=5, 
-        callback_prefix="brew",
+        item_prefix="brew",
         nav_prefix="open_alchemy"
     )
 

@@ -143,7 +143,7 @@ async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
         all_items=sellable_items,
         page=bazaar_page,
         per_page=5,
-        callback_prefix="b_sell", # Для кнопок "Здати"
+        item_prefix="b_sell", # Для кнопок "Здати"
         nav_prefix=f"bazaar_sell_list" # Для стрілок вліво/вправо самого списку
     )
 
