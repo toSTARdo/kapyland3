@@ -31,7 +31,7 @@ def get_settings_kb(quicklinks_enabled: bool = True, menu_page: int = 0) -> Inli
             InlineKeyboardButton(text="🛠️ Повідомити", callback_data="report_start")
         )
 
-            ql_status = "✅" if quicklinks_enabled else "❌"
+        ql_status = "✅" if quicklinks_enabled else "❌"
         builder.row(InlineKeyboardButton(
             text=f"🔗 Швидкі посилання: {ql_status}", 
             callback_data="toggle_quicklinks"
