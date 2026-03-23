@@ -140,7 +140,7 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             multi_note = " ✨ <b>ПОДВІЙНИЙ УЛОВ! (x2)</b>"
 
         btn_text = get_clicked_button_text(callback)
-         
+
         if "Закинути ще раз" in btn_text or "Назад" in btn_text:
             if row['stamina'] < 10:
                 return await callback.answer("🪫 Тобі треба відпочити! (10⚡)", show_alert=True)
@@ -186,7 +186,6 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             {"name": "🫙 Стара мапа", "min_w": 0.1, "max_w": 0.1, "chance": 2, "type": "treasure_map", "key": "treasure_maps"}
         ]
 
-        # ВИПРАВЛЕНО: Додані коми між елементами списку Біому 2
         BIOME_LOOT = {
             "1": [
                 {"name": "🥥 Кокос", "min_w": 0.8, "max_w": 1.2, "chance": 10, "type": "materials", "key": "coconut"},
@@ -201,12 +200,11 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
                 {"name": "🧊 Древній лід", "min_w": 0.1, "max_w": 0.3, "chance": 3, "type": "materials", "key": "ice_crystal"},
                 {"name": "🦑 Зоряний кракен", "min_w": 0.5, "max_w": 300.0, "chance": 8, "type": "materials", "key": "kraken"},
                 {"name": "🐳 Кит", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "whale"},
-                {"name": "💀 Череп", "min_w": 50.0, "max_w": 500.0, "chance": 5, "type": "materials", "key": "skull"}
+                {"name": "💀 Череп", "min_w": 1.0, "max_w": 5.0, "chance": 5, "type": "materials", "key": "skull"}
             ]
         }
 
         item = None
-        # ВИПРАВЛЕНО: Логіка міфічних предметів (заповнено min_w, max_w та name)
         if rod_lvl >= 5 and random.random() < 0.05 + bonus_chance:
             roll = random.random()
             if roll < 0.45:
@@ -218,12 +216,10 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             else:
                 item = {"name": "🕋 Мега-скриня", "min_w": 5.0, "max_w": 10.0, "chance": 0, "type": "loot", "key": "mega_chest"}
 
-        # ДОДАНО: Логіка біомного луту (10% шанс, якщо не випало міфічне)
         if not item:
             if random.random() < 0.10 and biome_id in BIOME_LOOT:
                 biome_pool = BIOME_LOOT[biome_id]
                 item = random.choices(biome_pool, weights=[i['chance'] for i in biome_pool])[0]
-                # Додамо емодзі біому до назви для візуального ефекту (опціонально)
                 item_copy = item.copy() 
                 item_copy["name"] = f"{biome['emoji']} {item['name']}"
                 item = item_copy
@@ -243,7 +239,6 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             loot_dir = inventory.setdefault("loot", {})
             maps_list = loot_dir.setdefault("treasure_maps", [])
             
-            # --- НОВИЙ БЛОК: Додаємо Слоїк у матеріали ---
             materials = inventory.setdefault("materials", {})
             materials["jar"] = materials.get("jar", 0) + 1 if random.random() < 0.1 else 0
             # ---------------------------------------------
@@ -274,7 +269,6 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             else:
                 m_id = random.randint(100, 999)
                 maps_list.append({"type": "treasure", "id": m_id, "pos": f"{random.randint(0,149)},{random.randint(0,149)}"})
-                # Оновлюємо текст, щоб гравець розумів, звідки взявся слоїк
                 inventory_note = f"🗺️ <b>Ви виловили карту #{m_id} прямо у cлоїку!</b>"
         else:
             folder = item['type']
@@ -290,21 +284,16 @@ async def handle_fishing(callback: types.CallbackQuery, db_pool):
             WHERE owner_id = $4
         """, stamina, json.dumps(inventory, ensure_ascii=False), json.dumps(fishing_stats), uid)
 
-        # 2. Формування клавіатури
         stars = "⭐" * rod_lvl
         builder = InlineKeyboardBuilder()
-        
-        # Зберігаємо сторінку чанка в callback_data кнопки "ще раз", 
-        # щоб при повторній риболовлі меню залишалося на тій же сторінці
+
         builder.button(text="🎣 Закинути ще раз", callback_data=f"fish:p{menu_page}")
         builder.button(text="🔙 Назад", callback_data="open_adventure_main")
         builder.adjust(1)
 
-        # 3. Додаємо чанк навігації
         if show_quicklinks:
             get_main_menu_chunk(builder, page=menu_page, callback_prefix="fish")
 
-        # 4. Рендеринг результату
         new_media = InputMediaPhoto(
             media=IMAGES_URLS["fishing"],
             caption=(
