@@ -136,8 +136,7 @@ async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
                 offer = sell_prices[item]
                 name = get_item_name(item)
                 price = f"{offer['val']}{FOOD_ICONS.get(offer['curr'], '🍉')}"
-                # Формат: (callback_suffix, button_text)
-                sellable_items.append((f"{item}:p{chunk_page}", f"📦 {name} ({count}) → {price}"))
+                sellable_items.append((f"{item}:p{current_page}", f"📦 {name} ({count}) → {price}"))
 
     # ВИКОРИСТОВУЄМО ТВОЮ ФУНКЦІЮ
     # Вона додасть кнопки товарів та стрілки навігації (якщо треба)
@@ -155,16 +154,16 @@ async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
     for row in builder.export():
         for btn in row:
             if btn.callback_data.startswith("bazaar_sell_list:") and ":p" not in btn.callback_data:
-                btn.callback_data += f":p{chunk_page}"
+                btn.callback_data += f":p{current_page}"
 
     # Системні кнопки
-    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data=f"open_bazaar:p{chunk_page}"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Назад", callback_data=f"open_bazaar:p{current_page}"))
 
     # ДОДАЄМО QUICKLINKS (Окремо від пагінації списку)
     if show_quicklinks:
         # Префікс для гортання кнопок знизу
         # Формат: bazaar_sell_list:{поточна_стор_базару}
-        get_main_menu_chunk(builder, page=chunk_page, callback_prefix=f"bazaar_sell_list:{current_b_page}")
+        get_main_menu_chunk(builder, page=current_page, callback_prefix=f"bazaar_sell_list:{current_b_page}")
 
     text = "💰 <b>Скупка ресурсів</b>\n<i>Базар сьогодні купує:</i>\n\n"
     if not sellable_items:
