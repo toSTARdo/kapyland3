@@ -66,7 +66,7 @@ class CapyGuardMiddleware(BaseMiddleware):
 
             meta = {
                 "stamina": row["stamina"],
-                "MAX_STAMINA": row["max_stamina"],
+                "max_stamina": row["max_stamina"],
                 "last_regen": state.get("last_regen"),
                 "status": state.get("status", "active"),
                 "wake_up": state.get("wake_up"),
@@ -91,12 +91,12 @@ class CapyGuardMiddleware(BaseMiddleware):
 
             now = datetime.datetime.now(datetime.timezone.utc)
             stamina = meta.get("stamina", 100)
-            MAX_STAMINA = meta.get("max_stamina", 100)
+            max_stamina = meta.get("max_stamina", 100)
             last_regen_str = meta.get("last_regen")
             
             needs_update = False
 
-            if stamina >= MAX_STAMINA:
+            if stamina >= max_stamina:
                 meta["last_regen"] = now.isoformat()
             elif last_regen_str:
                 last_regen = datetime.datetime.fromisoformat(last_regen_str)
@@ -105,7 +105,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                 
                 regen_points = (int((now - last_regen).total_seconds() // 60) // 14)
                 if regen_points > 0:
-                    meta["stamina"] = min(MAX_STAMINA, stamina + regen_points)
+                    meta["stamina"] = min(max_stamina, stamina + regen_points)
                     meta["last_regen"] = (last_regen + datetime.timedelta(minutes=regen_points * 14)).isoformat()
                     needs_update = True
             else:
@@ -120,7 +120,7 @@ class CapyGuardMiddleware(BaseMiddleware):
                     
                     if now >= wake_time:
                         meta["status"] = "active"
-                        meta["stamina"] = MAX_STAMINA
+                        meta["stamina"] = max_stamina
                         needs_update = True
 
             self.update_stats_track(meta, event)

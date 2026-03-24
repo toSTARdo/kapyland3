@@ -103,7 +103,7 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
         current_zen = row['zen'] or 0
         current_weight = row['weight'] or 20.0
         current_stamina = row['stamina'] if row['stamina'] is not None else 100
-        MAX_STAMINA = row["max_stamina"]
+        max_stamina = row["max_stamina"]
 
         inventory = row['inventory']
         if isinstance(inventory, str):
@@ -118,7 +118,7 @@ async def grant_exp_and_lvl(tg_id: int, exp_gain: int, weight_gain: float = 0, b
         new_weight = round(max(1.0, current_weight + weight_gain), 1)
 
         if lvl_diff > 0:
-            new_stamina = MAX_STAMINA
+            new_stamina = max_stamina
             
             loot = inventory.setdefault("loot", {})
             loot["lottery_ticket"] = loot.get("lottery_ticket", 0) + lvl_diff
