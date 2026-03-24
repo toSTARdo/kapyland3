@@ -98,17 +98,20 @@ async def bazaar_shop(callback: types.CallbackQuery, db_pool):
     
 @router.callback_query(F.data.startswith("bazaar_sell_list"))
 async def bazaar_sell_list(callback: types.CallbackQuery, db_pool):
-    # Парсимо дані: bazaar_sell_list:{стор_товарів}:p{стор_чанка}
     parts = callback.data.split(":")
     
-    # 1. Сторінка товарів базару (твоя функція)
     bazaar_page = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
     
-    # 2. Сторінка швидких посилань
-    chunk_page = 0
-    for p in parts:
-        if p.startswith("p") and p[1:].isdigit():
-            chunk_page = int(p[1:])
+    current_page = 0
+    if ":" in callback.data:
+        parts = callback.data.split(":")
+        try:
+            if "pg" in parts:
+                current_page = int(parts[parts.index("pg") + 1])
+            else:
+                current_page = int(parts[1])
+        except (ValueError, IndexError):
+            current_page = 0
 
     state = await get_weekly_bazaar_stock(db_pool)
     sell_prices = state.get("sell_prices", {})

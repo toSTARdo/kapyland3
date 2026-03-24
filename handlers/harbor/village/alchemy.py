@@ -23,14 +23,16 @@ def find_item_in_inventory(inv, item_key):
 async def process_open_alchemy(callback: types.CallbackQuery, db_pool):
     user_id = callback.from_user.id
     
-    # 1. Parse page from callback data
-    # Standard: "open_alchemy", Navigation: "open_alchemy:1"
     current_page = 0
     if ":" in callback.data:
+        parts = callback.data.split(":")
         try:
-            current_page = int(callback.data.split(":")[1])
-        except ValueError:
-            pass
+            if "pg" in parts:
+                current_page = int(parts[parts.index("pg") + 1])
+            else:
+                current_page = int(parts[1])
+        except (ValueError, IndexError):
+            current_page = 0
 
     async with db_pool.acquire() as conn:
         user_info = await conn.fetchrow(
